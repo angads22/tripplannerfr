@@ -210,6 +210,29 @@ $("#nt-add").addEventListener("click", async () => {
   }
 });
 
+// --- Updates ---------------------------------------------------------------
+async function checkUpdate() {
+  try {
+    $("#checkUpdateBtn").disabled = true;
+    const { hasUpdate, latestTag, downloadUrl } = await api("GET", "/api/admin/check-update");
+    const status = $("#updateStatus");
+    const meta = $("#updateMeta");
+    if (hasUpdate) {
+      status.textContent = "Update available: " + latestTag;
+      status.style.color = "#0E7A47";
+      meta.innerHTML = `New version <b>${latestTag}</b> is available. <a href="${downloadUrl}" target="_blank" rel="noopener">Download TripPlanner.exe</a> and replace the old one.`;
+    } else {
+      status.textContent = "You're up to date";
+      meta.textContent = "Running the latest version.";
+    }
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    $("#checkUpdateBtn").disabled = false;
+  }
+}
+$("#checkUpdateBtn").addEventListener("click", checkUpdate);
+
 // --- Server power ----------------------------------------------------------
 $("#shutdownBtn").addEventListener("click", async () => {
   if (!confirm("Shut down the server for everyone? You'll need to run Start Trip Planner.bat to turn it back on.")) return;
@@ -235,6 +258,8 @@ $("#logoutBtn").addEventListener("click", async () => {
     await loadInvite();
     await loadUsers();
     await loadTrips();
+    await checkUpdate();
+    setInterval(checkUpdate, 60 * 60 * 1000);
   } catch (e) {
     toast(e.message, true);
   }
