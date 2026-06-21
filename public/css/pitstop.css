@@ -16,6 +16,11 @@
   --red: #E23B26;
 }
 
+/* Per-trip accent themes (all share the Pitstop look, just a different accent) */
+[data-theme="blue"] { --accent: #2D6CA2; }
+[data-theme="green"] { --accent: #2F8F5B; }
+[data-theme="red"] { --accent: #E23B26; }
+
 * { box-sizing: border-box; }
 
 body {
@@ -315,6 +320,50 @@ a { color: inherit; text-decoration: none; }
 
 /* code chips */
 code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,23,18,.08); color: var(--accent); padding: 1px 6px; border-radius: 5px; }
+
+/* Modal (create / edit trip, manage crew) */
+.scrim {
+  position: fixed; inset: 0; z-index: 80; background: rgba(28,23,18,.5);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.scrim[hidden] { display: none; }
+.modal {
+  width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+  background: rgba(245,238,224,.95); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255,255,255,.6); border-radius: 22px;
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.5); padding: 24px; animation: rise .35s both;
+}
+.modal__title { font-family: "Anton", sans-serif; font-size: 26px; text-transform: uppercase; line-height: 1; }
+.modal__kicker { font-family: "Permanent Marker", cursive; font-size: 13px; color: var(--accent); margin-bottom: 4px; }
+.modal__row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.modal__foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+/* Theme picker swatches */
+.themes { display: flex; gap: 10px; margin-top: 8px; }
+.theme-dot {
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 3px solid transparent;
+  transition: transform .12s, border-color .12s;
+}
+.theme-dot:hover { transform: scale(1.08); }
+.theme-dot.sel { border-color: var(--ink); }
+.theme-dot.red { background: #E23B26; }
+.theme-dot.blue { background: #2D6CA2; }
+.theme-dot.green { background: #2F8F5B; }
+
+/* Emoji sticker picker */
+.stickers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sticker { width: 40px; height: 40px; border-radius: 11px; border: 1px solid rgba(28,23,18,.16); background: rgba(255,255,255,.5); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.sticker.sel { border-color: var(--accent); background: #fff; }
+
+/* Crew management list (trip detail) */
+.crew-list { display: flex; flex-direction: column; gap: 8px; }
+.crew-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); }
+.crew-item__face { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; }
+.crew-item__name { font-weight: 700; font-size: 14px; flex: 1; }
+.crew-item__tag { font-family: "Permanent Marker", cursive; font-size: 11px; color: var(--muted-light-2); }
+.crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; }
+.crew-item__x:hover { background: rgba(226,59,38,.1); color: var(--red); }
 
 /* Auth-style centered card (404) */
 .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 18px; position: relative; z-index: 1; }

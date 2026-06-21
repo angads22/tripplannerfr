@@ -7,9 +7,19 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const db = require("../lib/db");
 const config = require("../lib/config");
-const { requireAdmin, inviteCode } = require("../lib/auth-middleware");
+const { requireAdmin, requireAuth, inviteCode } = require("../lib/auth-middleware");
 
 const router = express.Router();
+
+// A light directory any logged-in user can read, so they can pick people to
+// invite to their own trips. Only id / username / display name is exposed.
+router.get("/directory", requireAuth, (req, res) => {
+  res.json({
+    users: db.getUsers().map((u) => ({ id: u.id, username: u.username, displayName: u.displayName })),
+  });
+});
+
+// Everything below is admin-only.
 router.use(requireAdmin);
 
 function publicUser(u) {

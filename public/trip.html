@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip · Pitstop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/pitstop.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+</head>
+<body>
+  <div class="bg">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  </div>
+
+  <div class="stage">
+    <div class="wrap-board" style="padding-top:24px">
+      <a class="btn-pill" href="/" style="margin-bottom:16px">← all trips</a>
+
+      <div id="tripHead" class="card-dark hero" style="animation:rise .5s both"></div>
+
+      <div class="sec-row">
+        <span class="sec-row__label">The crew</span>
+        <span class="sec-row__rule"></span>
+        <span class="sec-row__count" id="crewCount"></span>
+      </div>
+
+      <div class="panel">
+        <div class="panel__body">
+          <div class="crew-list" id="crewList"></div>
+          <div id="addRow" class="modal__row" style="display:none;margin-top:14px">
+            <input class="input" id="addUser" style="flex:1;min-width:160px" placeholder="add by username" list="userList" />
+            <datalist id="userList"></datalist>
+            <button class="btn primary" id="addBtn" type="button">Add</button>
+          </div>
+          <p class="row__meta" id="addHint" style="margin-top:10px"></p>
+        </div>
+      </div>
+
+      <div id="manageBar" style="display:none;margin-top:18px">
+        <div class="sec-row">
+          <span class="sec-row__label">Trip settings</span>
+          <span class="sec-row__rule"></span>
+        </div>
+        <div class="panel">
+          <div class="panel__body">
+            <div class="row">
+              <div class="row__main">
+                <div class="row__title">Theme</div>
+                <div class="row__meta">Pick the accent for this trip.</div>
+              </div>
+              <div class="themes" id="editThemes">
+                <span class="theme-dot red" data-theme="red" title="Highway Red"></span>
+                <span class="theme-dot blue" data-theme="blue" title="Lake Blue"></span>
+                <span class="theme-dot green" data-theme="green" title="Pine Green"></span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row__main">
+                <div class="row__title">Delete this trip</div>
+                <div class="row__meta">Removes it for everyone. Can't be undone.</div>
+              </div>
+              <div class="row__actions"><button class="btn danger small" id="deleteBtn">Delete trip</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/trip.js"></script>
+</body>
+</html>
