@@ -16,6 +16,7 @@ const authRoutes = require("./routes/auth");
 const tripRoutes = require("./routes/trips");
 const userRoutes = require("./routes/users");
 const adminRoutes = require("./routes/admin");
+const friendRoutes = require("./routes/friends");
 
 const app = express();
 app.disable("x-powered-by");
@@ -59,6 +60,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/friends", friendRoutes);
 app.get("/api/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
 // --- Protected pages -------------------------------------------------------

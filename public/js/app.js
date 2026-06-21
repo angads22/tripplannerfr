@@ -88,8 +88,10 @@ function tripCard(t, i) {
   const tags = (t.tags || []).slice(0, 3).map((x) => `<span class="chip">${esc(x)}</span>`).join("");
   const tilt = TILTS[i % TILTS.length];
   const dateRow = [fmtDate(t.date), esc(t.subtitle || "")].filter(Boolean).join(" · ");
+  const cover = t.coverUrl ? `<img class="trip__cover" src="${esc(t.coverUrl)}" alt="" loading="lazy" onerror="this.remove()" />` : "";
   return `
     <a class="trip card-light" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
+      ${cover}
       <div class="trip__head">
         <span class="trip__count ${cd.cls}">${cd.label}</span>
         <div class="trip__emoji">${esc(t.emoji || "🚗")}</div>
@@ -114,7 +116,7 @@ function addCard() {
 }
 
 // --- Create-trip modal -----------------------------------------------------
-const STICKERS = ["🚗", "✈️", "🏙️", "🏔️", "🏖️", "🏕️", "🎡", "🛶", "🌮", "🍕", "🎸", "📸", "🗺️", "🐻", "🌵", "🛹"];
+const STICKERS = ["🚗", "✈️", "🏙️", "🏔️", "🏖️", "🏕️", "🎡", "🛶", "🌮", "🍕", "🎸", "📸", "🗺️", "🐻", "🌵", "🛹", "⛷️", "🎿", "🏂", "🍻", "🎢", "🎤", "🛳️", "🚆", "🏟️", "🎄", "🎃", "🌊", "🔥", "⛺", "🥾", "🍷"];
 
 // Starter templates for different kinds of trips / hangouts. Picking one
 // pre-fills the sticker, theme, tags, and a starter itinerary.
@@ -208,6 +210,8 @@ async function createTrip() {
       title,
       date: $("#ct-date").value,
       subtitle: $("#ct-sub").value.trim(),
+      description: $("#ct-desc").value.trim(),
+      coverUrl: $("#ct-cover").value.trim(),
       emoji: ctEmoji,
       theme: ctTheme,
       tags: ctTags,

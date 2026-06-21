@@ -45,8 +45,12 @@
       <div class="panel">
         <div class="panel__body">
           <div class="crew-list" id="crewList"></div>
+          <div id="friendAdd" style="display:none;margin-top:14px">
+            <div class="flabel" style="color:var(--muted-light);margin-bottom:8px">Add a friend</div>
+            <div id="friendChips" class="access"></div>
+          </div>
           <div id="addRow" class="modal__row" style="display:none;margin-top:14px">
-            <input class="input" id="addUser" style="flex:1;min-width:160px" placeholder="add by username" list="userList" />
+            <input class="input" id="addUser" style="flex:1;min-width:160px" placeholder="or add by username" list="userList" />
             <datalist id="userList"></datalist>
             <button class="btn primary" id="addBtn" type="button">Add</button>
           </div>
@@ -130,12 +134,28 @@
         </div>
         <div class="panel">
           <div class="panel__body">
+            <div class="row" style="border:none;display:block">
+              <div class="row__title" style="margin-bottom:10px">Edit details</div>
+              <div class="field"><label>Title</label><input class="input" id="ed-title" /></div>
+              <div class="modal__row" style="margin-top:0">
+                <div style="flex:1;min-width:140px"><div class="flabel" style="color:var(--muted-light);margin-bottom:6px">When</div><input class="input" id="ed-date" type="date" /></div>
+                <div style="flex:1;min-width:140px"><div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Subtitle</div><input class="input" id="ed-sub" /></div>
+              </div>
+              <div class="field" style="margin-top:14px"><label>Description</label><textarea class="input" id="ed-desc" rows="2"></textarea></div>
+              <div class="field"><label>Cover image URL</label><input class="input" id="ed-cover" placeholder="https://…" /></div>
+              <div class="field"><label>Tags (comma separated)</label><input class="input" id="ed-tags" placeholder="Day trip, Food, ..." /></div>
+              <button class="btn primary" id="ed-save" type="button">Save details</button>
+            </div>
             <div class="row">
               <div class="row__main">
                 <div class="row__title">Theme</div>
                 <div class="row__meta">Pick the accent for this trip.</div>
               </div>
               <div class="themes" id="editThemes">
+                <span class="theme-dot pink" data-theme="pink" title="Bubblegum"></span>
+                <span class="theme-dot teal" data-theme="teal" title="Teal"></span>
+                <span class="theme-dot gold" data-theme="gold" title="Gold"></span>
+                <span class="theme-dot slate" data-theme="slate" title="Slate"></span>
                 <span class="theme-dot red" data-theme="red" title="Highway Red"></span>
                 <span class="theme-dot blue" data-theme="blue" title="Lake Blue"></span>
                 <span class="theme-dot green" data-theme="green" title="Pine Green"></span>
