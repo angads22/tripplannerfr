@@ -131,17 +131,18 @@ function renderStops() {
   $("#stopCount").textContent = stops.length ? `${stops.length} ${stops.length === 1 ? "stop" : "stops"}` : "";
   const canEdit = TRIP.canEditPlan;
   $("#stopList").innerHTML = stops.map((s, i) => `
-      <div class="crew-item${s.done ? " stop-done" : ""}" data-stop="${esc(s.id)}">
+      <div class="crew-item stop-row${s.done ? " stop-done" : ""}" data-stop="${esc(s.id)}" ${canEdit ? 'draggable="true"' : ""}>
+        ${canEdit ? '<span class="grip" title="Drag to reorder" aria-hidden="true"></span>' : ""}
         <input type="checkbox" class="stop-check" data-check="${esc(s.id)}" ${s.done ? "checked" : ""} ${canEdit ? "" : "disabled"} title="Check off" />
         <span class="crew-item__face" style="background:var(--accent);font-size:11px">${esc(s.time || "·")}</span>
         <div style="flex:1">
           <div class="crew-item__name stop-title">${esc(s.title)}</div>
           ${s.note ? `<div class="crew-item__tag">${esc(s.note)}</div>` : ""}
-          ${s.place ? `<a class="crew-item__tag" style="color:var(--accent)" href="${mapsSearch(s.place)}" target="_blank" rel="noopener">📍 ${esc(s.place)}</a>` : ""}
+          ${s.place ? `<a class="crew-item__tag" style="color:var(--accent)" href="${mapsSearch(s.place)}" target="_blank" rel="noopener">${esc(s.place)}</a>` : ""}
         </div>
         ${canEdit ? `
-          <button class="crew-item__x" data-move="${esc(s.id)}" data-dir="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button>
-          <button class="crew-item__x" data-move="${esc(s.id)}" data-dir="down" title="Move down" ${i === stops.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="down" title="Move down" ${i === stops.length - 1 ? "disabled" : ""}>↓</button>
           <button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit">✎</button>
           <button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
@@ -175,13 +176,14 @@ async function loadChat() {
   box.innerHTML = messages.length
     ? messages.map((m) => {
         const mine = ME && m.userId === ME.id;
+        const canDel = mine || TRIP.canManage;
         return `<div class="msg${mine ? " mine" : ""}">
           ${mine ? "" : `<span class="msg__who">${esc(m.userName)}</span>`}
-          <span class="msg__bubble">${esc(m.text)}</span>
+          <span class="msg__bubble">${esc(m.text)}${canDel ? `<button class="msg__del" data-delmsg="${esc(m.id)}" title="Delete">×</button>` : ""}</span>
           <span class="msg__time">${esc(relTime(m.ts))}</span>
         </div>`;
       }).join("")
-    : '<p class="row__meta">No messages yet — say hi 👋</p>';
+    : '<p class="row__meta">No messages yet — start the conversation.</p>';
   box.scrollTop = box.scrollHeight;
 }
 
@@ -399,6 +401,41 @@ async function reload() {
   });
 
   // Check a stop off as you go (any member)
+  // Drag-and-drop reorder (desktop). The ↑/↓ buttons cover touch.
+  let DRAG_ID = null;
+  $("#stopList").addEventListener("dragstart", (e) => {
+    const row = e.target.closest("[data-stop]");
+    if (!row) return;
+    DRAG_ID = row.dataset.stop;
+    row.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", DRAG_ID); } catch {}
+  });
+  $("#stopList").addEventListener("dragend", (e) => {
+    const row = e.target.closest("[data-stop]");
+    if (row) row.classList.remove("dragging");
+    DRAG_ID = null;
+  });
+  $("#stopList").addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+  $("#stopList").addEventListener("drop", async (e) => {
+    e.preventDefault();
+    const target = e.target.closest("[data-stop]");
+    if (!DRAG_ID || !target || target.dataset.stop === DRAG_ID) return;
+    const ids = (TRIP.stops || []).map((s) => s.id);
+    const from = ids.indexOf(DRAG_ID);
+    if (from < 0) return;
+    ids.splice(from, 1);
+    let to = ids.indexOf(target.dataset.stop);
+    const rect = target.getBoundingClientRect();
+    if (e.clientY > rect.top + rect.height / 2) to += 1;
+    ids.splice(to, 0, DRAG_ID);
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops-order", "PUT", { ids });
+      await reload();
+      toast("Order saved ✓");
+    } catch (err) { toast(err.message, true); }
+  });
+
   $("#stopList").addEventListener("change", async (e) => {
     const cb = e.target.closest("[data-check]");
     if (!cb) return;
@@ -556,6 +593,17 @@ async function reload() {
   }
   $("#chatSend").addEventListener("click", sendChat);
   $("#chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
+
+  // Delete a chat message (own, or any if you manage the trip)
+  $("#chatList").addEventListener("click", async (e) => {
+    const del = e.target.closest("[data-delmsg]");
+    if (!del) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/messages/" + encodeURIComponent(del.dataset.delmsg), "DELETE");
+      CHAT_SIG = "";
+      await loadChat();
+    } catch (err) { toast(err.message, true); }
+  });
 
   // Live updates: refresh the trip + chat every ~8s so others' changes appear
   // without a manual reload. Skip while the user is typing or a dialog is open.

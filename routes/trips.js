@@ -29,7 +29,7 @@ const slugify = (v) =>
 // Accent themes (all share the Pitstop aesthetic; the first three are the
 // design's Highway Red / Lake Blue / Pine Green). A custom #rrggbb is also
 // allowed so people can pick their own accent.
-const THEMES = ["red", "blue", "green", "purple", "orange", "pink", "teal", "gold", "slate"];
+const THEMES = ["red", "blue", "green", "purple", "orange", "pink", "teal", "gold", "slate", "coral", "indigo", "sky", "lime", "plum", "charcoal"];
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const cleanTheme = (v) => {
   const s = String(v || "").trim();
@@ -523,6 +523,20 @@ router.post("/:id/messages", requireAuth, (req, res) => {
   const messages = [...(Array.isArray(trip.messages) ? trip.messages : []), msg].slice(-500);
   const updated = db.updateTrip(trip.id, { messages });
   res.status(201).json({ messages: updated.messages.slice(-100) });
+});
+
+// Delete a chat message (author, or the trip's creator/admin).
+router.delete("/:id/messages/:msgId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canSee(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  const msg = (Array.isArray(trip.messages) ? trip.messages : []).find((m) => m.id === req.params.msgId);
+  if (!msg) return res.status(404).json({ error: "Message not found." });
+  if (msg.userId !== req.user.id && !canManageTrip(trip, req.user)) {
+    return res.status(403).json({ error: "You can only delete your own messages." });
+  }
+  const messages = trip.messages.filter((m) => m.id !== req.params.msgId);
+  const updated = db.updateTrip(trip.id, { messages });
+  res.json({ messages: updated.messages.slice(-100) });
 });
 
 module.exports = router;
