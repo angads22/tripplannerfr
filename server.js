@@ -10,6 +10,7 @@ const config = require("./lib/config");
 const db = require("./lib/db");
 const { seedIfEmpty } = require("./lib/seed");
 const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
+const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
 
 const authRoutes = require("./routes/auth");
 const tripRoutes = require("./routes/trips");
@@ -21,7 +22,7 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
 // Persist sessions to disk so logins survive the server being turned off/on.
-const SESSIONS_DIR = path.join(__dirname, "data", "sessions");
+const SESSIONS_DIR = path.join(DATA_DIR, "sessions");
 if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
 app.use(
@@ -50,41 +51,41 @@ app.get("/api/health", (req, res) => res.json({ ok: true, uptime: process.uptime
 // The admin console is only reachable by admins (bounce others to login/home).
 app.get(["/admin", "/admin.html"], requirePage, (req, res) => {
   if (!req.user.isAdmin) return res.redirect("/");
-  res.sendFile(path.join(__dirname, "public", "admin.html"));
+  res.sendFile(path.join(PUBLIC_DIR, "admin.html"));
 });
 
-const TRIPS_CONTENT_DIR = path.join(__dirname, "content", "trips");
+const TRIPS_CONTENT_DIR = path.join(CONTENT_DIR, "trips");
 
 // A trip's rich page, served behind login + access check at /trip/<slug>.
 app.get("/trip/:slug", requirePage, (req, res) => {
   const trip = db.findTripBySlug(req.params.slug) || db.findTripById(req.params.slug);
   if (!trip || !canView(trip, req.user)) {
-    return res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+    return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
   if (!trip.pageFile) {
-    return res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+    return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
   // Guard against path traversal — only ever serve a bare filename from the
   // trips content folder.
   const safe = path.basename(trip.pageFile);
   const file = path.join(TRIPS_CONTENT_DIR, safe);
   if (!file.startsWith(TRIPS_CONTENT_DIR) || !fs.existsSync(file)) {
-    return res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+    return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
   res.sendFile(file);
 });
 
 // --- Static frontend (login, board, css, js) -------------------------------
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(PUBLIC_DIR));
 
 // Fallback: send the board shell for any other non-API route.
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found." });
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 
 // --- Lifecycle: PID file + graceful shutdown (the on/off buttons) ----------
-const PID_FILE = path.join(__dirname, "data", "server.pid");
+const PID_FILE = path.join(DATA_DIR, "server.pid");
 try {
   fs.writeFileSync(PID_FILE, String(process.pid), "utf8");
 } catch {

@@ -7,6 +7,9 @@ data/
 # local env overrides (secrets / invite code)
 .env
 
+# built exe output
+dist/
+
 # the Cloudflare helper downloaded by the "Go Online" button
 cloudflared.exe
 cloudflared
