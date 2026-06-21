@@ -372,3 +372,67 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 /* Auth-style centered card (404) */
 .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 18px; position: relative; z-index: 1; }
 .auth-card { width: 100%; max-width: 420px; padding: 32px 28px; text-align: center; }
+
+/* =========================================================================
+   Mobile / small screens
+   ========================================================================= */
+/* Cleaner taps + no layout-shifting text inflation on phones. */
+a, button { -webkit-tap-highlight-color: rgba(28,23,18,.12); }
+html { -webkit-text-size-adjust: 100%; }
+
+@media (max-width: 640px) {
+  /* Tighter page gutters */
+  .wrap-board { padding: 0 13px 64px; }
+  .wrap { padding: 6px 13px 72px; }
+  .wrap-narrow { padding: 22px 14px; }
+
+  /* Header: let it wrap, trim the flourishes that eat width */
+  .topbar { gap: 10px; padding: 16px 0 4px; flex-wrap: wrap; }
+  .logo__tag { display: none; }
+  .logo__mark { width: 42px; height: 42px; font-size: 22px; border-radius: 12px; }
+  .logo__name { font-size: 20px; }
+  .app-header { padding: 11px 13px; gap: 10px; position: sticky; }
+  .brand__sub { display: none; }
+  .brand__logo { width: 40px; height: 40px; font-size: 20px; }
+
+  /* Pills / buttons: a touch bigger so they're easy to tap */
+  .btn-pill { padding: 9px 14px; font-size: 12px; }
+  .btn.small { font-size: 13px; padding: 8px 13px; }
+
+  /* Hero + section spacing */
+  .hero { padding: 22px 18px; }
+  .hero__title { font-size: clamp(30px, 11vw, 46px); }
+  .hero__body { font-size: 13.5px; }
+  .sec-row { margin: 20px 2px 12px; }
+  .sec-label { margin: 22px 2px 12px; }
+
+  /* One trip per row reads better on a phone */
+  .trip-grid { grid-template-columns: 1fr; gap: 14px; }
+  .trip__name { font-size: 27px; }
+
+  /* Inputs at 16px so iOS doesn't zoom the page on focus */
+  .input, .in-dark { font-size: 16px; }
+
+  /* Modal becomes a bottom sheet */
+  .scrim { padding: 0; align-items: flex-end; }
+  .modal { max-width: 100%; max-height: 92vh; border-radius: 22px 22px 0 0; padding: 22px 18px calc(22px + env(safe-area-inset-bottom)); animation: rise .28s both; }
+  .modal__title { font-size: 23px; }
+  .modal__foot { gap: 8px; }
+  .modal__foot .btn { flex: 1; }
+
+  /* Panels / rows: stack actions full-width */
+  .panel__body { padding: 4px 15px 14px; }
+  .panel__head { padding: 14px 15px; }
+  .row__actions { width: 100%; }
+  .row__actions .input { flex: 1; }
+
+  /* Toast spans the width, pinned bottom */
+  .toast { left: 12px; right: 12px; bottom: 14px; transform: translateY(24px); text-align: center; }
+  .toast.show { transform: translateY(0); }
+}
+
+@media (max-width: 380px) {
+  .logo__name { font-size: 18px; }
+  .hero { padding: 18px 15px; }
+  .who span:not(.who__avatar) { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
