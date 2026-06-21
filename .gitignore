@@ -7,8 +7,13 @@ data/
 # local env overrides (secrets / invite code)
 .env
 
-# built exe output
-# dist/
+# built exe output — the exe now ships via GitHub Releases, not the repo
+dist/TripPlanner.exe
+dist/TripPlanner-new.exe
+dist/apply-update.bat
+TripPlanner.exe
+TripPlanner-new.exe
+apply-update.bat
 
 # the Cloudflare helper downloaded by the "Go Online" button
 cloudflared.exe

@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,15 +22,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build .exe
-        run: npx pkg . --targets node18-win-x64 --output TripPlanner.exe
+      - name: Stamp build info
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "{\"build\": ${{ github.run_number }}, \"version\": \"$VERSION\"}" > build-info.json
+          cat build-info.json
 
-      - name: Create Release
+      - name: Build .exe
+        run: npx pkg . --targets node18-win-x64 --no-bytecode --public-packages "*" --public --output TripPlanner.exe
+
+      - name: Publish Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION=$(node -p "require('./package.json').version")
           gh release create v${{ github.run_number }} \
             TripPlanner.exe \
-            --title "Build ${{ github.run_number }}" \
-            --repo ${{ github.repository }} \
-            || gh release upload v${{ github.run_number }} TripPlanner.exe --repo ${{ github.repository }}
+            "Go Online (makeitoutthegc.ca).bat" \
+            "dist/READ ME FIRST.txt" \
+            --title "Trip Planner v$VERSION (build ${{ github.run_number }})" \
+            --notes "Automated build ${{ github.run_number }} from main. Download TripPlanner.exe and double-click. In-app updater will pull future builds automatically." \
+            --repo ${{ github.repository }}

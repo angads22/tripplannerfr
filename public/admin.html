@@ -116,12 +116,15 @@
     <!-- Server -->
     <div class="sec-label">Server</div>
     <div class="panel reveal">
-      <div class="panel__head"><h2>Updates</h2><span class="muted">check for new versions</span></div>
+      <div class="panel__head"><h2>Updates</h2><span class="muted">version <span id="curVer">…</span></span></div>
       <div class="panel__body">
         <div class="row">
           <div class="row__main"><div class="row__title" id="updateStatus">Checking...</div>
-          <div class="row__meta" id="updateMeta">Checking for new TripPlanner.exe releases.</div></div>
-          <div class="row__actions"><button class="btn small" id="checkUpdateBtn">Check now</button></div>
+          <div class="row__meta" id="updateMeta">Looking for a newer version.</div></div>
+          <div class="row__actions">
+            <button class="btn small" id="checkUpdateBtn">Check now</button>
+            <button class="btn primary small" id="applyUpdateBtn" style="display:none">Update now</button>
+          </div>
         </div>
       </div>
     </div>
