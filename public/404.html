@@ -3,19 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Not found · Trip Planner</title>
+  <title>Not found · Pitstop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/pitstop.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
 <body>
+  <div class="bg">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  </div>
+
   <div class="auth-wrap">
-    <div class="auth-card" style="text-align:center">
-      <div class="empty"><div class="big">🧭</div><h3>Trip not found</h3>
-      <p>It might not exist, or you don't have access to it.</p></div>
-      <a class="btn primary" href="/">← Back to the board</a>
+    <div class="card-dark auth-card" style="animation:rise .5s both">
+      <div class="empty" style="color:var(--on-dark)">
+        <div class="big">🧭</div>
+        <h3 class="display" style="color:var(--on-dark);font-size:28px">Wrong exit</h3>
+        <p style="color:var(--muted-dark-2)">This trip doesn't exist, or you don't have access to it.</p>
+      </div>
+      <a class="btn-accent" href="/" style="display:inline-block;width:auto;padding:13px 22px;text-decoration:none">← Back to the board</a>
     </div>
   </div>
 </body>

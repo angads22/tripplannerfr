@@ -211,3 +211,111 @@ input:focus, textarea:focus { outline: none; }
 
 .wrap-narrow { width: 100%; max-width: 420px; margin: 0 auto; padding: 28px 16px; }
 .wrap-board { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 16px 70px; }
+
+/* =========================================================================
+   Shared site chrome + admin console (Pitstop theme)
+   ========================================================================= */
+a { color: inherit; text-decoration: none; }
+.mono { font-family: "Archivo", monospace; }
+.muted { color: var(--muted-light); }
+.reveal { opacity: 0; transform: translateY(10px); animation: rise .5s cubic-bezier(.2,.7,.3,1) forwards; }
+@media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } .trip { transition: none; } }
+
+.wrap { width: 100%; max-width: 880px; margin: 0 auto; padding: 8px 18px 80px; position: relative; z-index: 1; }
+
+/* App header bar */
+.app-header {
+  position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px;
+  padding: 16px 22px; background: rgba(243,235,217,.82); backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(28,23,18,.1);
+}
+.brand { display: flex; align-items: center; gap: 11px; }
+.brand__logo {
+  width: 44px; height: 44px; border-radius: 14px; background: rgba(28,23,18,.88);
+  color: var(--on-dark); display: flex; align-items: center; justify-content: center;
+  font-size: 22px; transform: rotate(-4deg); flex: none;
+}
+.brand__name { font-family: "Anton", sans-serif; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; display: block; }
+.brand__sub { font-family: "Permanent Marker", cursive; font-size: 11px; color: var(--muted-light-2); margin-top: 3px; display: block; }
+.header-spacer { flex: 1; }
+
+/* Generic buttons (admin reuses these class names) */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-weight: 700; font-size: 14px; border: 1px solid rgba(28,23,18,.16);
+  background: rgba(255,255,255,.6); color: var(--ink); border-radius: 11px;
+  padding: 9px 15px; cursor: pointer; transition: background .15s, border-color .15s, transform .1s, color .15s;
+}
+.btn:hover { background: rgba(255,255,255,.85); }
+.btn:active { transform: scale(.98); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-family: "Anton", sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.danger { color: var(--red); border-color: rgba(226,59,38,.4); background: rgba(226,59,38,.06); }
+.btn.danger:hover { background: rgba(226,59,38,.12); }
+.btn.small { font-size: 12.5px; padding: 6px 12px; border-radius: 9px; }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* Inputs on light glass */
+.input {
+  width: 100%; border: 1px solid rgba(28,23,18,.2); background: rgba(255,255,255,.65);
+  border-radius: 11px; padding: 11px 13px; font-size: 14.5px; color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(226,59,38,.14); }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-light); }
+
+/* Section label (admin) */
+.sec-label {
+  font-family: "Anton", sans-serif; font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink); margin: 30px 2px 14px; display: flex; align-items: center; gap: 12px;
+}
+.sec-label::after { content: ""; flex: 1; height: 2px; background: rgba(28,23,18,.14); }
+
+/* Panels */
+.panel {
+  background: rgba(255,255,255,.5); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255,255,255,.6); border-radius: 20px;
+  box-shadow: 0 22px 48px -32px rgba(40,28,16,.55); overflow: hidden; margin-bottom: 14px;
+}
+.panel__head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid rgba(28,23,18,.1); flex-wrap: wrap; }
+.panel__head h2 { font-family: "Anton", sans-serif; font-size: 18px; font-weight: 400; text-transform: uppercase; letter-spacing: .02em; }
+.panel__head .muted { font-family: "Permanent Marker", cursive; font-size: 12px; color: var(--muted-light-2); }
+.panel__body { padding: 6px 20px 16px; }
+
+/* Rows */
+.row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(28,23,18,.1); flex-wrap: wrap; }
+.row:first-child { border-top: none; }
+.row__main { flex: 1; min-width: 160px; }
+.row__title { font-weight: 700; font-size: 15px; }
+.row__meta { font-size: 12.5px; color: var(--muted-light); margin-top: 3px; }
+.row__meta .mono { font-size: 12px; }
+.row__actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Badges */
+.badge { font-weight: 700; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: 3px 8px; border: 1px solid rgba(28,23,18,.16); color: var(--muted-light); }
+.badge.admin { color: var(--ink); background: var(--amber); border-color: var(--amber); }
+.badge.you { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+/* Toggle */
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted-light); user-select: none; }
+.toggle input { display: none; }
+.toggle .track { width: 38px; height: 22px; border-radius: 20px; background: rgba(28,23,18,.2); position: relative; transition: background .15s; }
+.toggle .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.toggle input:checked + .track { background: var(--accent); }
+.toggle input:checked + .track::after { transform: translateX(16px); }
+
+/* Access checkbox list */
+.access { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.access label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; border: 1px solid rgba(28,23,18,.16); border-radius: 9px; padding: 6px 10px; cursor: pointer; background: rgba(255,255,255,.5); }
+.access label.on { border-color: var(--accent); background: rgba(226,59,38,.08); color: var(--accent); font-weight: 700; }
+.access input { accent-color: var(--accent); }
+.access.disabled { opacity: .45; pointer-events: none; }
+
+/* code chips */
+code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,23,18,.08); color: var(--accent); padding: 1px 6px; border-radius: 5px; }
+
+/* Auth-style centered card (404) */
+.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 18px; position: relative; z-index: 1; }
+.auth-card { width: 100%; max-width: 420px; padding: 32px 28px; text-align: center; }
