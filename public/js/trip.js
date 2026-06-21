@@ -95,6 +95,21 @@ function renderCrew() {
     : "";
 }
 
+// Quick-add chips for your friends who aren't on the trip yet.
+let FRIENDS = null;
+async function renderFriendAdd() {
+  const box = $("#friendAdd");
+  if (!TRIP.canAddMembers) { box.style.display = "none"; return; }
+  if (FRIENDS === null) {
+    try { FRIENDS = (await api("/api/friends")).friends || []; } catch { FRIENDS = []; }
+  }
+  const onTrip = new Set((TRIP.members || []).map((m) => m.id).filter(Boolean));
+  const addable = FRIENDS.filter((f) => !onTrip.has(f.id));
+  if (!addable.length) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  $("#friendChips").innerHTML = addable.map((f) => `<button class="btn small" data-addfriend="${esc(f.id)}">＋ ${esc(f.displayName)}</button>`).join("");
+}
+
 function relTime(iso) {
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
   if (d < 60) return "just now";
@@ -187,6 +202,7 @@ async function reload() {
   $("#joinBanner").style.display = onTrip ? "none" : "block";
   renderHead();
   renderCrew();
+  renderFriendAdd();
   renderStops();
   renderMap();
   renderProposals();
@@ -400,4 +416,25 @@ async function reload() {
       toast(e.message, true);
     }
   });
+
+  // Quick-add a friend to the trip
+  $("#friendChips").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-addfriend]");
+    if (!b) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/members", "POST", { userId: b.dataset.addfriend });
+      await reload();
+      toast("Added to the trip.");
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
+  // Live updates: refresh the trip every 15s so others' changes appear without
+  // a manual reload. Skip while the user is typing or a dialog is open.
+  setInterval(() => {
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+    reload().catch(() => {});
+  }, 15000);
 })();

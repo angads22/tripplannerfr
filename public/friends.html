@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Friends · Pitstop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/pitstop.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+</head>
+<body>
+  <div class="bg">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  </div>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand__logo">🚗</span>
+      <span><span class="brand__name">Friends</span><span class="brand__sub">your people</span></span>
+    </div>
+    <div class="header-spacer"></div>
+    <a class="btn ghost small" href="/">← Board</a>
+    <button class="btn ghost small" id="logoutBtn">Log out</button>
+  </header>
+
+  <main class="wrap" style="max-width:560px">
+
+    <div class="sec-label">Add a friend</div>
+    <div class="panel reveal">
+      <div class="panel__body">
+        <div class="row" style="border:none;gap:10px">
+          <input class="input" id="fr-user" style="flex:1;min-width:140px" placeholder="their username" />
+          <button class="btn primary" id="fr-add">Send request</button>
+        </div>
+        <p class="row__meta" style="padding:0">They'll get a request to accept. Once you're friends, you can add each other to trips in one tap.</p>
+      </div>
+    </div>
+
+    <div class="sec-label">Requests <span class="muted" id="reqCount"></span></div>
+    <div class="panel reveal">
+      <div class="panel__body" id="incomingList"></div>
+    </div>
+
+    <div class="sec-label">Your friends <span class="muted" id="friendCount"></span></div>
+    <div class="panel reveal">
+      <div class="panel__body" id="friendsList"></div>
+    </div>
+
+    <div class="sec-label">Requests you've sent</div>
+    <div class="panel reveal">
+      <div class="panel__body" id="outgoingList"></div>
+    </div>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/friends.js"></script>
+</body>
+</html>

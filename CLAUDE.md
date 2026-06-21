@@ -52,8 +52,10 @@ npm run build      # pkg -> dist/TripPlanner.exe (Windows)
 
 `{ users: [], trips: [], settings: {} }`
 
-- **user**: `{ id, username, displayName, passwordHash, isAdmin, createdAt }`.
-  The first account created becomes the admin.
+- **user**: `{ id, username, displayName, passwordHash, isAdmin, createdAt,
+  avatarEmoji, avatarColor, friends[] (userIds), friendReqIn[], friendReqOut[] }`.
+  The first account created becomes the admin. Friends are mutual (request →
+  accept); see `routes/friends.js`.
 - **trip**: `{ id, slug, title, subtitle, date, emoji, theme, tags[], crew[],
   members[] (userIds), stops[] {id,time,title,place,note}, mapUrl,
   activity[] {id,ts,userId,userName,text}, proposals[] {id,ts,userId,userName,
