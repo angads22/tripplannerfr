@@ -160,7 +160,12 @@
 <body>
 <div class="wrap">
 
-  <a class="backlink reveal" href="../index.html">← All trips</a>
+  <div class="reveal" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <a class="backlink" href="/">← All trips</a>
+    <span style="flex:1"></span>
+    <button type="button" id="invShare" style="cursor:pointer;border:1px solid rgba(0,0,0,.18);background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:13px">🔗 Copy invite link</button>
+    <button type="button" id="invCode" style="cursor:pointer;border:1px solid rgba(0,0,0,.18);background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:13px">#️⃣ Copy code</button>
+  </div>
 
   <header class="ticket reveal">
     <div class="ticket__kicker">Day Trip · 5 Friends <span class="ticket__count" id="countdown">·</span></div>
@@ -256,6 +261,23 @@
 </div>
 
 <script>
+// Invite bar: fetch this trip's join code so the crew can share a link/code.
+(async function inviteBar(){
+  try{
+    const r = await fetch('/api/trips/toronto');
+    if(!r.ok) return;
+    const { trip } = await r.json();
+    const code = trip && trip.joinCode;
+    const flash = (btn, msg) => { const o = btn.textContent; btn.textContent = msg; setTimeout(()=>btn.textContent=o, 1600); };
+    const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { prompt('Copy this:', text); return false; } };
+    const shareBtn = document.getElementById('invShare');
+    const codeBtn = document.getElementById('invCode');
+    if(!code){ if(shareBtn) shareBtn.style.display='none'; if(codeBtn) codeBtn.style.display='none'; return; }
+    shareBtn.addEventListener('click', async () => { if(await copy(location.origin + '/trip/toronto?j=' + encodeURIComponent(code))) flash(shareBtn, '✓ Link copied'); });
+    codeBtn.addEventListener('click', async () => { if(await copy(code)) flash(codeBtn, '✓ ' + code); });
+  }catch{/* not signed in / offline */}
+})();
+
 const walkSVG='<svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="2"/><path d="M13 8l-3 5 2 2v5M10 13l-4 2M13 11l3 3 3 1"/></svg>';
 
 let startArr = 560, busDep = 1196;

@@ -230,6 +230,23 @@ router.post("/:id/duplicate", requireAuth, (req, res) => {
   res.status(201).json({ trip: publicTrip(copy, req.user) });
 });
 
+// Join a trip just by its code (paste-a-code on the dashboard). Works for any
+// trip whose code matches — including Toronto.
+router.post("/join-by-code", requireAuth, (req, res) => {
+  const code = String((req.body && req.body.code) || "").trim().toLowerCase();
+  if (!code) return res.status(400).json({ error: "Enter a trip code." });
+  const trip = db.getTrips().find((t) => t.joinCode && String(t.joinCode).trim().toLowerCase() === code);
+  if (!trip) return res.status(404).json({ error: "No trip found for that code." });
+
+  const members = Array.isArray(trip.members) ? [...trip.members] : [];
+  if (members.includes(req.user.id) || isCreator(trip, req.user)) {
+    return res.json({ trip: publicTrip(trip, req.user), already: true });
+  }
+  members.push(req.user.id);
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, "joined the trip", { members }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
 // --- Create (any logged-in user) -----------------------------------------
 
 router.post("/", requireAuth, (req, res) => {

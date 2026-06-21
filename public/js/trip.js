@@ -248,6 +248,17 @@ async function reload() {
     }
   });
 
+  // Copy just the trip code (for people to paste on their dashboard)
+  $("#codeBtn").addEventListener("click", async () => {
+    if (!TRIP.joinCode) return toast("Only people on the trip can copy the code.", true);
+    try {
+      await navigator.clipboard.writeText(TRIP.joinCode);
+      toast("Code copied: " + TRIP.joinCode);
+    } catch {
+      prompt("Trip code (paste it on the dashboard to join):", TRIP.joinCode);
+    }
+  });
+
   // Duplicate this trip into a private copy you own
   $("#dupBtn").addEventListener("click", async () => {
     if (!confirm(`Make your own private copy of "${TRIP.title}"?`)) return;
