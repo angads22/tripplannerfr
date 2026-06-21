@@ -6,19 +6,19 @@
 <title>Toronto · June 24</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
 <style>
   :root{
-    --paper:#EEF2EE; --card:#FBFCFB; --ink:#14231B; --ink-soft:#51645A; --ink-faint:#8A9990;
-    --route:#0E7A47; --route-soft:#BCDFCC; --edge:#D9E0DA; --amber:#C8741C; --red:#C2412F;
-    --water:#CFE3E4; --water-edge:#A9CCce;
-    --shadow:0 1px 0 rgba(20,35,27,.04), 0 8px 24px -16px rgba(20,35,27,.35);
+    --paper:#F4ECDD; --card:#FBF6EC; --ink:#1C1815; --ink-soft:#6B5F52; --ink-faint:#9A8868;
+    --route:#E23B26; --route-soft:#F4C0B8; --edge:#E0D6C4; --amber:#F4B528; --red:#E23B26;
+    --water:#D9E8E2; --water-edge:#BCD8CE;
+    --shadow:0 1px 0 rgba(28,24,16,.04), 0 8px 24px -16px rgba(40,28,16,.4);
     --col:22px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{background:var(--paper);color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.5;padding:28px 18px 72px;display:flex;justify-content:center}
+  body{background:linear-gradient(165deg,#F3EBD9,#E9DDC6);background-attachment:fixed;color:var(--ink);font-family:"Archivo",system-ui,sans-serif;line-height:1.5;padding:28px 18px 72px;display:flex;justify-content:center}
   .wrap{width:100%;max-width:680px}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
@@ -30,7 +30,7 @@
   .ticket{background:var(--ink);color:var(--paper);border-radius:16px;padding:22px 24px;position:relative;overflow:hidden}
   .ticket__kicker{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#7FB89A;margin-bottom:10px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
   .ticket__count{color:var(--paper);background:rgba(255,255,255,.12);border-radius:20px;padding:2px 9px;letter-spacing:.1em}
-  .ticket__title{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:clamp(30px,8vw,44px);line-height:.98;letter-spacing:-.02em}
+  .ticket__title{font-family:"Anton",sans-serif;font-weight:600;font-size:clamp(30px,8vw,44px);line-height:.98;letter-spacing:-.02em}
   .ticket__sub{font-size:13.5px;color:#B9CFC2;margin-top:8px}
 
   /* crew */
@@ -58,7 +58,7 @@
   .meter{margin:22px 2px 8px}
   .meter__head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
   .meter__label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
-  .meter__status{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:14px}
+  .meter__status{font-family:"Anton",sans-serif;font-weight:600;font-size:14px}
   .meter__bar{height:12px;border-radius:7px;background:#DCE4DD;overflow:hidden;display:flex;border:1px solid var(--edge)}
   .meter__fill{height:100%;width:0;transition:width .6s cubic-bezier(.2,.7,.3,1),background .3s}
   .meter__foot{display:flex;gap:18px;margin-top:9px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--ink-soft);flex-wrap:wrap}
@@ -93,7 +93,7 @@
   .card__main{padding:13px 15px;display:flex;flex-direction:column;gap:7px}
   .card__row1{display:flex;align-items:baseline;gap:10px;cursor:pointer}
   .card__time{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px;color:var(--route);flex-shrink:0;white-space:nowrap}
-  .card__name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:17px;letter-spacing:-.01em;line-height:1.15;flex:1}
+  .card__name{font-family:"Anton",sans-serif;font-weight:600;font-size:17px;letter-spacing:-.01em;line-height:1.15;flex:1}
   .card__chev{color:var(--ink-faint);font-size:12px;transition:transform .2s;margin-top:3px}
   .card.open .card__chev{transform:rotate(180deg)}
   .card__meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -123,7 +123,7 @@
   .addons{display:flex;flex-direction:column;gap:10px}
   .addon{background:var(--card);border:1px dashed var(--edge);border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:12px}
   .addon__body{flex:1;min-width:0}
-  .addon__name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px}
+  .addon__name{font-family:"Anton",sans-serif;font-weight:600;font-size:16px}
   .addon__name .pill{margin-left:8px;vertical-align:middle}
   .addon__note{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.55}
   .add-btn{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--route);border-radius:8px;padding:8px 14px;flex-shrink:0;font-weight:500}
@@ -132,7 +132,7 @@
   .term{position:relative;padding-left:48px}
   .term .node{border-radius:5px;background:var(--ink);width:18px;height:18px;top:50%;border:none}
   .term__inner{display:flex;align-items:center;gap:11px;padding:9px 0;flex-wrap:wrap}
-  .term__name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:15px}
+  .term__name{font-family:"Anton",sans-serif;font-weight:600;font-size:15px}
   .term__tag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 
   /* good to know */
@@ -145,7 +145,7 @@
   .foot{margin-top:24px;font-size:12.5px;color:var(--ink-faint);line-height:1.6;border-top:1px solid var(--edge);padding-top:16px}
   .foot b{color:var(--ink-soft);font-weight:600}
 
-  .navbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:13px;padding:13px;background:var(--route);color:#fff;border-radius:11px;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s,transform .12s}
+  .navbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:13px;padding:13px;background:var(--route);color:#fff;border-radius:11px;font-family:"Anton",sans-serif;font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s,transform .12s}
   .navbtn:hover{background:#0C6B3F}
   .navbtn:active{transform:scale(.99)}
   .navhint{font-size:11.5px;color:var(--ink-faint);text-align:center;margin-top:8px;line-height:1.5}
@@ -381,7 +381,7 @@ function renderMap(){
     const cy=y(i);
     if(r.term){
       out+=`<rect x="${lineX-9}" y="${cy-9}" width="18" height="18" rx="4" fill="var(--ink)"/>`;
-      out+=`<text x="${nameX}" y="${cy-1}" font-family="Space Grotesk,sans-serif" font-weight="600" font-size="13.5" fill="var(--ink)">${r.name}</text>`;
+      out+=`<text x="${nameX}" y="${cy-1}" font-family="Anton,sans-serif" font-weight="600" font-size="13.5" fill="var(--ink)">${r.name}</text>`;
       out+=`<text x="${nameX}" y="${cy+13}" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing=".06em" fill="var(--ink-faint)">${r.sub}</text>`;
     } else {
       out+=`<circle cx="${lineX}" cy="${cy}" r="11" fill="var(--card)"/>`;            // knockout so line doesn't show through

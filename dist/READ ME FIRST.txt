@@ -1,0 +1,26 @@
+PITSTOP - how to run it
+========================
+
+You only need the two files in this folder:
+  - TripPlanner.exe                      (the app)
+  - Go Online (makeitoutthegc.ca).bat    (puts it online at your domain)
+
+STEP 1 - run it locally
+  Double-click TripPlanner.exe
+  If Windows shows a blue "Windows protected your PC" box, click
+  "More info" then "Run anyway". (It is unsigned, not a virus.)
+  A window opens; your browser goes to http://localhost:4040
+  First visit: create your account - you become the admin.
+
+STEP 2 - go live at https://makeitoutthegc.ca
+  Keep TripPlanner.exe running.
+  Double-click "Go Online (makeitoutthegc.ca).bat"
+  The first time, a browser opens to log in to Cloudflare - pick the
+  makeitoutthegc.ca zone and authorize. The script does the rest and
+  starts serving your app at https://makeitoutthegc.ca
+
+  Keep that black window open = site is live.
+  Close it = site goes offline (the app keeps running locally).
+
+Every time after that: run the exe, then run the Go Online bat. No
+browser login needed again.
