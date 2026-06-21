@@ -16,15 +16,28 @@
   </div>
 
   <div class="stage">
+    <!-- Activity sidebar -->
+    <div id="activitySidebar" class="activity-sidebar" style="display:none">
+      <div class="activity-header">
+        <h3>Activity</h3>
+        <button class="btn-close" id="closeActivityBtn" type="button">✕</button>
+      </div>
+      <div class="activity-list" id="activityList"></div>
+    </div>
+
     <div class="wrap-board" style="padding-top:24px">
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
         <a class="btn-pill" href="/">← all trips</a>
         <button class="btn-pill" id="shareBtn" type="button">Copy invite link</button>
         <button class="btn-pill" id="codeBtn" type="button">Copy code</button>
         <button class="btn-pill" id="dupBtn" type="button">Duplicate</button>
+        <button class="btn-pill" id="activityToggleBtn" type="button" title="Show activity log">📋</button>
       </div>
 
-      <div id="tripHead" class="card-dark hero" style="animation:rise .5s both"></div>
+      <div style="position:relative">
+        <div id="tripHead" class="card-dark hero" style="animation:rise .5s both"></div>
+        <button class="btn-pill" id="quickEditBtn" type="button" style="position:absolute;top:16px;right:16px;display:none" title="Edit trip details">✎ Edit</button>
+      </div>
 
       <div id="joinBanner" class="panel" style="display:none;margin-top:14px">
         <div class="panel__body"><div class="row" style="border:none">
@@ -37,7 +50,7 @@
       </div>
 
       <div class="sec-row">
-        <span class="sec-row__label">The crew</span>
+        <span class="sec-row__label">👥 The crew</span>
         <span class="sec-row__rule"></span>
         <span class="sec-row__count" id="crewCount"></span>
       </div>
@@ -59,7 +72,7 @@
       </div>
 
       <div class="sec-row">
-        <span class="sec-row__label">The plan</span>
+        <span class="sec-row__label">📍 The plan</span>
         <span class="sec-row__rule"></span>
         <span class="sec-row__count" id="stopCount"></span>
       </div>
@@ -85,7 +98,7 @@
       </div>
 
       <div class="sec-row">
-        <span class="sec-row__label">Map</span>
+        <span class="sec-row__label">🗺️ Map</span>
         <span class="sec-row__rule"></span>
       </div>
       <div class="panel">
@@ -105,7 +118,7 @@
       </div>
 
       <div class="sec-row">
-        <span class="sec-row__label">Suggestions</span>
+        <span class="sec-row__label">💬 Suggestions</span>
         <span class="sec-row__rule"></span>
         <span class="sec-row__count" id="propCount"></span>
       </div>
@@ -120,7 +133,7 @@
       </div>
 
       <div class="sec-row">
-        <span class="sec-row__label">Group chat</span>
+        <span class="sec-row__label">💭 Group chat</span>
         <span class="sec-row__rule"></span>
       </div>
       <div class="panel">
@@ -134,7 +147,7 @@
       </div>
 
       <div class="sec-row">
-        <span class="sec-row__label">Changelog</span>
+        <span class="sec-row__label">📖 Changelog</span>
         <span class="sec-row__rule"></span>
       </div>
       <div class="panel">
@@ -143,7 +156,7 @@
 
       <div id="manageBar" style="display:none;margin-top:18px">
         <div class="sec-row">
-          <span class="sec-row__label">Trip settings</span>
+          <span class="sec-row__label">⚙️ Trip settings</span>
           <span class="sec-row__rule"></span>
         </div>
         <div class="panel">

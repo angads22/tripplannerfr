@@ -270,6 +270,7 @@ async function reload() {
   $("#manageBar").style.display = trip.canEditPlan ? "block" : "none";
   $("#rowInviteLink").style.display = trip.canManage ? "" : "none";
   $("#rowDelete").style.display = trip.canManage ? "" : "none";
+  $("#quickEditBtn").style.display = trip.canEditPlan ? "" : "none";
   if (trip.canEditPlan) {
     // Populate the edit-details form (only when not actively editing it).
     const ae = document.activeElement;
@@ -617,6 +618,36 @@ function initCollapsible() {
       location.href = "/";
     } catch (e) {
       toast(e.message, true);
+    }
+  });
+
+  // Activity sidebar toggle
+  function updateActivitySidebar() {
+    const log = TRIP.activity || [];
+    const sidebar = $("#activitySidebar");
+    sidebar.style.display = sidebar.style.display === "none" ? "block" : "none";
+    const list = $("#activityList");
+    list.innerHTML = log.slice().reverse().map((a) => `
+      <div class="activity-item">
+        <div class="activity-item__name">${esc(a.userName)}</div>
+        <div class="activity-item__text">${esc(a.text)}</div>
+        <div class="activity-item__time">${esc(relTime(a.ts))}</div>
+      </div>`).join("") || '<p class="row__meta" style="padding:12px">Nothing yet.</p>';
+  }
+
+  $("#activityToggleBtn").addEventListener("click", () => {
+    updateActivitySidebar();
+  });
+  $("#closeActivityBtn").addEventListener("click", () => {
+    $("#activitySidebar").style.display = "none";
+  });
+
+  // Quick-edit button: scroll to edit section
+  $("#quickEditBtn").addEventListener("click", () => {
+    const manageBar = $("#manageBar");
+    if (manageBar && manageBar.style.display !== "none") {
+      manageBar.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => $("#ed-title").focus(), 300);
     }
   });
 
