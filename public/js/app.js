@@ -251,6 +251,20 @@ async function createTrip() {
   $("#ct-create").addEventListener("click", createTrip);
   $("#createScrim").addEventListener("click", (e) => { if (e.target.id === "createScrim") closeCreate(); });
 
+  // Add a trip by pasting its code.
+  async function addByCode() {
+    const code = $("#joinCodeInput").value.trim();
+    if (!code) return toast("Paste a trip code first.", true);
+    try {
+      const { trip } = await api("/api/trips/join-by-code", "POST", { code });
+      location.href = "/trip/" + encodeURIComponent(trip.slug || trip.id);
+    } catch (err) {
+      toast(err.message, true);
+    }
+  }
+  $("#joinCodeBtn").addEventListener("click", addByCode);
+  $("#joinCodeInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addByCode(); });
+
   try {
     const { trips } = await api("/api/trips");
     const grid = $("#grid");
