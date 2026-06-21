@@ -121,22 +121,35 @@ const STICKERS = ["🚗", "✈️", "🏙️", "🏔️", "🏖️", "🏕️", 
 // Starter templates for different kinds of trips / hangouts. Picking one
 // pre-fills the sticker, theme, tags, and a starter itinerary.
 const TEMPLATES = {
-  blank:    { label: "Blank", emoji: "🚗", theme: "red", tags: [], stops: [] },
-  daytrip:  { label: "🏙️ Day trip", emoji: "🏙️", theme: "red", tags: ["Day trip"], stops: [
-                { time: "09:00", title: "Meet up & depart" }, { time: "12:00", title: "Lunch" },
-                { time: "14:00", title: "Explore" }, { time: "18:00", title: "Head home" } ] },
-  weekend:  { label: "🏔️ Weekend away", emoji: "🏔️", theme: "blue", tags: ["Weekend"], stops: [
-                { time: "10:00", title: "Check in" }, { time: "13:00", title: "Lunch spot" },
-                { time: "19:00", title: "Dinner" }, { time: "10:00", title: "Day 2 adventure" } ] },
-  nightout: { label: "🍸 Night out", emoji: "🍸", theme: "purple", tags: ["Night out"], stops: [
+  blank:    { label: "Blank", emoji: "🚗", theme: "red", tags: [], desc: "", stops: [] },
+  daytrip:  { label: "Day trip", emoji: "🏙️", theme: "sky", tags: ["Day trip"], desc: "Out and back in a day.", stops: [
+                { time: "09:00", title: "Meet up & depart" }, { time: "10:30", title: "First stop" },
+                { time: "12:30", title: "Lunch", note: "somewhere central" }, { time: "14:30", title: "Explore" },
+                { time: "18:00", title: "Head home" } ] },
+  weekend:  { label: "Weekend away", emoji: "🏔️", theme: "indigo", tags: ["Weekend"], desc: "Two days, one night.", stops: [
+                { time: "10:00", title: "Hit the road" }, { time: "13:00", title: "Lunch on arrival" },
+                { time: "15:00", title: "Check in" }, { time: "19:30", title: "Dinner" },
+                { time: "09:00", title: "Day 2 — breakfast" }, { time: "11:00", title: "Main activity" }, { time: "16:00", title: "Head back" } ] },
+  nightout: { label: "Night out", emoji: "🍸", theme: "plum", tags: ["Night out"], desc: "", stops: [
                 { time: "19:00", title: "Pre-game" }, { time: "20:30", title: "Dinner" },
-                { time: "22:00", title: "Main event" }, { time: "00:30", title: "After" } ] },
-  hangout:  { label: "🎮 Hangout", emoji: "🎮", theme: "green", tags: ["Hangout"], stops: [
+                { time: "22:00", title: "Main event" }, { time: "00:30", title: "After-hours" } ] },
+  hangout:  { label: "Hangout", emoji: "🎮", theme: "green", tags: ["Hangout"], desc: "", stops: [
                 { time: "15:00", title: "Meet up" }, { time: "16:00", title: "Food run" },
-                { time: "17:00", title: "Activity" } ] },
-  roadtrip: { label: "🛣️ Road trip", emoji: "🛣️", theme: "orange", tags: ["Road trip"], stops: [
-                { time: "08:00", title: "Depart" }, { time: "11:00", title: "Pit stop" },
-                { time: "15:00", title: "Arrive" } ] },
+                { time: "17:00", title: "Activity" }, { time: "20:00", title: "Wind down" } ] },
+  roadtrip: { label: "Road trip", emoji: "🛣️", theme: "orange", tags: ["Road trip"], desc: "Long haul — plan the pit stops.", stops: [
+                { time: "07:00", title: "Depart early" }, { time: "09:30", title: "Gas + snacks" },
+                { time: "12:00", title: "Lunch town" }, { time: "15:00", title: "Scenic stop" }, { time: "18:00", title: "Arrive" } ] },
+  concert:  { label: "Concert / show", emoji: "🎤", theme: "pink", tags: ["Show"], desc: "", stops: [
+                { time: "18:00", title: "Dinner before" }, { time: "20:00", title: "Doors open" },
+                { time: "21:00", title: "Show time" }, { time: "23:30", title: "After" } ] },
+  beach:    { label: "Beach day", emoji: "🏖️", theme: "teal", tags: ["Beach"], desc: "", stops: [
+                { time: "10:00", title: "Pack the car" }, { time: "11:00", title: "Arrive + set up" },
+                { time: "13:00", title: "Lunch" }, { time: "16:00", title: "Ice cream run" }, { time: "18:00", title: "Head home" } ] },
+  camping:  { label: "Camping", emoji: "⛺", theme: "lime", tags: ["Camping", "Outdoors"], desc: "", stops: [
+                { time: "11:00", title: "Drive to site" }, { time: "13:00", title: "Pitch tents" },
+                { time: "15:00", title: "Hike" }, { time: "19:00", title: "Campfire dinner" }, { time: "08:00", title: "Day 2 — pack up" } ] },
+  birthday: { label: "Birthday", emoji: "🎂", theme: "gold", tags: ["Birthday"], desc: "", stops: [
+                { time: "18:00", title: "Gather" }, { time: "19:00", title: "Dinner" }, { time: "21:00", title: "Cake + celebrate" } ] },
 };
 
 let ctEmoji = "🚗";
@@ -161,6 +174,7 @@ function applyTemplate(key) {
   const t = TEMPLATES[key];
   if (!t) return;
   ctEmoji = t.emoji; ctTheme = t.theme; ctTags = [...t.tags]; ctStops = t.stops.map((s) => ({ ...s }));
+  if (t.desc != null && $("#ct-desc")) $("#ct-desc").value = t.desc;
   applyModalTheme(ctTheme);
   $("#ct-stickers").querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x.dataset.emoji === ctEmoji));
   $("#ct-templates").querySelectorAll(".btn").forEach((b) => b.classList.toggle("primary", b.dataset.tpl === key));
