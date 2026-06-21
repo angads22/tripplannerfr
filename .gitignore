@@ -1,9 +1,19 @@
+# dependencies
+node_modules/
+
+# runtime data: accounts, trips, sessions, the session secret — never commit these
+data/
+
+# local env overrides (secrets / invite code)
+.env
+
+# the Cloudflare helper downloaded by the "Go Online" button
+cloudflared.exe
+cloudflared
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
 *.swp
 .idea/
 .vscode/
-
-# dependencies / build (none needed for a static site, but just in case)
-node_modules/

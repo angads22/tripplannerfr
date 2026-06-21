@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · Trip Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand__logo">🧳</span>
+      <span><span class="brand__name">Admin console</span><span class="brand__sub">owner controls</span></span>
+    </div>
+    <div class="header-spacer"></div>
+    <a class="btn ghost small" href="/">← Board</a>
+    <button class="btn ghost small" id="logoutBtn">Log out</button>
+  </header>
+
+  <main class="wrap">
+
+    <!-- Invite code -->
+    <div class="sec-label">The shared invite code</div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Invite code</h2><span class="muted">friends type this once to make their account</span></div>
+      <div class="panel__body">
+        <div class="row">
+          <div class="row__main">
+            <div class="row__title mono" id="inviteCurrent">…</div>
+            <div class="row__meta">Share this with your friends. Change it any time — old links keep working, but the code is what gates new sign-ups.</div>
+          </div>
+          <div class="row__actions">
+            <input class="input" id="inviteInput" style="width:170px" placeholder="new code" />
+            <button class="btn primary small" id="inviteSave">Update</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- People -->
+    <div class="sec-label">People</div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Accounts</h2><span class="muted" id="userCount"></span></div>
+      <div class="panel__body" id="userList"></div>
+    </div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Add an account</h2><span class="muted">make a login for a friend directly</span></div>
+      <div class="panel__body">
+        <div class="row" style="gap:10px">
+          <input class="input" id="na-name" style="flex:1;min-width:120px" placeholder="Name" />
+          <input class="input" id="na-user" style="flex:1;min-width:120px" placeholder="Username" />
+          <input class="input" id="na-pass" type="text" style="flex:1;min-width:120px" placeholder="Temp password (6+)" />
+          <label class="toggle"><input type="checkbox" id="na-admin" /><span class="track"></span>Admin</label>
+          <button class="btn primary small" id="na-add">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trips -->
+    <div class="sec-label">Trips &amp; access</div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Trips</h2><span class="muted">control who can see each one</span></div>
+      <div class="panel__body" id="tripList"></div>
+    </div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Add a trip</h2><span class="muted">register a page that lives in <code>content/trips/</code></span></div>
+      <div class="panel__body">
+        <div class="row" style="gap:10px">
+          <input class="input" id="nt-emoji" style="width:64px" placeholder="🏙️" />
+          <input class="input" id="nt-title" style="flex:1;min-width:120px" placeholder="Title (e.g. Montréal)" />
+          <input class="input" id="nt-date" type="date" style="width:160px" />
+        </div>
+        <div class="row" style="gap:10px;border-top:none;padding-top:0">
+          <input class="input" id="nt-sub" style="flex:1;min-width:160px" placeholder="Subtitle (optional)" />
+          <input class="input" id="nt-page" style="flex:1;min-width:160px" placeholder="Page file, e.g. montreal.html" />
+          <button class="btn primary small" id="nt-add">Add trip</button>
+        </div>
+        <p class="row__meta" style="padding:4px 0 0">Tip: ask Claude to "add a trip" and it'll create the page in <code>content/trips/</code> and register it for you.</p>
+      </div>
+    </div>
+
+    <!-- Server -->
+    <div class="sec-label">Server</div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Power</h2><span class="muted">turn the site off remotely</span></div>
+      <div class="panel__body">
+        <div class="row">
+          <div class="row__main"><div class="row__title">Turn off the server</div>
+          <div class="row__meta">Stops the site for everyone. To turn it back on, run <code>Start Trip Planner.bat</code> on the host computer.</div></div>
+          <div class="row__actions"><button class="btn danger small" id="shutdownBtn">⏻ Shut down</button></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

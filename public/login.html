@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in · Trip Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card reveal">
+      <div class="brand">
+        <span class="brand__logo">🧳</span>
+        <span><span class="brand__name">Trip Planner</span><span class="brand__sub">plans, together</span></span>
+      </div>
+      <p class="auth-tag">Plans for you and your people.</p>
+
+      <div id="setupBanner" class="setup-banner" style="display:none">
+        👋 First time here! The account you create now becomes the
+        <strong>admin</strong> — that's you. Friends join afterwards with the shared invite code.
+      </div>
+
+      <div class="tabs">
+        <button id="tabLogin" class="active" type="button">Sign in</button>
+        <button id="tabRegister" type="button">Create account</button>
+      </div>
+
+      <div id="error" class="error-msg"></div>
+
+      <!-- Sign in -->
+      <form id="loginForm">
+        <div class="field">
+          <label for="li-user">Username</label>
+          <input class="input" id="li-user" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="li-pass">Password</label>
+          <input class="input" id="li-pass" type="password" autocomplete="current-password" />
+        </div>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+
+      <!-- Create account -->
+      <form id="registerForm" style="display:none">
+        <div class="field">
+          <label for="re-name">Your name (everyone sees this)</label>
+          <input class="input" id="re-name" autocomplete="name" placeholder="e.g. Noah" />
+        </div>
+        <div class="field">
+          <label for="re-user">Username (to log in with)</label>
+          <input class="input" id="re-user" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="re-pass">Password (6+ characters)</label>
+          <input class="input" id="re-pass" type="password" autocomplete="new-password" />
+        </div>
+        <div class="field" id="inviteField">
+          <label for="re-code">Invite code (ask the trip's owner)</label>
+          <input class="input" id="re-code" autocomplete="off" />
+        </div>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+
+      <p class="hint" id="hint"></p>
+    </div>
+  </div>
+
+  <script src="/js/login.js"></script>
+</body>
+</html>
