@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toronto · June 24</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>">
+<style>
+  :root{
+    --paper:#EEF2EE; --card:#FBFCFB; --ink:#14231B; --ink-soft:#51645A; --ink-faint:#8A9990;
+    --route:#0E7A47; --route-soft:#BCDFCC; --edge:#D9E0DA; --amber:#C8741C; --red:#C2412F;
+    --water:#CFE3E4; --water-edge:#A9CCce;
+    --shadow:0 1px 0 rgba(20,35,27,.04), 0 8px 24px -16px rgba(20,35,27,.35);
+    --col:22px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--paper);color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.5;padding:28px 18px 72px;display:flex;justify-content:center}
+  .wrap{width:100%;max-width:680px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  /* back link */
+  .backlink{display:inline-flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;margin-bottom:16px;border:1px solid var(--edge);border-radius:20px;padding:6px 13px;background:var(--card);transition:color .15s,border-color .15s}
+  .backlink:hover{color:var(--route);border-color:var(--route-soft)}
+
+  /* ticket */
+  .ticket{background:var(--ink);color:var(--paper);border-radius:16px;padding:22px 24px;position:relative;overflow:hidden}
+  .ticket__kicker{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#7FB89A;margin-bottom:10px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .ticket__count{color:var(--paper);background:rgba(255,255,255,.12);border-radius:20px;padding:2px 9px;letter-spacing:.1em}
+  .ticket__title{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:clamp(30px,8vw,44px);line-height:.98;letter-spacing:-.02em}
+  .ticket__sub{font-size:13.5px;color:#B9CFC2;margin-top:8px}
+
+  /* crew */
+  .crew{margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .crew__avs{display:inline-flex}
+  .crew__av{width:30px;height:30px;border-radius:50%;background:var(--route);color:#fff;border:2px solid var(--ink);display:inline-flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:11.5px;font-weight:700;margin-left:-8px}
+  .crew__av:first-child{margin-left:0;background:var(--amber)}
+  .crew__names{font-size:13px;color:#B9CFC2}
+  .crew__names b{color:#fff;font-weight:600}
+
+  .legs{margin-top:20px;border-top:1px dashed rgba(255,255,255,.18);padding-top:16px;display:flex;flex-direction:column;gap:14px}
+  .leg-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .leg-row__tag{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7FB89A;width:42px;flex-shrink:0}
+  .seg{display:inline-flex;border:1px solid rgba(255,255,255,.22);border-radius:8px;overflow:hidden}
+  .seg button{font-family:"JetBrains Mono",monospace;font-size:12px;padding:5px 11px;color:#B9CFC2;transition:background .15s,color .15s}
+  .seg button.on{background:var(--route);color:#fff;font-weight:500}
+  .leg-row__arr{font-family:"JetBrains Mono",monospace;font-size:12px;color:#CFE0D6;margin-left:auto}
+  .leg-row__arr b{color:#fff;font-weight:500}
+
+  /* intro */
+  .intro{margin:22px 2px 0;font-size:14.5px;color:var(--ink-soft);line-height:1.62}
+  .intro b{color:var(--ink);font-weight:600}
+
+  /* meter */
+  .meter{margin:22px 2px 8px}
+  .meter__head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+  .meter__label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+  .meter__status{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:14px}
+  .meter__bar{height:12px;border-radius:7px;background:#DCE4DD;overflow:hidden;display:flex;border:1px solid var(--edge)}
+  .meter__fill{height:100%;width:0;transition:width .6s cubic-bezier(.2,.7,.3,1),background .3s}
+  .meter__foot{display:flex;gap:18px;margin-top:9px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--ink-soft);flex-wrap:wrap}
+  .meter__foot b{color:var(--ink);font-weight:700}
+
+  .sec-label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin:32px 2px 14px;display:flex;align-items:center;gap:10px}
+  .sec-label::after{content:"";flex:1;height:1px;background:var(--edge)}
+
+  /* map */
+  .mapwrap{background:var(--card);border:1px solid var(--edge);border-radius:16px;padding:18px 16px 14px;box-shadow:var(--shadow)}
+  .mapwrap svg{display:block;width:100%;max-width:330px;height:auto;margin:0 auto}
+  .map-cap{font-size:13px;color:var(--ink-soft);line-height:1.6;margin-top:12px;padding-top:13px;border-top:1px solid var(--edge)}
+  .map-cap b{color:var(--ink);font-weight:600}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-soft);letter-spacing:.03em}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .lg-dot{width:11px;height:11px;border-radius:50%;background:var(--route);border:2px solid #fff;box-shadow:0 0 0 1px var(--route)}
+  .lg-sq{width:11px;height:11px;border-radius:2px;background:var(--ink)}
+  .lg-line{width:18px;height:0;border-top:2px solid var(--route)}
+  .lg-water{width:13px;height:9px;border-radius:2px;background:var(--water);border:1px solid var(--water-edge)}
+
+  /* timeline */
+  .route-tl{position:relative}
+  .walk{position:relative;padding-left:48px;min-height:42px;display:flex;align-items:center}
+  .walk::before{content:"";position:absolute;left:var(--col);top:0;bottom:0;border-left:2px dotted var(--route-soft);transform:translateX(-50%)}
+  .walk__chip{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--edge);border-radius:20px;padding:3px 11px;display:inline-flex;align-items:center;gap:7px}
+  .walk__chip svg{width:12px;height:12px;stroke:var(--route);fill:none;stroke-width:1.6}
+
+  .stop{position:relative;padding-left:48px;padding-bottom:12px}
+  .stop::before{content:"";position:absolute;left:var(--col);top:-12px;height:24px;width:2px;border-left:2px dotted var(--route-soft);transform:translateX(-50%)}
+  .node{position:absolute;left:var(--col);top:22px;width:26px;height:26px;border-radius:50%;background:var(--route);transform:translate(-50%,-50%);z-index:2;display:flex;align-items:center;justify-content:center;color:#fff;font-family:"JetBrains Mono",monospace;font-weight:700;font-size:12px;border:3px solid var(--paper)}
+  .card{background:var(--card);border:1px solid var(--edge);border-radius:13px;box-shadow:var(--shadow);overflow:hidden}
+  .card__main{padding:13px 15px;display:flex;flex-direction:column;gap:7px}
+  .card__row1{display:flex;align-items:baseline;gap:10px;cursor:pointer}
+  .card__time{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px;color:var(--route);flex-shrink:0;white-space:nowrap}
+  .card__name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:17px;letter-spacing:-.01em;line-height:1.15;flex:1}
+  .card__chev{color:var(--ink-faint);font-size:12px;transition:transform .2s;margin-top:3px}
+  .card.open .card__chev{transform:rotate(180deg)}
+  .card__meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .pill{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--edge);border-radius:5px;padding:2px 7px}
+  .pill--cat{color:var(--ink);border-color:#C7D2CA;background:#EAF1EC}
+  .pill--warn{color:#fff;background:var(--amber);border-color:var(--amber)}
+
+  .card__detail{max-height:0;overflow:hidden;transition:max-height .25s ease}
+  .card.open .card__detail{max-height:360px}
+  .card__detail-inner{padding:0 15px 14px;font-size:13.5px;color:var(--ink-soft);line-height:1.6}
+  .card__detail-inner b{color:var(--ink);font-weight:600}
+  .card__hours{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--ink-faint);margin-top:8px}
+  .card__tip{margin-top:8px;padding:9px 11px;background:#EFF4F0;border-left:2px solid var(--route);border-radius:0 6px 6px 0;font-size:12.5px}
+
+  .ctrls{display:flex;align-items:center;gap:6px;border-top:1px solid var(--edge);padding:8px 12px;background:#F4F7F4}
+  .step{display:inline-flex;align-items:center;border:1px solid var(--edge);border-radius:7px;overflow:hidden;background:var(--card)}
+  .step button{width:28px;height:26px;font-size:15px;color:var(--ink-soft);font-weight:600;display:flex;align-items:center;justify-content:center}
+  .step button:hover{background:#E7EEE9;color:var(--ink)}
+  .step span{font-family:"JetBrains Mono",monospace;font-size:11.5px;min-width:42px;text-align:center;color:var(--ink)}
+  .ctrls__spacer{flex:1}
+  .icon-btn{width:28px;height:26px;border:1px solid var(--edge);border-radius:7px;background:var(--card);color:var(--ink-soft);font-size:12px;display:flex;align-items:center;justify-content:center}
+  .icon-btn:hover{background:#E7EEE9;color:var(--ink)}
+  .icon-btn:disabled{opacity:.3;cursor:default}
+  .skip-btn{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--edge);border-radius:7px;padding:5px 9px;background:var(--card)}
+  .skip-btn:hover{color:var(--red);border-color:var(--red)}
+
+  .addons{display:flex;flex-direction:column;gap:10px}
+  .addon{background:var(--card);border:1px dashed var(--edge);border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:12px}
+  .addon__body{flex:1;min-width:0}
+  .addon__name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:16px}
+  .addon__name .pill{margin-left:8px;vertical-align:middle}
+  .addon__note{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.55}
+  .add-btn{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--route);border-radius:8px;padding:8px 14px;flex-shrink:0;font-weight:500}
+  .add-btn:hover{background:#0C6B3F}
+
+  .term{position:relative;padding-left:48px}
+  .term .node{border-radius:5px;background:var(--ink);width:18px;height:18px;top:50%;border:none}
+  .term__inner{display:flex;align-items:center;gap:11px;padding:9px 0;flex-wrap:wrap}
+  .term__name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:15px}
+  .term__tag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+
+  /* good to know */
+  .gtk{display:flex;flex-direction:column;gap:0;background:var(--card);border:1px solid var(--edge);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  .gtk__row{display:grid;grid-template-columns:118px 1fr;gap:14px;padding:13px 16px;border-top:1px solid var(--edge);font-size:13.5px;color:var(--ink-soft);line-height:1.55}
+  .gtk__row:first-child{border-top:none}
+  .gtk__k{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--route);padding-top:2px}
+  .gtk__v b{color:var(--ink);font-weight:600}
+
+  .foot{margin-top:24px;font-size:12.5px;color:var(--ink-faint);line-height:1.6;border-top:1px solid var(--edge);padding-top:16px}
+  .foot b{color:var(--ink-soft);font-weight:600}
+
+  .navbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:13px;padding:13px;background:var(--route);color:#fff;border-radius:11px;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s,transform .12s}
+  .navbtn:hover{background:#0C6B3F}
+  .navbtn:active{transform:scale(.99)}
+  .navhint{font-size:11.5px;color:var(--ink-faint);text-align:center;margin-top:8px;line-height:1.5}
+  .dir{display:inline-block;margin-top:11px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.04em;color:var(--route);text-decoration:none;border:1px solid var(--route-soft);border-radius:7px;padding:5px 11px;background:#F1F7F3}
+  .dir:hover{background:var(--route);color:#fff;border-color:var(--route)}
+  .reveal{opacity:0;transform:translateY(8px);animation:rise .5s cubic-bezier(.2,.7,.3,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion:reduce){.reveal{animation:none;opacity:1;transform:none}.meter__fill,.card__detail,.card__chev{transition:none}#routePath{stroke-dasharray:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="backlink reveal" href="../index.html">← All trips</a>
+
+  <header class="ticket reveal">
+    <div class="ticket__kicker">Day Trip · 5 Friends <span class="ticket__count" id="countdown">·</span></div>
+    <div class="ticket__title">Toronto</div>
+    <div class="ticket__sub">Wednesday, June 24 — the Yonge Street run</div>
+    <div class="crew" aria-label="Trip goers">
+      <span class="crew__avs">
+        <span class="crew__av" title="You">★</span>
+        <span class="crew__av" title="Yareem">Y</span>
+        <span class="crew__av" title="Noah">N</span>
+        <span class="crew__av" title="Cynthia">C</span>
+        <span class="crew__av" title="Luvena">L</span>
+      </span>
+      <span class="crew__names"><b>You</b>, Yareem, Noah, Cynthia &amp; Luvena</span>
+    </div>
+    <div class="legs">
+      <div class="leg-row">
+        <span class="leg-row__tag">Out</span>
+        <span class="seg" id="trainSeg">
+          <button data-arr="560">8:15a train</button>
+          <button data-arr="575">8:30a train</button>
+        </span>
+        <span class="leg-row__arr">arrive Union <b id="arrLabel">9:20a</b></span>
+      </div>
+      <div class="leg-row">
+        <span class="leg-row__tag">Back</span>
+        <span class="seg" id="busSeg">
+          <button data-dep="1196">7:56p bus</button>
+          <button data-dep="1226">8:26p bus</button>
+        </span>
+        <span class="leg-row__arr">last call for Union</span>
+      </div>
+    </div>
+  </header>
+
+  <p class="intro reveal" style="animation-delay:.05s">
+    The shape of the day is simple: <b>train into Union, drop to the lake, then climb Yonge Street in one straight line</b> —
+    shopping, claw machines, games, dessert — ending on hot pot before the bus home. Almost no backtracking, so the
+    afternoon is mostly walking a few blocks at a time. Tap any stop for the why; reorder or swap anything and the map,
+    times, and load bar all update together.
+  </p>
+
+  <section class="meter reveal" style="animation-delay:.1s">
+    <div class="meter__head">
+      <span class="meter__label">Day load</span>
+      <span class="meter__status" id="statusText">—</span>
+    </div>
+    <div class="meter__bar"><div class="meter__fill" id="meterFill"></div></div>
+    <div class="meter__foot">
+      <span>Back at Union <b id="endText">—</b></span>
+      <span>Slack <b id="bufferText">—</b></span>
+      <span>Stops on <b id="countText">—</b></span>
+    </div>
+  </section>
+
+  <div class="sec-label">The route</div>
+  <section class="mapwrap reveal" style="animation-delay:.14s">
+    <svg id="mapSvg" viewBox="0 0 330 470" role="img" aria-label="Schematic map of the day's stops"></svg>
+    <div class="legend">
+      <span><span class="lg-sq"></span> Union (GO)</span>
+      <span><span class="lg-dot"></span> numbered stop</span>
+      <span><span class="lg-line"></span> route · walk on links</span>
+      <span>times = arrival</span>
+    </div>
+    <p class="map-cap" id="mapCap"></p>
+    <a id="navBtn" class="navbtn" target="_blank" rel="noopener" href="#">Open this route in Google Maps ↗</a>
+    <div class="navhint">Live walking directions for every stop, in order. The route ends at dessert — hop the subway (College / Wellesley) back to Union for the bus.</div>
+  </section>
+
+  <div class="sec-label">Itinerary</div>
+  <main class="route-tl" id="route"></main>
+
+  <div class="sec-label">Add-ons · tap to drop into the day</div>
+  <div class="addons" id="addons"></div>
+
+  <div class="sec-label">Good to know</div>
+  <section class="gtk reveal">
+    <div class="gtk__row"><div class="gtk__k">Up Yonge</div><div class="gtk__v">Eaton to Souper is one straight walk north, about <b>15 min end to end</b>. Mid-day needs zero transit — just keep heading up the street.</div></div>
+    <div class="gtk__row"><div class="gtk__k">The PATH</div><div class="gtk__v">From the waterfront, take the <b>PATH</b> (underground walkway) up to Eaton — skips weather, lights, and traffic.</div></div>
+    <div class="gtk__row"><div class="gtk__k">Back to Union</div><div class="gtk__v">Souper sits by <b>College station</b>. Subway one line down to Union, ~12 min. Don't walk it with the bus clock running.</div></div>
+    <div class="gtk__row"><div class="gtk__k">Food density</div><div class="gtk__v">Gyukatsu at noon <b>plus</b> hot pot at ~4:30 is two heavy meals fast, with dessert between. Want hot pot to feel like real dinner? Push it later and take the <b>8:26 bus</b>, or skip Gyukatsu.</div></div>
+    <div class="gtk__row"><div class="gtk__k">The one pin</div><div class="gtk__v"><b>Gyukatsu</b> opens noon, lunch ends 3p. It's the only stop that can't drift — build the morning around it. Everything else flexes.</div></div>
+    <div class="gtk__row"><div class="gtk__k">Karaoke = late bus</div><div class="gtk__v">SU Karaoke doesn't open till <b>6p</b>. Add it and you're committing to the 8:26 bus, not the 7:56.</div></div>
+    <div class="gtk__row"><div class="gtk__k">Budget</div><div class="gtk__v">Most stops are cheap or free (claw machines, browsing, dessert). The two real spends are <b>lunch and hot pot</b> — Souper keeps the hot pot affordable vs. Haidilao.</div></div>
+  </section>
+
+  <p class="foot">
+    <b>It's live.</b> Reorder with ↑↓, stretch or trim each stop with −/+, or skip it to the add-on shelf.
+    The map, the times, and the load bar all recompute together off your train arrival and chosen bus.
+    Amber = a stop opens after you'd arrive, or the day's overflowing. The map is a schematic — positions are real, distances aren't to scale. Walk times are estimates; the trip back to Union assumes the subway.
+  </p>
+
+</div>
+
+<script>
+const walkSVG='<svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="2"/><path d="M13 8l-3 5 2 2v5M10 13l-4 2M13 11l3 3 3 1"/></svg>';
+
+let startArr = 560, busDep = 1196;
+const RETURN = 15;
+const expanded = new Set();
+let first = true;
+
+const UNION = {lat:43.6453, lng:-79.3806, short:'Union'};
+
+let stops = [
+  {id:'hto',  name:'HTO Park',                cat:'Outdoors', dur:45,  walk:12, on:true, short:'HTO Park', where:'waterfront',
+   lat:43.6377999, lng:-79.3881709,
+   note:'A waterfront park to open the day. The real reason it’s first: <b>nothing else is open before ~10–11a</b>, so you burn the early hour by the lake instead of standing outside a mall. CN Tower right behind you for photos.',
+   addr:'339 Queens Quay W', hours:'Open 24h'},
+  {id:'eat',  name:'CF Toronto Eaton Centre', cat:'Shopping', dur:90,  walk:18, on:true, short:'Eaton Centre',
+   lat:43.6544382, lng:-79.3806994, opens:600,
+   note:'Your big shopping block while everyone’s fresh. Uniqlo, H&M, and the <b>large MINISO at 220 Yonge</b>. Take the PATH up from the lake so you arrive indoors.',
+   addr:'220 Yonge St', hours:'10a–9p · 4.5★'},
+  {id:'gyu',  name:'Gyukatsu Kyoto Katsugyu', cat:'Lunch',    dur:75,  walk:7,  on:true, short:'Gyukatsu', where:'Dundas E',
+   lat:43.6568241, lng:-79.3761741, opens:720, lunchClose:900,
+   note:'Grill-your-own Japanese beef katsu at your seat — a fun group lunch. Small room, fills fast. (This is the jog east off Yonge onto Dundas you’ll see on the map.)',
+   addr:'134 Dundas St E', hours:'Lunch 12–3p · dinner 5–9:30p · 4.3★',
+   tip:'Hit the <b>noon open</b> to skip the line — lunch service ends 3p sharp.'},
+  {id:'ohyo', name:'OHYO Spree Claw Machines', cat:'Games',   dur:30,  walk:7,  on:true, short:'OHYO Claw',
+   lat:43.6576539, lng:-79.381609, opens:720,
+   note:'Bright claw-machine arcade right on Yonge (<b>4.9★</b>). Cheap, fast, very on-theme — a quick win on the way north before IKEA.',
+   addr:'340 Yonge St', hours:'12–10:30p'},
+  {id:'ikea', name:'IKEA Toronto Downtown',   cat:'Shopping', dur:45,  walk:2,  on:true, short:'IKEA',
+   lat:43.659421, lng:-79.3827363, opens:600,
+   note:'The downtown <b>walk-through</b> IKEA (not the full warehouse). Quick loop for the novelty; Swedish snacks if you want them. Two doors from 401 Games, so they pair.',
+   addr:'382 Yonge St', hours:'10a–9p'},
+  {id:'401',  name:'401 Games',               cat:'Games',    dur:45,  walk:2,  on:true, short:'401 Games',
+   lat:43.660605, lng:-79.382602, opens:720,
+   note:'Steps from IKEA. TCG, Pokémon, board games — <b>deep selection</b> and staff who actually know it. Easy to lose 45 min here.',
+   addr:'431 Yonge St', hours:'12–8p · 4.5★'},
+  {id:'soup', name:'Souper Hot Pot',          cat:'Dinner',   dur:90,  walk:6,  on:true, short:'Souper Hotpot',
+   lat:43.6623944, lng:-79.3838527, opens:660,
+   note:'<b>The hot pot.</b> Individual pots with a self-serve ingredient bar, so everyone builds their own broth — no fighting over spice level. Right on the route, and near College station for the ride back.',
+   addr:'476 Yonge St', hours:'11a–12a · 4.8★',
+   tip:'Budget-friendly and rarely a long wait. Want the famous one? <b>Haidilao</b> (237 Yonge, 4.9★) is the upgrade — pricier, and expect a queue.'},
+  {id:'snow', name:'Snowday Bingsu',          cat:'Dessert',  dur:45,  walk:5,  on:true, short:'Snowday', where:'Church St',
+   lat:43.6639545, lng:-79.3800931, opens:780,
+   note:'Korean shaved-ice dessert, one block east on Church. A cool-down before the heavy dinner.',
+   addr:'449 Church St', hours:'Opens 1:00p',
+   tip:'Opens 1p, so it lands mid-afternoon — fine here. Small + warm inside; grab it to-go if it’s packed.'},
+  {id:'wahoo',name:'Wahoo Arcade Mart',       cat:'Games',    dur:30,  walk:8,  on:false, short:'Wahoo',
+   lat:43.665564, lng:-79.3847002, opens:840,
+   note:'Claw machines plus MINISO-style merch on the 2nd floor — win tokens, trade for plushies. Doubles as a second MINISO fix.',
+   addr:'577 Yonge St, 2nd Fl', hours:'2–10p'},
+  {id:'kara', name:'SU Karaoke',              cat:'Activity', dur:75,  walk:9,  on:false, short:'SU Karaoke',
+   lat:43.667912, lng:-79.385666, opens:1080,
+   note:'Private-room karaoke with soju and a YouTube song system — peak group activity to cap the night.',
+   addr:'649 Yonge St, 2nd Fl', hours:'Opens 6:00p',
+   tip:'Opens 6p, so this realistically means the <b>8:26 bus</b>, not 7:56.'},
+  {id:'eat2', name:'Eaton Centre — round two', cat:'Shopping', dur:60, walk:12, on:false, short:'Eaton 2',
+   lat:43.6544382, lng:-79.3806994, opens:600,
+   note:'Loop back down for anything you flagged earlier. This was the original buffer block before hot pot took the slot.',
+   addr:'220 Yonge St', hours:'10a–9p'},
+];
+
+const fmt=m=>{const h=Math.floor(m/60),x=m%60;return (h?h+'h':'')+(x?(h?' ':'')+x+'m':'')||'0m'};
+const clock=m=>{m=((m%1440)+1440)%1440;let h=Math.floor(m/60),x=m%60,ap=h>=12?'p':'a';h=h%12||12;return h+(x?':'+String(x).padStart(2,'0'):'')+ap};
+
+function compute(){
+  let t=startArr, out=[];
+  stops.forEach(s=>{
+    if(!s.on){out.push(null);return;}
+    t+=s.walk; const arr=t; t+=s.dur;
+    let warn=null;
+    if(s.opens && arr<s.opens) warn='opens '+clock(s.opens)+', '+(s.opens-arr)+'m early';
+    else if(s.lunchClose && (arr+s.dur)>s.lunchClose) warn='runs past '+clock(s.lunchClose)+' close';
+    out.push({arr,dep:t,warn});
+  });
+  return {times:out, endAtUnion:t+RETURN};
+}
+
+function gmapsUrl(){
+  const on=stops.filter(s=>s.on);
+  const o=`${UNION.lat},${UNION.lng}`;
+  if(!on.length) return `https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${o}&travelmode=walking`;
+  const dest=`${on[on.length-1].lat},${on[on.length-1].lng}`;
+  const mids=on.slice(0,-1).map(s=>`${s.lat},${s.lng}`).join('|');
+  let u=`https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${dest}&travelmode=walking`;
+  if(mids) u+=`&waypoints=${encodeURIComponent(mids)}`;
+  return u;
+}
+function renderMap(){
+  const on=stops.filter(s=>s.on);
+  const {times}=compute();
+
+  // rows in visit order
+  const rows=[];
+  rows.push({term:1, name:'Union Station', sub:'Arrive · '+clock(startArr)});
+  let n=0;
+  stops.forEach((s,i)=>{ if(!s.on)return; n++;
+    rows.push({n, name:s.short, meta:s.cat+' · '+fmt(s.dur)+(s.where?' · '+s.where:''), time:clock(times[i].arr), walk:s.walk});
+  });
+  rows.push({term:1, name:'Union Station', sub:'Bus · '+clock(busDep), walk:RETURN, ret:1});
+
+  const W=330, TOP=34, GAP=56, BOT=34;
+  const H=TOP+(rows.length-1)*GAP+BOT;
+  const timeX=58, lineX=78, nameX=98;
+  const y=i=>TOP+i*GAP;
+  const svg=document.getElementById('mapSvg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  let out='';
+  // the line (single vertical spine)
+  out+=`<line id="routePath" x1="${lineX}" y1="${y(0)}" x2="${lineX}" y2="${y(rows.length-1)}" stroke="var(--route)" stroke-width="3.5" stroke-linecap="round"/>`;
+
+  // walk pills on each link
+  rows.forEach((r,i)=>{
+    if(i===0||!r.walk) return;
+    const my=(y(i-1)+y(i))/2;
+    const txt=r.ret?`${r.walk} min · subway`:`${r.walk} min`;
+    const w=r.ret?94:48;
+    out+=`<rect x="${(lineX-w/2).toFixed(1)}" y="${(my-9).toFixed(1)}" width="${w}" height="18" rx="9" fill="var(--card)" stroke="var(--edge)"/>`;
+    out+=`<text x="${lineX}" y="${(my+3.3).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--ink-soft)">${txt}</text>`;
+  });
+
+  // nodes + labels
+  rows.forEach((r,i)=>{
+    const cy=y(i);
+    if(r.term){
+      out+=`<rect x="${lineX-9}" y="${cy-9}" width="18" height="18" rx="4" fill="var(--ink)"/>`;
+      out+=`<text x="${nameX}" y="${cy-1}" font-family="Space Grotesk,sans-serif" font-weight="600" font-size="13.5" fill="var(--ink)">${r.name}</text>`;
+      out+=`<text x="${nameX}" y="${cy+13}" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing=".06em" fill="var(--ink-faint)">${r.sub}</text>`;
+    } else {
+      out+=`<circle cx="${lineX}" cy="${cy}" r="11" fill="var(--card)"/>`;            // knockout so line doesn't show through
+      out+=`<circle cx="${lineX}" cy="${cy}" r="9.5" fill="var(--route)" stroke="#fff" stroke-width="2.5"/>`;
+      out+=`<text x="${lineX}" y="${cy+3.6}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="700" fill="#fff">${r.n}</text>`;
+      out+=`<text x="${timeX}" y="${cy+3.6}" text-anchor="end" font-family="JetBrains Mono,monospace" font-weight="500" font-size="10.5" fill="var(--route)">${r.time}</text>`;
+      out+=`<text x="${nameX}" y="${cy-2}" font-family="Inter,sans-serif" font-weight="600" font-size="13.5" fill="var(--ink)">${r.name}</text>`;
+      out+=`<text x="${nameX}" y="${cy+12}" font-family="Inter,sans-serif" font-size="11" fill="var(--ink-faint)">${r.meta}</text>`;
+    }
+  });
+
+  svg.innerHTML=out;
+  if(first){
+    const path=document.getElementById('routePath');
+    const len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len;
+    path.style.animation='draw 1s ease .3s forwards';
+  }
+
+  document.getElementById('mapCap').innerHTML=`<b>Top to bottom is morning to night.</b> The day is basically one line up Yonge with two short hops off it — east to Dundas for lunch, over to Church for dessert — then hot pot and the subway back to Union. Each number on the line is the walk between stops.`;
+}
+function render(){
+  const {times,endAtUnion}=compute();
+  const onStops=stops.filter(s=>s.on);
+  const route=document.getElementById('route');
+  let html='', d=0.18;
+  const cls=extra=>first?`reveal${extra||''}`:(extra||'').trim();
+  const dly=()=>first?` style="animation-delay:${(d+=0.05).toFixed(2)}s"`:'';
+
+  html+=`<div class="term ${cls()}"${dly()}>
+     <span class="node"></span><div class="term__inner">
+     <span class="term__name">Union Station</span><span class="term__tag">Arrive · ${clock(startArr)}</span></div></div>`;
+
+  let n=0;
+  stops.forEach((s,i)=>{
+    if(!s.on) return;
+    n++;
+    const tm=times[i];
+    html+=`<div class="walk ${cls()}"${dly()}><span class="walk__chip">${walkSVG} ${s.walk} min walk</span></div>`;
+    const isOpen=expanded.has(s.id);
+    html+=`<div class="stop ${cls()}"${dly()}>
+      <span class="node">${n}</span>
+      <div class="card${isOpen?' open':''}">
+        <div class="card__main">
+          <div class="card__row1" data-toggle="${s.id}">
+            <span class="card__time">${clock(tm.arr)}–${clock(tm.dep)}</span>
+            <span class="card__name">${s.name}</span>
+            <span class="card__chev">▾</span>
+          </div>
+          <div class="card__meta">
+            <span class="pill pill--cat">${s.cat}</span>
+            <span class="pill">${fmt(s.dur)}</span>
+            ${tm.warn?`<span class="pill pill--warn">${tm.warn}</span>`:''}
+          </div>
+        </div>
+        <div class="card__detail"><div class="card__detail-inner">
+          ${s.note}
+          <div class="card__hours">${s.addr} · ${s.hours}</div>
+          ${s.tip?`<div class="card__tip">${s.tip}</div>`:''}
+          <a class="dir" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}&travelmode=walking">Directions to here ↗</a>
+        </div></div>
+        <div class="ctrls">
+          <div class="step"><button data-dur="${s.id}" data-d="-15">−</button><span>${fmt(s.dur)}</span><button data-dur="${s.id}" data-d="15">+</button></div>
+          <div class="ctrls__spacer"></div>
+          <button class="icon-btn" data-move="${s.id}" data-dir="-1" ${i===firstOnIndex()?'disabled':''}>↑</button>
+          <button class="icon-btn" data-move="${s.id}" data-dir="1" ${i===lastOnIndex()?'disabled':''}>↓</button>
+          <button class="skip-btn" data-skip="${s.id}">Skip</button>
+        </div>
+      </div></div>`;
+  });
+
+  html+=`<div class="walk ${cls()}"${dly()}><span class="walk__chip">${walkSVG} ~${RETURN} min back · subway</span></div>`;
+  html+=`<div class="term ${cls()}"${dly()}>
+     <span class="node"></span><div class="term__inner">
+     <span class="term__name">Union Station</span><span class="term__tag">Depart · bus ${clock(busDep)}</span></div></div>`;
+  route.innerHTML=html;
+
+  const addons=document.getElementById('addons');
+  const off=stops.filter(s=>!s.on);
+  addons.innerHTML = off.length? off.map(s=>`
+    <div class="addon">
+      <div class="addon__body">
+        <div class="addon__name">${s.name}<span class="pill pill--cat">${s.cat}</span></div>
+        <div class="addon__note">${s.note.replace(/<\/?b>/g,'')}</div>
+      </div>
+      <button class="add-btn" data-add="${s.id}">+ Add</button>
+    </div>`).join('') : `<div class="addon__note" style="padding:4px 2px">Everything's in the day. Skip a stop to park it back here.</div>`;
+
+  const buffer=busDep-endAtUnion, usedSpan=endAtUnion-startArr, windowSpan=busDep-startArr;
+  const pct=Math.max(2,Math.min(100,Math.round(usedSpan/windowSpan*100)));
+  let label,color;
+  if(buffer>=75){label='Comfortable';color='var(--route)';}
+  else if(buffer>=30){label='Some slack';color='var(--route)';}
+  else if(buffer>=10){label='Tight';color='var(--amber)';}
+  else if(buffer>=0){label='Cutting it close';color='var(--amber)';}
+  else {label='Overpacked';color='var(--red)';}
+  document.getElementById('endText').textContent=clock(endAtUnion);
+  const bt=document.getElementById('bufferText'); bt.textContent=buffer>=0?fmt(buffer):'−'+fmt(-buffer); bt.style.color=color;
+  document.getElementById('countText').textContent=onStops.length;
+  const st=document.getElementById('statusText'); st.textContent=label; st.style.color=color;
+  const fill=document.getElementById('meterFill');
+  fill.style.background = buffer<0 ? 'repeating-linear-gradient(45deg,var(--red),var(--red) 7px,#a83323 7px,#a83323 14px)'
+    : buffer<30 ? 'repeating-linear-gradient(45deg,var(--amber),var(--amber) 7px,#a85f12 7px,#a85f12 14px)'
+    : 'repeating-linear-gradient(45deg,var(--route),var(--route) 7px,#0C6B3F 7px,#0C6B3F 14px)';
+  if(first){ setTimeout(()=>fill.style.width=pct+'%',350); } else { fill.style.width=pct+'%'; }
+  document.getElementById('arrLabel').textContent=clock(startArr);
+
+  document.getElementById('navBtn').href=gmapsUrl();
+  renderMap();
+  first=false;
+}
+function firstOnIndex(){return stops.findIndex(s=>s.on);}
+function lastOnIndex(){for(let i=stops.length-1;i>=0;i--)if(stops[i].on)return i;return -1;}
+
+document.body.addEventListener('click',e=>{
+  const t=e.target.closest('[data-toggle],[data-dur],[data-move],[data-skip],[data-add]');
+  if(!t) return;
+  if(t.dataset.toggle){ const id=t.dataset.toggle; expanded.has(id)?expanded.delete(id):expanded.add(id); render(); return;}
+  if(t.dataset.dur){ const s=stops.find(x=>x.id===t.dataset.dur); s.dur=Math.max(15,s.dur+ +t.dataset.d); render(); return;}
+  if(t.dataset.skip){ stops.find(x=>x.id===t.dataset.skip).on=false; render(); return;}
+  if(t.dataset.add){ stops.find(x=>x.id===t.dataset.add).on=true; render(); return;}
+  if(t.dataset.move){
+    const id=t.dataset.move, dir=+t.dataset.dir, i=stops.findIndex(x=>x.id===id);
+    let j=i+dir; while(j>=0&&j<stops.length&&!stops[j].on) j+=dir;
+    if(j<0||j>=stops.length) return;
+    [stops[i],stops[j]]=[stops[j],stops[i]]; render(); return;
+  }
+});
+document.getElementById('trainSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return; startArr=+b.dataset.arr;
+  [...e.currentTarget.children].forEach(c=>c.classList.toggle('on',c===b)); render();
+});
+document.getElementById('busSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return; busDep=+b.dataset.dep;
+  [...e.currentTarget.children].forEach(c=>c.classList.toggle('on',c===b)); render();
+});
+
+// Live countdown to the trip (Wed, June 24, 2026)
+(function(){
+  const el=document.getElementById('countdown');
+  const trip=new Date(2026,5,24);  // months are 0-indexed: 5 = June
+  const today=new Date(); today.setHours(0,0,0,0);
+  const days=Math.round((trip-today)/86400000);
+  el.textContent = days>1 ? `in ${days} days` : days===1 ? 'tomorrow' : days===0 ? 'today!' : 'wrapped';
+})();
+
+document.querySelector('#trainSeg button[data-arr="560"]').classList.add('on');
+document.querySelector('#busSeg button[data-dep="1196"]').classList.add('on');
+render();
+</script>
+</body>
+</html>
