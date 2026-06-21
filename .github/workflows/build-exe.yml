@@ -22,23 +22,11 @@ jobs:
       - name: Build .exe
         run: npx pkg . --targets node18-win-x64 --output TripPlanner.exe
 
-      - name: Create Release
-        uses: actions/create-release@v1
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release and Upload .exe
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: v${{ github.run_number }}
-          release_name: Build ${{ github.run_number }}
+          tag: v${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          artifacts: TripPlanner.exe
           draft: false
           prerelease: false
-
-      - name: Upload .exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./TripPlanner.exe
-          asset_name: TripPlanner.exe
-          asset_content_type: application/octet-stream
