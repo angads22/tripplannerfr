@@ -359,6 +359,18 @@ router.put("/:id/access", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
+// Delete an activity entry (creator/admin only)
+router.delete("/:id/activity/:activityId", requireAuth, (req, res) => {
+  const existing = db.findTripById(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Trip not found." });
+  if (!canManageTrip(existing, req.user)) {
+    return res.status(403).json({ error: "Only the trip's creator can delete activity." });
+  }
+  const activity = (Array.isArray(existing.activity) ? existing.activity : []).filter((a) => a.id !== req.params.activityId);
+  const updated = db.updateTrip(existing.id, { activity });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
 // --- Activity log helper -------------------------------------------------
 
 // Append a "who did what" entry (kept to the last 50) and return the patch.

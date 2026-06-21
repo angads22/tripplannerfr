@@ -225,6 +225,7 @@ function renderProposals() {
 
 function renderLog() {
   const log = TRIP.activity || [];
+  const canDeleteActivity = TRIP.canManage; // Only creator/admin can delete activity
   $("#logList").innerHTML = log.map((a) => `
       <div class="crew-item">
         <span class="crew-item__face" style="background:${avatarColor(a.userName)}">${esc(initials(a.userName))}</span>
@@ -232,6 +233,7 @@ function renderLog() {
           <div class="crew-item__name" style="font-weight:600;font-size:13.5px"><b>${esc(a.userName)}</b> ${esc(a.text)}</div>
           <div class="crew-item__tag">${esc(relTime(a.ts))}</div>
         </div>
+        ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete activity">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta">Nothing yet.</p>';
 }
 
@@ -627,11 +629,15 @@ function initCollapsible() {
     const sidebar = $("#activitySidebar");
     sidebar.style.display = sidebar.style.display === "none" ? "block" : "none";
     const list = $("#activityList");
+    const canDeleteActivity = TRIP.canManage;
     list.innerHTML = log.slice().reverse().map((a) => `
-      <div class="activity-item">
-        <div class="activity-item__name">${esc(a.userName)}</div>
-        <div class="activity-item__text">${esc(a.text)}</div>
-        <div class="activity-item__time">${esc(relTime(a.ts))}</div>
+      <div class="activity-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div class="activity-item__name">${esc(a.userName)}</div>
+          <div class="activity-item__text">${esc(a.text)}</div>
+          <div class="activity-item__time">${esc(relTime(a.ts))}</div>
+        </div>
+        ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta" style="padding:12px">Nothing yet.</p>';
   }
 
@@ -688,6 +694,18 @@ function initCollapsible() {
       await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/messages/" + encodeURIComponent(del.dataset.delmsg), "DELETE");
       CHAT_SIG = "";
       await loadChat();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // Delete an activity entry (creator/admin)
+  document.addEventListener("click", async (e) => {
+    const del = e.target.closest("[data-delactivity]");
+    if (!del || !TRIP) return;
+    if (!confirm("Remove this activity entry from the changelog?")) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/activity/" + encodeURIComponent(del.dataset.delactivity), "DELETE");
+      await reload();
+      toast("Activity removed.");
     } catch (err) { toast(err.message, true); }
   });
 

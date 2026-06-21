@@ -391,12 +391,13 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 
 /* Crew management list (trip detail) */
 .crew-list { display: flex; flex-direction: column; gap: 8px; }
-.crew-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); }
+.crew-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); transition: all .15s; }
+.crew-item:hover { background: rgba(255,255,255,.65); border-color: rgba(255,255,255,.8); }
 .crew-item__face { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; }
 .crew-item__name { font-weight: 700; font-size: 14px; flex: 1; }
 .crew-item__tag { font-family: "Space Mono", monospace; font-size: 11px; color: var(--muted-light-2); }
-.crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; }
-.crew-item__x:hover { background: rgba(226,59,38,.1); color: var(--red); }
+.crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; transition: all .15s; }
+.crew-item__x:hover { background: rgba(226,59,38,.15); color: var(--red); transform: scale(1.1); }
 .crew-item__x:disabled { opacity: .3; cursor: default; }
 
 /* Check a stop off as you go through the day */
