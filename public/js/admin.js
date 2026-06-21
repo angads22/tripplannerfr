@@ -223,18 +223,34 @@ $("#nt-add").addEventListener("click", async () => {
 
 // --- Updates ---------------------------------------------------------------
 async function checkUpdate() {
+  const status = $("#updateStatus");
+  const meta = $("#updateMeta");
+  const applyBtn = $("#applyUpdateBtn");
   try {
     $("#checkUpdateBtn").disabled = true;
-    const { hasUpdate, latestTag, downloadUrl } = await api("GET", "/api/admin/check-update");
-    const status = $("#updateStatus");
-    const meta = $("#updateMeta");
-    if (hasUpdate) {
-      status.textContent = "Update available: " + latestTag;
-      status.style.color = "#0E7A47";
-      meta.innerHTML = `New version <b>${latestTag}</b> is available. <a href="${downloadUrl}" target="_blank" rel="noopener">Download TripPlanner.exe</a> and replace the old one.`;
+    applyBtn.style.display = "none";
+    const r = await api("GET", "/api/admin/check-update");
+    $("#curVer").textContent = `${r.currentVersion} (build ${r.currentBuild})`;
+    if (r.error) {
+      status.textContent = "Couldn't check";
+      meta.textContent = "Update check failed: " + r.error;
+      return;
+    }
+    if (r.hasUpdate) {
+      status.textContent = `Update available: build ${r.latestBuild}`;
+      status.style.color = "var(--accent)";
+      if (r.canSelfUpdate) {
+        meta.innerHTML = `A newer build is ready. Click <b>Update now</b> to download and restart automatically.`;
+        applyBtn.style.display = "";
+      } else if (!r.isPackaged) {
+        meta.innerHTML = `You're running from source. Update with <code>git pull</code> then restart.`;
+      } else {
+        meta.innerHTML = `New build available. <a href="${r.releaseUrl}" target="_blank" rel="noopener">Download it here</a>.`;
+      }
     } else {
       status.textContent = "You're up to date";
-      meta.textContent = "Running the latest version.";
+      status.style.color = "";
+      meta.textContent = "Running the latest build.";
     }
   } catch (e) {
     toast(e.message, true);
@@ -243,6 +259,20 @@ async function checkUpdate() {
   }
 }
 $("#checkUpdateBtn").addEventListener("click", checkUpdate);
+$("#applyUpdateBtn").addEventListener("click", async () => {
+  if (!confirm("Download the latest build and restart the app? Anyone using it will be briefly disconnected.")) return;
+  const btn = $("#applyUpdateBtn");
+  btn.disabled = true;
+  btn.textContent = "Updating...";
+  try {
+    const r = await api("POST", "/api/admin/apply-update");
+    document.body.innerHTML = '<div class="auth-wrap"><div class="card-dark auth-card" style="color:var(--on-dark)"><div class="empty" style="color:var(--on-dark)"><div class="big">⬇️</div><h3 class="display" style="color:var(--on-dark)">Updating</h3><p style="color:var(--muted-dark-2)">' + (r.message || "Downloading the new build. The app will restart on its own — give it a few seconds, then refresh.") + '</p></div></div></div>';
+  } catch (e) {
+    toast(e.message, true);
+    btn.disabled = false;
+    btn.textContent = "Update now";
+  }
+});
 
 // --- Server power ----------------------------------------------------------
 $("#shutdownBtn").addEventListener("click", async () => {
