@@ -126,11 +126,30 @@ function mapsSearch(place) {
   return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place);
 }
 
+let EDIT_STOP = null; // id of the stop being edited inline
+function stopEditRow(s) {
+  return `
+      <div class="crew-item stop-edit" data-stop="${esc(s.id)}">
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="input se-f" data-f="time" value="${esc(s.time || "")}" placeholder="time" style="width:90px" />
+            <input class="input se-f" data-f="title" value="${esc(s.title || "")}" placeholder="what's the stop" style="flex:1;min-width:120px" />
+          </div>
+          <input class="input se-f" data-f="place" value="${esc(s.place || "")}" placeholder="place (optional, links to maps)" />
+          <input class="input se-f" data-f="note" value="${esc(s.note || "")}" placeholder="note (optional)" />
+          <div style="display:flex;gap:8px">
+            <button class="btn primary small" data-savestop="${esc(s.id)}">Save</button>
+            <button class="btn small" data-canceledit="1">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+}
+
 function renderStops() {
   const stops = TRIP.stops || [];
   $("#stopCount").textContent = stops.length ? `${stops.length} ${stops.length === 1 ? "stop" : "stops"}` : "";
   const canEdit = TRIP.canEditPlan;
-  $("#stopList").innerHTML = stops.map((s, i) => `
+  $("#stopList").innerHTML = stops.map((s, i) => (s.id === EDIT_STOP ? stopEditRow(s) : `
       <div class="crew-item stop-row${s.done ? " stop-done" : ""}" data-stop="${esc(s.id)}" ${canEdit ? 'draggable="true"' : ""}>
         ${canEdit ? '<span class="grip" title="Drag to reorder" aria-hidden="true"></span>' : ""}
         <input type="checkbox" class="stop-check" data-check="${esc(s.id)}" ${s.done ? "checked" : ""} ${canEdit ? "" : "disabled"} title="Check off" />
@@ -145,7 +164,7 @@ function renderStops() {
           <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="down" title="Move down" ${i === stops.length - 1 ? "disabled" : ""}>↓</button>
           <button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit">✎</button>
           <button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
-      </div>`).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
+      </div>`)).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
   $("#addStopRow").style.display = canEdit ? "flex" : "none";
 }
 
@@ -268,6 +287,32 @@ async function reload() {
   }
 }
 
+// Collapsible sections — each section header toggles the panel under it,
+// remembered per trip + per user in localStorage.
+function initCollapsible() {
+  document.querySelectorAll(".sec-row").forEach((row) => {
+    if (row.dataset.collapsibleReady) return;
+    const label = row.querySelector(".sec-row__label");
+    const panel = row.nextElementSibling && row.nextElementSibling.classList.contains("panel") ? row.nextElementSibling : null;
+    if (!label || !panel) return;
+    row.dataset.collapsibleReady = "1";
+    const key = "collapse:" + slug + ":" + label.textContent.trim();
+    const caret = document.createElement("span");
+    caret.className = "sec-caret";
+    caret.textContent = "▾";
+    row.appendChild(caret);
+    row.style.cursor = "pointer";
+    const apply = (c) => { panel.style.display = c ? "none" : ""; caret.classList.toggle("closed", c); };
+    apply(localStorage.getItem(key) === "1");
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button, a, input, textarea")) return;
+      const collapsed = localStorage.getItem(key) !== "1";
+      localStorage.setItem(key, collapsed ? "1" : "0");
+      apply(collapsed);
+    });
+  });
+}
+
 (async function init() {
   try {
     ME = (await api("/api/auth/me")).user;
@@ -275,6 +320,7 @@ async function reload() {
     await reload();
     await loadChat();
     await loadDirectory();
+    initCollapsible();
   } catch (e) {
     toast(e.message, true);
     return;
@@ -446,11 +492,13 @@ async function reload() {
     } catch (err) { toast(err.message, true); await reload(); }
   });
 
-  // Edit, remove, or reorder a stop (any member)
+  // Edit (inline), remove, reorder, save, or cancel a stop (any member)
   $("#stopList").addEventListener("click", async (e) => {
     const editBtn = e.target.closest("[data-editstop]");
     const delBtn = e.target.closest("[data-delstop]");
     const moveBtn = e.target.closest("[data-move]");
+    const saveBtn = e.target.closest("[data-savestop]");
+    const cancelBtn = e.target.closest("[data-canceledit]");
     if (moveBtn) {
       const ids = (TRIP.stops || []).map((s) => s.id);
       const idx = ids.indexOf(moveBtn.dataset.move);
@@ -465,16 +513,23 @@ async function reload() {
       return;
     }
     if (editBtn) {
-      const s = (TRIP.stops || []).find((x) => x.id === editBtn.dataset.editstop);
-      if (!s) return;
-      const time = prompt("Time (e.g. 14:30) — the timeline sorts by this:", s.time || "");
-      if (time === null) return;
-      const title = prompt("What's the stop?", s.title || "");
-      if (title === null || !title.trim()) return;
+      EDIT_STOP = editBtn.dataset.editstop; // open inline editor
+      renderStops();
+      const f = $('.stop-edit .se-f[data-f="title"]');
+      if (f) f.focus();
+      return;
+    }
+    if (cancelBtn) { EDIT_STOP = null; renderStops(); return; }
+    if (saveBtn) {
+      const row = saveBtn.closest("[data-stop]");
+      const patch = {};
+      row.querySelectorAll(".se-f").forEach((inp) => { patch[inp.dataset.f] = inp.value.trim(); });
+      if (!patch.title) return toast("Give the stop a name.", true);
       try {
-        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(s.id), "PUT", { time: time.trim(), title: title.trim() });
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(saveBtn.dataset.savestop), "PUT", patch);
+        EDIT_STOP = null;
         await reload();
-        toast("Stop updated.");
+        toast("Stop updated ✓");
       } catch (err) { toast(err.message, true); }
       return;
     }
@@ -610,6 +665,7 @@ async function reload() {
   setInterval(() => {
     const ae = document.activeElement;
     if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+    if (EDIT_STOP) { loadChat().catch(() => {}); return; } // don't wipe an open editor
     reload().catch(() => {});
     loadChat().catch(() => {});
   }, 8000);

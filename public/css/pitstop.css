@@ -404,6 +404,11 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .crew-item.stop-done { opacity: .62; }
 .crew-item.stop-done .stop-title { text-decoration: line-through; }
 
+/* Collapsible section headers */
+.sec-caret { font-size: 12px; color: var(--muted-light); transition: transform .15s; margin-left: 4px; }
+.sec-caret.closed { transform: rotate(-90deg); }
+.sec-row { user-select: none; }
+
 /* Drag-to-reorder events */
 .grip { flex: none; width: 16px; cursor: grab; color: var(--muted-light); align-self: center; }
 .grip::before { content: ""; display: block; width: 10px; height: 12px; margin: 0 auto;
