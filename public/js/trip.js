@@ -2,6 +2,8 @@
 
 const $ = (s, r = document) => r.querySelector(s);
 const slug = decodeURIComponent(location.pathname.replace(/^\/trip\//, "").replace(/\/$/, ""));
+// Join code carried in a shared invite link, e.g. /trip/toronto?j=ab12cd34ef
+const JOIN_CODE = new URLSearchParams(location.search).get("j") || new URLSearchParams(location.search).get("code") || "";
 
 let ME = null;
 let TRIP = null;
@@ -168,7 +170,8 @@ async function loadDirectory() {
 }
 
 async function reload() {
-  const { trip } = await api("/api/trips/" + encodeURIComponent(slug));
+  const q = JOIN_CODE ? "?code=" + encodeURIComponent(JOIN_CODE) : "";
+  const { trip } = await api("/api/trips/" + encodeURIComponent(slug) + q);
   TRIP = trip;
   // theme: keyword via data-theme, custom #hex via inline accent
   const theme = trip.theme || "red";
@@ -233,21 +236,34 @@ async function reload() {
     }
   });
 
-  // Copy a shareable link to this trip
+  // Copy a private invite link (includes the trip's join code) to this trip
   $("#shareBtn").addEventListener("click", async () => {
-    const url = location.origin + "/trip/" + encodeURIComponent(slug);
+    if (!TRIP.joinCode) return toast("Only people on the trip can copy the invite link.", true);
+    const url = location.origin + "/trip/" + encodeURIComponent(slug) + "?j=" + encodeURIComponent(TRIP.joinCode);
     try {
       await navigator.clipboard.writeText(url);
-      toast("Link copied! Anyone you send it to can join.");
+      toast("Invite link copied! Only people you send it to can join.");
     } catch {
-      prompt("Copy this link:", url);
+      prompt("Copy this private invite link:", url);
     }
   });
 
-  // Join via shared link
+  // Duplicate this trip into a private copy you own
+  $("#dupBtn").addEventListener("click", async () => {
+    if (!confirm(`Make your own private copy of "${TRIP.title}"?`)) return;
+    try {
+      const { trip } = await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/duplicate", "POST", JOIN_CODE ? { code: JOIN_CODE } : {});
+      toast("Duplicated — opening your copy…");
+      location.href = "/trip/" + encodeURIComponent(trip.slug);
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Join via the shared invite link (uses the code from the URL)
   $("#joinBtn").addEventListener("click", async () => {
     try {
-      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/join", "POST");
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/join", "POST", JOIN_CODE ? { code: JOIN_CODE } : {});
       await reload();
       toast("You're on the trip!");
     } catch (e) {
@@ -326,14 +342,38 @@ async function reload() {
     }
   });
 
-  // Theme change (creator/admin)
+  // Theme change (creator/admin) — presets
   $("#editThemes").addEventListener("click", async (e) => {
-    const d = e.target.closest(".theme-dot");
+    const d = e.target.closest(".theme-dot[data-theme]");
     if (!d) return;
     try {
       await api("/api/trips/" + encodeURIComponent(TRIP.id), "PUT", { theme: d.dataset.theme });
       await reload();
       toast("Theme updated.");
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+  // Theme change — custom color
+  $("#editCustom").addEventListener("change", async (e) => {
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id), "PUT", { theme: e.target.value });
+      await reload();
+      toast("Theme updated.");
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
+  // Reset the private invite link (creator/admin) — revokes old links
+  $("#resetLinkBtn").addEventListener("click", async () => {
+    if (!confirm("Reset the invite link? Anyone you sent the old link to won't be able to join with it anymore.")) return;
+    try {
+      const { trip } = await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/rotate-code", "POST");
+      TRIP = trip;
+      const url = location.origin + "/trip/" + encodeURIComponent(slug) + "?j=" + encodeURIComponent(trip.joinCode);
+      try { await navigator.clipboard.writeText(url); toast("New invite link copied."); }
+      catch { prompt("New private invite link:", url); }
     } catch (e) {
       toast(e.message, true);
     }

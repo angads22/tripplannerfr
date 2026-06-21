@@ -68,7 +68,6 @@ function publicTrip(t, user) {
     mapUrl: t.mapUrl || "",
     activity: (Array.isArray(t.activity) ? t.activity : []).slice(-30).reverse(),
     proposals: (Array.isArray(t.proposals) ? t.proposals : []).filter((p) => p.status === "open").reverse(),
-    linkJoin: t.linkJoin !== false,
     hasPage: !!t.pageFile,
     creatorId: t.createdBy || null,
     creatorName: t.createdByName || "",
@@ -80,6 +79,10 @@ function publicTrip(t, user) {
     canRemoveMembers: canRemoveMembers(t, user),
     canManage: canManageTrip(t, user),
   };
+  // The crew can see the join code so they can share the invite link.
+  if (user && (user.isAdmin || isCreator(t, user) || isMember(t, user))) {
+    base.joinCode = t.joinCode || "";
+  }
   if (user && (user.isAdmin || isCreator(t, user))) {
     base.shareWithEveryone = !!t.shareWithEveryone;
     base.pageFile = t.pageFile || "";
@@ -101,13 +104,36 @@ function normalizeTripInput(body) {
       .slice(0, 8),
     pageFile: str(body.pageFile, 120),
     shareWithEveryone: !!body.shareWithEveryone,
-    linkJoin: body.linkJoin === undefined ? true : !!body.linkJoin,
   };
 }
 
-// Anyone who can view, OR anyone holding the link when link-join is on.
-function canSee(trip, user) {
-  return canView(trip, user) || trip.linkJoin !== false;
+// A short, readable, URL-safe code that gates joining a private trip.
+function genJoinCode() {
+  return crypto.randomBytes(5).toString("hex"); // 10 hex chars
+}
+
+// Does this person have the right join code for the trip? (case-insensitive)
+function codeMatches(trip, code) {
+  const given = String(code || "").trim().toLowerCase();
+  return !!given && !!trip.joinCode && given === String(trip.joinCode).trim().toLowerCase();
+}
+
+// Make sure a trip has a join code (older trips / the seed may not). Returns
+// the trip, backfilling and persisting a code if it was missing.
+function ensureJoinCode(trip) {
+  if (trip && !trip.joinCode) {
+    const updated = db.updateTrip(trip.id, { joinCode: genJoinCode() });
+    if (updated) return updated;
+  }
+  return trip;
+}
+
+// Who can open a trip page: anyone who can view it normally (admin, creator,
+// member, or a trip marked shareWithEveryone) OR someone presenting the
+// trip's join code via a shared link. Private trips are NOT visible to every
+// signed-in user — only to the crew and people with the code.
+function canSee(trip, user, code) {
+  return canView(trip, user) || codeMatches(trip, code);
 }
 
 // --- Member-facing -------------------------------------------------------
@@ -123,25 +149,85 @@ router.get("/", requireAuth, (req, res) => {
 });
 
 router.get("/:id", requireAuth, (req, res) => {
-  const trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
-  if (!trip || !canSee(trip, req.user)) {
+  let trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
+  const code = req.query.code || req.query.j;
+  if (!trip || !canSee(trip, req.user, code)) {
     return res.status(404).json({ error: "Trip not found." });
   }
+  // Backfill a join code so the crew always has a link to share.
+  if (canAddMembers(trip, req.user)) trip = ensureJoinCode(trip);
   res.json({ trip: publicTrip(trip, req.user) });
 });
 
-// Join a trip from a shared link (when link-join is on, or it's public).
+// Join a private trip via its code (from a shared link), or join a trip
+// that's been shared with everyone.
 router.post("/:id/join", requireAuth, (req, res) => {
   const trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
-  if (!trip || !canSee(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!trip) return res.status(404).json({ error: "Trip not found." });
 
   const members = Array.isArray(trip.members) ? [...trip.members] : [];
   if (members.includes(req.user.id) || isCreator(trip, req.user)) {
     return res.json({ trip: publicTrip(trip, req.user) }); // already on it
   }
+  // Must either have the trip's code, or the trip is open to everyone.
+  const code = (req.body && (req.body.code || req.body.j)) || req.query.code || req.query.j;
+  if (!trip.shareWithEveryone && !codeMatches(trip, code) && !req.user.isAdmin) {
+    return res.status(403).json({ error: "You need the trip's invite link or code to join." });
+  }
   members.push(req.user.id);
   const updated = db.updateTrip(trip.id, withActivity(trip, req.user, "joined the trip", { members }));
   res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// Rotate the join code (revokes any previously shared links). Creator/admin.
+router.post("/:id/rotate-code", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip) return res.status(404).json({ error: "Trip not found." });
+  if (!canManageTrip(trip, req.user)) {
+    return res.status(403).json({ error: "Only the trip's creator can reset the invite link." });
+  }
+  const updated = db.updateTrip(trip.id, { joinCode: genJoinCode() });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// Duplicate a trip into a private copy owned by whoever duplicates it. Handy
+// for forking a plan (e.g. the admin making the shared Toronto their own).
+// Anyone who can see the trip (crew, admin, or someone with the code) can.
+router.post("/:id/duplicate", requireAuth, (req, res) => {
+  const src = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
+  const code = (req.body && (req.body.code || req.body.j)) || req.query.code || req.query.j;
+  if (!src || !canSee(src, req.user, code)) return res.status(404).json({ error: "Trip not found." });
+
+  const now = new Date().toISOString();
+  const baseTitle = str(src.title, 110) + " (copy)";
+  let slug = slugify(baseTitle);
+  for (let n = 2; db.findTripBySlug(slug); n++) slug = slugify(baseTitle + " " + n);
+
+  const copy = db.addTrip({
+    id: crypto.randomUUID(),
+    slug,
+    title: baseTitle,
+    subtitle: src.subtitle || "",
+    date: src.date || "",
+    emoji: src.emoji || "🚗",
+    theme: cleanTheme(src.theme),
+    tags: Array.isArray(src.tags) ? [...src.tags] : [],
+    crew: Array.isArray(src.crew) ? [...src.crew] : [],
+    members: [req.user.id], // the duplicator is the owner + first member
+    stops: (Array.isArray(src.stops) ? src.stops : []).map((s) => ({ ...s, id: crypto.randomUUID() })),
+    mapUrl: src.mapUrl || "",
+    activity: [{ id: crypto.randomUUID(), ts: now, userId: req.user.id, userName: req.user.displayName, text: `duplicated from "${src.title}"` }],
+    proposals: [],
+    pageFile: "", // a copy uses the generic detail page, not the original's custom HTML
+    shareWithEveryone: false, // private to the new owner
+    joinCode: genJoinCode(),
+    allowedUsers: [],
+    createdBy: req.user.id,
+    createdByName: req.user.displayName,
+    createdAt: now,
+    updatedAt: now,
+  });
+  res.status(201).json({ trip: publicTrip(copy, req.user) });
 });
 
 // --- Create (any logged-in user) -----------------------------------------
@@ -157,6 +243,7 @@ router.post("/", requireAuth, (req, res) => {
     id: crypto.randomUUID(),
     slug,
     ...input,
+    joinCode: genJoinCode(), // private link/code others use to join
     members: [req.user.id], // creator is the first member
     crew: [],
     stops: [],

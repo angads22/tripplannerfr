@@ -50,33 +50,6 @@ $("#inviteSave").addEventListener("click", async () => {
   }
 });
 
-// --- Early-bird code -------------------------------------------------------
-async function loadEarlyBird() {
-  const eb = await api("GET", "/api/users/early-bird");
-  $("#ebEnabled").checked = !!eb.enabled;
-  $("#ebCurrent").textContent = eb.code + (eb.enabled ? "" : "  (currently off)");
-}
-$("#ebEnabled").addEventListener("change", async () => {
-  try {
-    await api("PUT", "/api/users/early-bird", { enabled: $("#ebEnabled").checked });
-    await loadEarlyBird();
-    toast($("#ebEnabled").checked ? "Early-bird sign-ups on." : "Early-bird sign-ups off.");
-  } catch (e) {
-    toast(e.message, true);
-  }
-});
-$("#ebSave").addEventListener("click", async () => {
-  const code = $("#ebInput").value.trim();
-  if (!code) return;
-  try {
-    await api("PUT", "/api/users/early-bird", { code });
-    $("#ebInput").value = "";
-    await loadEarlyBird();
-    toast("Early-bird code updated.");
-  } catch (e) {
-    toast(e.message, true);
-  }
-});
 
 // --- Users -----------------------------------------------------------------
 function userRow(u) {
@@ -297,7 +270,6 @@ $("#logoutBtn").addEventListener("click", async () => {
     if (!ME) return (location.href = "/login.html?next=/admin");
     if (!ME.isAdmin) return (location.href = "/");
     await loadInvite();
-    await loadEarlyBird();
     await loadUsers();
     await loadTrips();
     await checkUpdate();

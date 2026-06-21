@@ -8,7 +8,7 @@ const FileStore = require("session-file-store")(session);
 
 const config = require("./lib/config");
 const db = require("./lib/db");
-const { seedIfEmpty } = require("./lib/seed");
+const { seedIfEmpty, tidyExistingTrips } = require("./lib/seed");
 const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
 const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
 
@@ -49,8 +49,10 @@ app.use(
   })
 );
 
-// Seed the starter trip(s) on first run.
+// Seed the starter trip(s) on first run, then tidy any existing data so old
+// shared/ownerless trips become private under the new invite-link model.
 seedIfEmpty();
+tidyExistingTrips();
 
 // --- API -------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
@@ -72,10 +74,12 @@ const TRIPS_CONTENT_DIR = path.join(CONTENT_DIR, "trips");
 // A trip's rich page, served behind login + access check at /trip/<slug>.
 app.get("/trip/:slug", requirePage, (req, res) => {
   const trip = db.findTripBySlug(req.params.slug) || db.findTripById(req.params.slug);
-  // Members/admins can always view; anyone with the link can view when the
-  // trip allows link-join (default), so they can sign in and join.
-  const linkJoinable = trip && trip.linkJoin !== false;
-  if (!trip || (!canView(trip, req.user) && !linkJoinable)) {
+  // Members/admins/public trips can always view; otherwise the visitor needs
+  // the trip's join code (carried in the shared link as ?j=...) to see it and
+  // join. Private trips are NOT visible to other signed-in users.
+  const code = req.query.code || req.query.j;
+  const hasCode = !!trip && !!code && !!trip.joinCode && String(code).trim().toLowerCase() === String(trip.joinCode).trim().toLowerCase();
+  if (!trip || (!canView(trip, req.user) && !hasCode)) {
     return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
   // Trips without their own rich HTML page get the generic Pitstop detail
