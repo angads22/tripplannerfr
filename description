@@ -1,0 +1,676 @@
+"use strict";
+
+/* ===========================================================================
+   Trip Planner front-end. Talks to /api/trips and /api/auth.
+   =========================================================================== */
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const uid = () =>
+  (crypto.randomUUID ? crypto.randomUUID() : "id" + Math.random().toString(36).slice(2));
+
+const COLORS = ["sunset", "ocean", "forest", "berry", "night", "sand", "grape", "citrus"];
+const EMOJIS = ["✈️", "🏝️", "🏔️", "🏕️", "🗽", "🚗", "🚆", "🛳️", "🎒", "🌋", "🏖️", "🗺️", "🎡", "🏛️", "🌲", "🌅"];
+
+let CURRENT_USER = null;
+let TRIPS = [];
+let USERS = [];
+
+// --- API helpers -----------------------------------------------------------
+
+async function apiGet(path) {
+  const res = await fetch(path);
+  if (res.status === 401) return redirectToLogin();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+async function apiSend(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 401) return redirectToLogin();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+function redirectToLogin() {
+  location.href = "/login.html";
+  throw new Error("redirecting");
+}
+
+// --- Small utilities -------------------------------------------------------
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function dateRange(a, b) {
+  if (a && b) return `${fmtDate(a)} → ${fmtDate(b)}`;
+  if (a) return fmtDate(a);
+  return "Dates TBD";
+}
+
+function countdown(startDate) {
+  if (!startDate) return "";
+  const start = new Date(startDate + "T00:00:00");
+  if (isNaN(start)) return "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((start - today) / 86400000);
+  if (days > 1) return `in ${days} days`;
+  if (days === 1) return "tomorrow!";
+  if (days === 0) return "today! 🎉";
+  return "past trip";
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// --- Boot ------------------------------------------------------------------
+
+async function boot() {
+  const { user } = await apiGet("/api/auth/me");
+  if (!user) return redirectToLogin();
+  CURRENT_USER = user;
+
+  $("#whoName").textContent = user.displayName;
+  $("#avatar").textContent = (user.displayName || "?").trim().charAt(0).toUpperCase();
+  const hour = new Date().getHours();
+  const part = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
+  $("#greeting").textContent = `Good ${part.toLowerCase()}, ${user.displayName.split(" ")[0]} ✨`;
+
+  try {
+    const { users } = await apiGet("/api/users");
+    USERS = users || [];
+  } catch {
+    USERS = [];
+  }
+
+  await loadTrips();
+}
+
+function userName(uid_) {
+  const u = USERS.find((x) => x.id === uid_);
+  return u ? u.displayName : null;
+}
+
+async function loadTrips() {
+  const { trips } = await apiGet("/api/trips");
+  TRIPS = trips;
+  renderBoard($("#search").value);
+}
+
+// Is this trip in the past? Use the end date (or start date) vs today.
+function isPast(t) {
+  const ref = t.endDate || t.startDate;
+  if (!ref) return false; // no dates => treat as an upcoming "someday" plan
+  const d = new Date(ref + "T23:59:59");
+  return !isNaN(d) && d < new Date();
+}
+
+// --- Grid ------------------------------------------------------------------
+
+function cardHtml(t) {
+  const cd = countdown(t.startDate);
+  const dayCount = (t.days || []).length;
+  const shared = (t.allowedUsers || [])
+    .filter((uid_) => uid_ !== t.createdBy)
+    .map(userName)
+    .filter(Boolean);
+  const sharedLabel = shared.length ? `👥 with ${shared.slice(0, 3).join(", ")}${shared.length > 3 ? "…" : ""}` : "";
+  return `
+    <article class="trip-card" data-id="${t.id}">
+      <div class="trip-cover cover-${esc(t.color || "sunset")}">
+        <span class="emoji">${esc(t.emoji || "✈️")}</span>
+        ${cd ? `<span class="countdown">${esc(cd)}</span>` : ""}
+      </div>
+      <div class="trip-body">
+        <h3>${esc(t.title)}</h3>
+        <div class="trip-meta">
+          ${t.destination ? `<span>📍 ${esc(t.destination)}</span>` : ""}
+          <span>📅 ${esc(dateRange(t.startDate, t.endDate))}</span>
+        </div>
+        ${t.summary ? `<p class="snippet">${esc(t.summary)}</p>` : ""}
+        <div class="trip-foot">
+          ${dayCount ? `<span>🗓️ ${dayCount}-day plan</span>` : `<span>Tap to add a plan</span>`}
+          ${sharedLabel ? `<span>${esc(sharedLabel)}</span>` : ""}
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderBoard(filter = "") {
+  const wrap = $("#boardWrap");
+  const empty = $("#emptyState");
+  const q = (filter || "").trim().toLowerCase();
+
+  if (TRIPS.length === 0) {
+    wrap.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  const match = (t) =>
+    !q ||
+    (t.title || "").toLowerCase().includes(q) ||
+    (t.destination || "").toLowerCase().includes(q);
+
+  const visible = TRIPS.filter(match);
+  const upcoming = visible.filter((t) => !isPast(t));
+  // Most recent past trips first.
+  const past = visible
+    .filter(isPast)
+    .sort((a, b) => (b.endDate || b.startDate || "").localeCompare(a.endDate || a.startDate || ""));
+
+  const section = (title, emoji, list) =>
+    list.length
+      ? `<section class="board-section">
+           <h2 class="section-heading">${emoji} ${title} <span class="count">${list.length}</span></h2>
+           <div class="trip-grid">${list.map(cardHtml).join("")}</div>
+         </section>`
+      : "";
+
+  wrap.innerHTML =
+    section("Upcoming", "🌅", upcoming) + section("Past adventures", "📸", past) ||
+    `<div class="empty"><div class="big">🔍</div><h3>No matches</h3><p>Nothing matches “${esc(filter)}”.</p></div>`;
+
+  $$(".trip-card", wrap).forEach((card) =>
+    card.addEventListener("click", () => openDetail(card.dataset.id))
+  );
+}
+
+$("#search").addEventListener("input", (e) => renderBoard(e.target.value));
+
+// --- Sheet plumbing --------------------------------------------------------
+
+const scrim = $("#scrim");
+const sheet = $("#sheet");
+
+function openSheet() {
+  scrim.classList.add("open");
+  sheet.classList.add("open");
+}
+function closeSheet() {
+  scrim.classList.remove("open");
+  sheet.classList.remove("open");
+}
+scrim.addEventListener("click", closeSheet);
+$("#sheetClose").addEventListener("click", closeSheet);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeSheet();
+});
+
+// --- Detail view -----------------------------------------------------------
+
+function openDetail(tripId) {
+  const t = TRIPS.find((x) => x.id === tripId);
+  if (!t) return;
+
+  $("#sheetTitle").textContent = t.title;
+
+  const daysHtml = (t.days || [])
+    .map((d, i) => {
+      const acts = (d.activities || [])
+        .map(
+          (a) => `
+          <div class="activity">
+            <div class="time">${esc(a.time || "—")}</div>
+            <div class="what"><strong>${esc(a.title)}</strong>${a.note ? `<small>${esc(a.note)}</small>` : ""}</div>
+          </div>`
+        )
+        .join("");
+      return `
+      <div class="day">
+        <div class="day-head">
+          <strong>${esc(d.title || "Day " + (i + 1))}</strong>
+          <span>${esc(fmtDate(d.date))}</span>
+        </div>
+        ${acts || `<small style="color:var(--muted)">No activities yet.</small>`}
+      </div>`;
+    })
+    .join("");
+
+  const packingHtml = (t.packing || [])
+    .map(
+      (p) => `
+      <label class="${p.done ? "done" : ""}" data-pid="${p.id}">
+        <input type="checkbox" ${p.done ? "checked" : ""} />
+        <span>${esc(p.label)}</span>
+      </label>`
+    )
+    .join("");
+
+  const linksHtml = (t.links || [])
+    .filter((l) => l.url)
+    .map(
+      (l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">🔗 ${esc(l.label || l.url)}</a>`
+    )
+    .join("");
+
+  $("#sheetBody").innerHTML = `
+    <div class="detail-hero cover-${esc(t.color || "sunset")}">
+      <div style="font-size:42px">${esc(t.emoji || "✈️")}</div>
+      <h2>${esc(t.title)}</h2>
+      <div class="pills">
+        ${t.destination ? `<span class="pill">📍 ${esc(t.destination)}</span>` : ""}
+        <span class="pill">📅 ${esc(dateRange(t.startDate, t.endDate))}</span>
+        ${t.budget ? `<span class="pill">💰 ${esc(t.budget)}</span>` : ""}
+        ${t.companions ? `<span class="pill">👥 ${esc(t.companions)}</span>` : ""}
+        ${countdown(t.startDate) ? `<span class="pill">⏳ ${esc(countdown(t.startDate))}</span>` : ""}
+      </div>
+    </div>
+
+    ${t.summary ? `<div class="section"><h3>Overview</h3><div class="notes">${esc(t.summary)}</div></div>` : ""}
+
+    ${
+      (t.days || []).length
+        ? `<div class="section"><h3>Itinerary</h3>${daysHtml}</div>`
+        : ""
+    }
+
+    ${
+      (t.packing || []).length
+        ? `<div class="section"><h3>Packing list</h3><div class="checklist" id="packList">${packingHtml}</div></div>`
+        : ""
+    }
+
+    ${linksHtml ? `<div class="section"><h3>Links & bookings</h3><div class="linklist">${linksHtml}</div></div>` : ""}
+
+    ${t.notes ? `<div class="section"><h3>Notes</h3><div class="notes">${esc(t.notes)}</div></div>` : ""}
+
+    ${(() => {
+      const shared = (t.allowedUsers || []).map(userName).filter(Boolean);
+      return shared.length
+        ? `<div class="section"><h3>Who can see this</h3><div class="linklist">${shared
+            .map((n) => `<span class="pill" style="background:var(--card);border:1px solid var(--stroke)">👤 ${esc(n)}</span>`)
+            .join(" ")}</div></div>`
+        : "";
+    })()}
+
+    <p style="color:var(--muted);font-size:13px">Added by ${esc(t.createdByName || "someone")}.</p>
+  `;
+
+  // Live packing-list checkboxes (saved immediately).
+  $$("#packList label").forEach((label) => {
+    const cb = $("input", label);
+    cb.addEventListener("change", async () => {
+      const item = t.packing.find((p) => p.id === label.dataset.pid);
+      if (item) item.done = cb.checked;
+      label.classList.toggle("done", cb.checked);
+      try {
+        await apiSend("PUT", `/api/trips/${t.id}`, t);
+      } catch (e) {
+        toast("Couldn't save: " + e.message);
+      }
+    });
+  });
+
+  $("#sheetFoot").innerHTML = `
+    <button class="btn danger" id="deleteTrip">🗑 Delete</button>
+    <button class="btn primary" id="editTrip">✏️ Edit</button>
+  `;
+  $("#editTrip").addEventListener("click", () => openEditor(t));
+  $("#deleteTrip").addEventListener("click", async () => {
+    if (!confirm(`Delete "${t.title}"? This can't be undone.`)) return;
+    await apiSend("DELETE", `/api/trips/${t.id}`);
+    toast("Trip deleted");
+    closeSheet();
+    await loadTrips();
+  });
+
+  openSheet();
+}
+
+// --- Editor ----------------------------------------------------------------
+
+function openEditor(trip) {
+  const isNew = !trip;
+  const t = trip
+    ? JSON.parse(JSON.stringify(trip))
+    : {
+        title: "",
+        destination: "",
+        startDate: "",
+        endDate: "",
+        emoji: "✈️",
+        color: "sunset",
+        summary: "",
+        budget: "",
+        companions: "",
+        notes: "",
+        days: [],
+        packing: [],
+        links: [],
+        allowedUsers: [CURRENT_USER.id],
+      };
+
+  $("#sheetTitle").textContent = isNew ? "New trip" : "Edit trip";
+
+  $("#sheetBody").innerHTML = `
+    <div class="row">
+      <div class="field">
+        <label>Trip name</label>
+        <input id="f-title" value="${esc(t.title)}" placeholder="Summer in Japan" />
+      </div>
+      <div class="field">
+        <label>Destination</label>
+        <input id="f-destination" value="${esc(t.destination)}" placeholder="Tokyo & Kyoto" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Start date</label>
+        <input id="f-start" type="date" value="${esc(t.startDate)}" />
+      </div>
+      <div class="field">
+        <label>End date</label>
+        <input id="f-end" type="date" value="${esc(t.endDate)}" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Budget</label>
+        <input id="f-budget" value="${esc(t.budget)}" placeholder="$1,500 pp" />
+      </div>
+      <div class="field">
+        <label>Who's coming</label>
+        <input id="f-companions" value="${esc(t.companions)}" placeholder="Me, Sam, Alex" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cover emoji</label>
+      <div class="swatches" id="emojiPick">
+        ${EMOJIS.map(
+          (e) => `<div class="swatch ${t.emoji === e ? "active" : ""}" data-emoji="${e}"
+                    style="display:grid;place-items:center;font-size:18px;background:var(--card)">${e}</div>`
+        ).join("")}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cover colour</label>
+      <div class="swatches" id="colorPick">
+        ${COLORS.map(
+          (c) => `<div class="swatch cover-${c} ${t.color === c ? "active" : ""}" data-color="${c}"></div>`
+        ).join("")}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Who can see this trip</label>
+      <div id="sharePick" class="share-pick"></div>
+      <small style="color:var(--muted)">Only people you tick (and you) can open this trip.</small>
+    </div>
+
+    <div class="field">
+      <label>Overview / vibe</label>
+      <textarea id="f-summary" rows="3" placeholder="A two-week loop through temples, ramen, and neon...">${esc(t.summary)}</textarea>
+    </div>
+
+    <div class="subhead"><h4>Itinerary</h4><button class="btn ghost small" id="addDay">＋ Add day</button></div>
+    <div id="daysWrap"></div>
+
+    <div class="subhead"><h4>Packing list</h4><button class="btn ghost small" id="addPack">＋ Add item</button></div>
+    <div id="packWrap"></div>
+
+    <div class="subhead"><h4>Links & bookings</h4><button class="btn ghost small" id="addLink">＋ Add link</button></div>
+    <div id="linkWrap"></div>
+
+    <div class="field" style="margin-top:18px">
+      <label>Free-form notes</label>
+      <textarea id="f-notes" rows="4" placeholder="Reservation numbers, ideas, reminders...">${esc(t.notes)}</textarea>
+    </div>
+  `;
+
+  // emoji + color pickers
+  $$("#emojiPick .swatch").forEach((sw) =>
+    sw.addEventListener("click", () => {
+      $$("#emojiPick .swatch").forEach((s) => s.classList.remove("active"));
+      sw.classList.add("active");
+      t.emoji = sw.dataset.emoji;
+    })
+  );
+  $$("#colorPick .swatch").forEach((sw) =>
+    sw.addEventListener("click", () => {
+      $$("#colorPick .swatch").forEach((s) => s.classList.remove("active"));
+      sw.classList.add("active");
+      t.color = sw.dataset.color;
+    })
+  );
+
+  // ---- who can see this trip ----
+  const creatorId = isNew ? CURRENT_USER.id : trip.createdBy;
+  if (!Array.isArray(t.allowedUsers)) t.allowedUsers = [];
+  if (!t.allowedUsers.includes(creatorId)) t.allowedUsers.push(creatorId);
+  const sharePick = $("#sharePick");
+  sharePick.innerHTML = USERS.map((u) => {
+    const isCreator = u.id === creatorId;
+    const checked = t.allowedUsers.includes(u.id) || isCreator;
+    return `<label class="share-row ${checked ? "on" : ""}" data-uid="${u.id}">
+      <input type="checkbox" ${checked ? "checked" : ""} ${isCreator ? "disabled" : ""} />
+      <span>${esc(u.displayName)}${isCreator ? " (you)" : ""} <small style="color:var(--muted)">@${esc(u.username)}</small></span>
+    </label>`;
+  }).join("");
+  $$(".share-row", sharePick).forEach((row) => {
+    const cb = $("input", row);
+    cb.addEventListener("change", () => {
+      const uid_ = row.dataset.uid;
+      row.classList.toggle("on", cb.checked);
+      if (cb.checked) {
+        if (!t.allowedUsers.includes(uid_)) t.allowedUsers.push(uid_);
+      } else {
+        t.allowedUsers = t.allowedUsers.filter((x) => x !== uid_);
+      }
+    });
+  });
+
+  // ---- dynamic itinerary days ----
+  const daysWrap = $("#daysWrap");
+  function renderDays() {
+    daysWrap.innerHTML = t.days
+      .map(
+        (d, i) => `
+      <div class="day-editor" data-did="${d.id}">
+        <div class="row">
+          <div class="field" style="margin-bottom:8px">
+            <label>Day title</label>
+            <input class="d-title" value="${esc(d.title)}" placeholder="Day ${i + 1}" />
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <label>Date</label>
+            <input class="d-date" type="date" value="${esc(d.date)}" />
+          </div>
+        </div>
+        <div class="acts"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn ghost small add-act">＋ Activity</button>
+          <button class="btn ghost small del-day" style="color:var(--danger)">Remove day</button>
+        </div>
+      </div>`
+      )
+      .join("");
+
+    $$(".day-editor", daysWrap).forEach((dEl) => {
+      const d = t.days.find((x) => x.id === dEl.dataset.did);
+      const acts = $(".acts", dEl);
+      acts.innerHTML = (d.activities || [])
+        .map(
+          (a) => `
+          <div class="editable-row" data-aid="${a.id}">
+            <input class="a-time" style="max-width:80px" value="${esc(a.time)}" placeholder="9:00" />
+            <input class="a-title" value="${esc(a.title)}" placeholder="Visit the fish market" />
+            <button class="icon-btn del-act">✕</button>
+          </div>`
+        )
+        .join("");
+
+      $(".add-act", dEl).addEventListener("click", () => {
+        d.activities = d.activities || [];
+        d.activities.push({ id: uid(), time: "", title: "", note: "" });
+        renderDays();
+      });
+      $(".del-day", dEl).addEventListener("click", () => {
+        t.days = t.days.filter((x) => x.id !== d.id);
+        renderDays();
+      });
+      // keep model in sync
+      $(".d-title", dEl).addEventListener("input", (e) => (d.title = e.target.value));
+      $(".d-date", dEl).addEventListener("input", (e) => (d.date = e.target.value));
+      $$(".editable-row", acts).forEach((row) => {
+        const a = d.activities.find((x) => x.id === row.dataset.aid);
+        $(".a-time", row).addEventListener("input", (e) => (a.time = e.target.value));
+        $(".a-title", row).addEventListener("input", (e) => (a.title = e.target.value));
+        $(".del-act", row).addEventListener("click", () => {
+          d.activities = d.activities.filter((x) => x.id !== a.id);
+          renderDays();
+        });
+      });
+    });
+  }
+  $("#addDay").addEventListener("click", () => {
+    t.days.push({ id: uid(), title: "", date: "", activities: [] });
+    renderDays();
+  });
+  renderDays();
+
+  // ---- packing ----
+  const packWrap = $("#packWrap");
+  function renderPack() {
+    packWrap.innerHTML = t.packing
+      .map(
+        (p) => `
+        <div class="editable-row" data-pid="${p.id}">
+          <input class="p-label" value="${esc(p.label)}" placeholder="Passport" />
+          <button class="icon-btn del-pack">✕</button>
+        </div>`
+      )
+      .join("");
+    $$(".editable-row", packWrap).forEach((row) => {
+      const p = t.packing.find((x) => x.id === row.dataset.pid);
+      $(".p-label", row).addEventListener("input", (e) => (p.label = e.target.value));
+      $(".del-pack", row).addEventListener("click", () => {
+        t.packing = t.packing.filter((x) => x.id !== p.id);
+        renderPack();
+      });
+    });
+  }
+  $("#addPack").addEventListener("click", () => {
+    t.packing.push({ id: uid(), label: "", done: false });
+    renderPack();
+  });
+  renderPack();
+
+  // ---- links ----
+  const linkWrap = $("#linkWrap");
+  function renderLinks() {
+    linkWrap.innerHTML = t.links
+      .map(
+        (l) => `
+        <div class="editable-row" data-lid="${l.id}">
+          <input class="l-label" style="max-width:150px" value="${esc(l.label)}" placeholder="Hotel" />
+          <input class="l-url" value="${esc(l.url)}" placeholder="https://..." />
+          <button class="icon-btn del-link">✕</button>
+        </div>`
+      )
+      .join("");
+    $$(".editable-row", linkWrap).forEach((row) => {
+      const l = t.links.find((x) => x.id === row.dataset.lid);
+      $(".l-label", row).addEventListener("input", (e) => (l.label = e.target.value));
+      $(".l-url", row).addEventListener("input", (e) => (l.url = e.target.value));
+      $(".del-link", row).addEventListener("click", () => {
+        t.links = t.links.filter((x) => x.id !== l.id);
+        renderLinks();
+      });
+    });
+  }
+  $("#addLink").addEventListener("click", () => {
+    t.links.push({ id: uid(), label: "", url: "" });
+    renderLinks();
+  });
+  renderLinks();
+
+  // ---- save / cancel ----
+  $("#sheetFoot").innerHTML = `
+    <button class="btn ghost" id="cancelEdit">Cancel</button>
+    <button class="btn primary" id="saveTrip">${isNew ? "Create trip" : "Save changes"}</button>
+  `;
+  $("#cancelEdit").addEventListener("click", () => {
+    if (isNew) closeSheet();
+    else openDetail(trip.id);
+  });
+  $("#saveTrip").addEventListener("click", async () => {
+    t.title = $("#f-title").value.trim();
+    t.destination = $("#f-destination").value.trim();
+    t.startDate = $("#f-start").value;
+    t.endDate = $("#f-end").value;
+    t.budget = $("#f-budget").value.trim();
+    t.companions = $("#f-companions").value.trim();
+    t.summary = $("#f-summary").value.trim();
+    t.notes = $("#f-notes").value.trim();
+
+    if (!t.title) {
+      toast("Give your trip a name first ✏️");
+      return;
+    }
+    // drop empty rows
+    t.packing = t.packing.filter((p) => p.label.trim());
+    t.links = t.links.filter((l) => l.url.trim() || l.label.trim());
+    t.days.forEach((d) => (d.activities = (d.activities || []).filter((a) => a.title.trim())));
+
+    try {
+      let saved;
+      if (isNew) {
+        ({ trip: saved } = await apiSend("POST", "/api/trips", t));
+        toast("Trip created 🎉");
+      } else {
+        ({ trip: saved } = await apiSend("PUT", `/api/trips/${trip.id}`, t));
+        toast("Saved ✅");
+      }
+      await loadTrips();
+      openDetail(saved.id);
+    } catch (e) {
+      toast("Couldn't save: " + e.message);
+    }
+  });
+
+  openSheet();
+}
+
+// --- Header actions --------------------------------------------------------
+
+$("#newTripBtn").addEventListener("click", () => openEditor(null));
+$("#logoutBtn").addEventListener("click", async () => {
+  await apiSend("POST", "/api/auth/logout");
+  redirectToLogin();
+});
+
+// --- Go --------------------------------------------------------------------
+
+boot().catch((err) => {
+  if (err.message !== "redirecting") {
+    console.error(err);
+    toast("Something went wrong loading the app.");
+  }
+});
