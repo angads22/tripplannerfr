@@ -3,69 +3,87 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign in · Trip Planner</title>
+  <title>Sign in · Pitstop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/pitstop.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
 <body>
-  <div class="auth-wrap">
-    <div class="auth-card reveal">
-      <div class="brand">
-        <span class="brand__logo">🧳</span>
-        <span><span class="brand__name">Trip Planner</span><span class="brand__sub">plans, together</span></span>
-      </div>
-      <p class="auth-tag">Plans for you and your people.</p>
+  <div class="bg">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  </div>
 
-      <div id="setupBanner" class="setup-banner" style="display:none">
-        👋 First time here! The account you create now becomes the
-        <strong>admin</strong> — that's you. Friends join afterwards with the shared invite code.
-      </div>
+  <div class="stage" style="display:flex;align-items:center;justify-content:center;padding:28px 16px">
+    <div style="width:100%;max-width:420px;animation:rise .5s both">
 
-      <div class="tabs">
-        <button id="tabLogin" class="active" type="button">Sign in</button>
-        <button id="tabRegister" type="button">Create account</button>
+      <div class="logo" style="justify-content:center;margin-bottom:24px">
+        <div class="logo__mark">🚗</div>
+        <div>
+          <div class="logo__name">Pitstop</div>
+          <div class="logo__tag">plans, shotgun not included</div>
+        </div>
       </div>
 
-      <div id="error" class="error-msg"></div>
+      <div class="card-dark" style="padding:28px 24px">
+        <div class="kicker" id="kicker" style="margin-bottom:6px">welcome back, driver</div>
+        <div class="display" id="heading" style="font-size:38px">Keys, please.</div>
 
-      <!-- Sign in -->
-      <form id="loginForm">
-        <div class="field">
-          <label for="li-user">Username</label>
-          <input class="input" id="li-user" autocomplete="username" />
+        <div class="switch" style="margin-top:22px">
+          <button id="tabLogin" class="active" type="button">Log in</button>
+          <button id="tabRegister" type="button">Sign up</button>
         </div>
-        <div class="field">
-          <label for="li-pass">Password</label>
-          <input class="input" id="li-pass" type="password" autocomplete="current-password" />
-        </div>
-        <button class="btn primary" type="submit">Sign in</button>
-      </form>
 
-      <!-- Create account -->
-      <form id="registerForm" style="display:none">
-        <div class="field">
-          <label for="re-name">Your name (everyone sees this)</label>
-          <input class="input" id="re-name" autocomplete="name" placeholder="e.g. Noah" />
+        <div id="setupBanner" class="kicker" style="display:none;color:var(--amber);margin-top:18px;font-size:13px;line-height:1.5">
+          first one in becomes the admin. that's you.
         </div>
-        <div class="field">
-          <label for="re-user">Username (to log in with)</label>
-          <input class="input" id="re-user" autocomplete="username" />
-        </div>
-        <div class="field">
-          <label for="re-pass">Password (6+ characters)</label>
-          <input class="input" id="re-pass" type="password" autocomplete="new-password" />
-        </div>
-        <div class="field" id="inviteField">
-          <label for="re-code">Invite code (ask the trip's owner)</label>
-          <input class="input" id="re-code" autocomplete="off" />
-        </div>
-        <button class="btn primary" type="submit">Create account</button>
-      </form>
 
-      <p class="hint" id="hint"></p>
+        <!-- Log in -->
+        <form id="loginForm" style="margin-top:22px;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <div class="flabel" style="margin-bottom:6px">Username</div>
+            <input class="in-dark" id="li-user" autocomplete="username" placeholder="your handle" />
+          </div>
+          <div>
+            <div class="flabel" style="margin-bottom:6px">Password</div>
+            <div style="position:relative">
+              <input class="in-dark" id="li-pass" type="password" autocomplete="current-password" placeholder="••••••••" style="padding-right:46px" />
+              <button type="button" class="pw-toggle" data-for="li-pass" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:8px">👁️</button>
+            </div>
+          </div>
+          <button class="btn-accent" type="submit" id="loginSubmit" style="margin-top:4px" disabled>Hit the road →</button>
+        </form>
+
+        <!-- Sign up -->
+        <form id="registerForm" style="margin-top:22px;display:none;flex-direction:column;gap:14px">
+          <div>
+            <div class="flabel" style="margin-bottom:6px">Your name</div>
+            <input class="in-dark" id="re-name" autocomplete="name" placeholder="what should the crew call you?" />
+          </div>
+          <div>
+            <div class="flabel" style="margin-bottom:6px">Username</div>
+            <input class="in-dark" id="re-user" autocomplete="username" placeholder="pick a handle to log in with" />
+          </div>
+          <div>
+            <div class="flabel" style="margin-bottom:6px">Password</div>
+            <div style="position:relative">
+              <input class="in-dark" id="re-pass" type="password" autocomplete="new-password" placeholder="6+ characters" style="padding-right:46px" />
+              <button type="button" class="pw-toggle" data-for="re-pass" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:8px">👁️</button>
+            </div>
+          </div>
+          <div id="inviteField">
+            <div class="flabel" style="margin-bottom:6px">Invite code</div>
+            <input class="in-dark" id="re-code" autocomplete="off" placeholder="ask the trip's owner" />
+          </div>
+          <button class="btn-accent" type="submit" id="registerSubmit" style="margin-top:4px" disabled>Create account →</button>
+        </form>
+
+        <div id="error" class="err-msg"></div>
+      </div>
+
+      <div class="foot-note" id="footerNote">New here? Tap sign up, it takes ten seconds.</div>
+
     </div>
   </div>
 

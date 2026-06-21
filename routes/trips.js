@@ -25,6 +25,7 @@ function publicTrip(t, user) {
     date: t.date || "",
     emoji: t.emoji || "✈️",
     tags: t.tags || [],
+    crew: t.crew || [],
     hasPage: !!t.pageFile,
   };
   if (user && user.isAdmin) {
@@ -45,6 +46,10 @@ function normalizeTripInput(body) {
       .map((x) => str(x, 40))
       .filter(Boolean)
       .slice(0, 8),
+    crew: (Array.isArray(body.crew) ? body.crew : [])
+      .map((x) => str(x, 40))
+      .filter(Boolean)
+      .slice(0, 20),
     pageFile: str(body.pageFile, 120),
     shareWithEveryone: !!body.shareWithEveryone,
     allowedUsers: [...new Set((Array.isArray(body.allowedUsers) ? body.allowedUsers : []).map((x) => str(x, 60)).filter(Boolean))],
