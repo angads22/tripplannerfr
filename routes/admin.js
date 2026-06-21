@@ -74,9 +74,19 @@ function download(url, dest, redirects = 0) {
           resp.resume();
           return reject(new Error("HTTP " + resp.statusCode));
         }
+        const expected = parseInt(resp.headers["content-length"] || "0", 10);
         const file = fs.createWriteStream(dest);
+        let written = 0;
+        resp.on("data", (c) => (written += c.length));
         resp.pipe(file);
-        file.on("finish", () => file.close(() => resolve()));
+        file.on("finish", () => file.close(() => {
+          // Guard against a truncated download producing a broken exe.
+          if (expected && written < expected) {
+            return reject(new Error(`Incomplete download (${written}/${expected} bytes)`));
+          }
+          if (written < 1_000_000) return reject(new Error("Downloaded file is too small — aborting."));
+          resolve(written);
+        }));
         file.on("error", reject);
       })
       .on("error", reject);
@@ -152,17 +162,38 @@ router.post("/apply-update", async (req, res) => {
     const newPath = path.join(EXE_DIR, "TripPlanner-new.exe");
     const batPath = path.join(EXE_DIR, "apply-update.bat");
 
-    await download(latest.exeUrl, newPath);
+    console.log(`\n  ⏬ Update: downloading build ${latest.build} …`);
+    const bytes = await download(latest.exeUrl, newPath);
+    console.log(`  ⏬ Update: downloaded ${(bytes / 1048576).toFixed(1)} MB → swapping & relaunching`);
 
+    // Self-healing updater: back up the current exe, swap in the new one, start
+    // it, and if it doesn't come up in a few seconds, roll back to the backup so
+    // the site never gets stuck on a bad build (the Bad Gateway problem). Every
+    // step is logged to update-log.txt next to the exe.
     const bat = [
       "@echo off",
       'cd /d "%~dp0"',
-      "echo Updating Trip Planner, please wait...",
-      ":wait",
-      `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul && (timeout /t 1 /nobreak >nul & goto wait)`,
-      `move /y "TripPlanner-new.exe" "${exeName}" >nul`,
-      `start "" "${exeName}"`,
+      "set LOG=update-log.txt",
+      `echo [%date% %time%] update to build ${latest.build} starting > "%LOG%"`,
+      ":waitexit",
+      `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul && (timeout /t 1 /nobreak >nul & goto waitexit)`,
+      'echo [%time%] old process exited >> "%LOG%"',
       "timeout /t 2 /nobreak >nul",
+      `if not exist "TripPlanner-new.exe" ( echo [%time%] ERROR: no new exe, aborting >> "%LOG%" & start "" "${exeName}" & goto done )`,
+      `if exist "${exeName}" copy /y "${exeName}" "TripPlanner-old.exe" >nul`,
+      `move /y "TripPlanner-new.exe" "${exeName}" >nul`,
+      'echo [%time%] swapped in new build >> "%LOG%"',
+      `start "" "${exeName}"`,
+      "timeout /t 7 /nobreak >nul",
+      `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul`,
+      "if errorlevel 1 (",
+      '  echo [%time%] new build did NOT start - rolling back >> "%LOG%"',
+      `  if exist "TripPlanner-old.exe" ( move /y "TripPlanner-old.exe" "${exeName}" >nul & start "" "${exeName}" )`,
+      ") else (",
+      '  echo [%time%] new build is running >> "%LOG%"',
+      '  del "TripPlanner-old.exe" >nul 2>&1',
+      ")",
+      ":done",
       'start "" http://localhost:4040',
       'del "%~f0"',
     ].join("\r\n");
@@ -171,10 +202,12 @@ router.post("/apply-update", async (req, res) => {
     const child = spawn("cmd.exe", ["/c", batPath], { detached: true, stdio: "ignore", cwd: EXE_DIR });
     child.unref();
 
-    res.json({ ok: true, message: `Updating to build ${latest.build}. The app will restart on its own.` });
+    res.json({ ok: true, build: latest.build, message: `Updating to build ${latest.build}. The app restarts itself — if the new build won't boot, it rolls back automatically.` });
     setTimeout(() => process.exit(0), 600);
   } catch (err) {
-    res.status(500).json({ error: "Update failed: " + err.message });
+    // Download/verify failed BEFORE we touched anything — the site stays up.
+    console.log("  ✖ Update failed (site left running): " + err.message);
+    res.status(500).json({ error: "Update failed (site left running): " + err.message });
   }
 });
 
