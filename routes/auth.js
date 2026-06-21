@@ -4,7 +4,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const db = require("../lib/db");
-const { inviteCode } = require("../lib/auth-middleware");
+const { codeAccepted } = require("../lib/auth-middleware");
 
 const router = express.Router();
 
@@ -41,7 +41,7 @@ router.post("/register", async (req, res) => {
   // The very first account becomes the admin (that's you) and skips the
   // invite check. Everyone after needs the shared invite code.
   const isFirstUser = db.userCount() === 0;
-  if (!isFirstUser && code !== inviteCode()) {
+  if (!isFirstUser && !codeAccepted(code)) {
     return res.status(403).json({ error: "Wrong invite code — ask the trip's owner for it." });
   }
 

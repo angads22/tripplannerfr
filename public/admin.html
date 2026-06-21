@@ -45,6 +45,32 @@
       </div>
     </div>
 
+    <!-- Early-bird code -->
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Early-bird code</h2><span class="muted">a second code that also lets people in</span></div>
+      <div class="panel__body">
+        <div class="row">
+          <div class="row__main">
+            <div class="row__title">Allow early-bird sign-ups</div>
+            <div class="row__meta">When on, anyone with the early-bird code can make an account. Turn it off to lock sign-ups to the main invite code.</div>
+          </div>
+          <div class="row__actions">
+            <label class="toggle"><input type="checkbox" id="ebEnabled" /><span class="track"></span>On</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row__main">
+            <div class="row__title">The code</div>
+            <div class="row__meta mono" id="ebCurrent">…</div>
+          </div>
+          <div class="row__actions">
+            <input class="input" id="ebInput" style="width:170px" placeholder="new early-bird code" />
+            <button class="btn primary small" id="ebSave">Update</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- People -->
     <div class="sec-label">People</div>
     <div class="panel reveal">
@@ -67,7 +93,7 @@
     <!-- Trips -->
     <div class="sec-label">Trips &amp; access</div>
     <div class="panel reveal">
-      <div class="panel__head"><h2>Trips</h2><span class="muted">control who can see each one</span></div>
+      <div class="panel__head"><h2>Trips</h2><span class="muted">every trip · creator · who's on it</span></div>
       <div class="panel__body" id="tripList"></div>
     </div>
     <div class="panel reveal">

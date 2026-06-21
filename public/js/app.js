@@ -10,8 +10,12 @@ function toast(msg, isErr) {
   setTimeout(() => t.classList.remove("show"), 2600);
 }
 
-async function api(path) {
-  const res = await fetch(path);
+async function api(path, method, body) {
+  const res = await fetch(path, {
+    method: method || "GET",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
   if (res.status === 401) {
     location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
     throw new Error("redirecting");
@@ -62,13 +66,13 @@ function fmtDate(dateStr) {
 
 const TILTS = ["-1.4deg", "1deg", "-0.7deg", "1.3deg", "-1.1deg", "0.8deg"];
 
-function crewStack(crew) {
-  if (!crew || !crew.length) return "";
-  const faces = crew.slice(0, 5).map((c) => {
-    const name = typeof c === "string" ? c : c.name || c.displayName || "?";
+function crewStack(members) {
+  if (!members || !members.length) return "";
+  const faces = members.slice(0, 5).map((c) => {
+    const name = c.displayName || c.name || c || "?";
     return `<span class="crew__face" style="background:${avatarColor(name)}" title="${esc(name)}">${esc(initials(name))}</span>`;
   }).join("");
-  const n = crew.length;
+  const n = members.length;
   return `<div class="crew"><div class="crew__stack">${faces}</div><span class="crew__count">${n} going</span></div>`;
 }
 
@@ -78,7 +82,7 @@ function tripCard(t, i) {
   const tilt = TILTS[i % TILTS.length];
   const dateRow = [fmtDate(t.date), esc(t.subtitle || "")].filter(Boolean).join(" · ");
   return `
-    <a class="trip card-light" href="/trip/${encodeURIComponent(t.slug || t.id)}" style="transform:rotate(${tilt})">
+    <a class="trip card-light" data-theme="${esc(t.theme || "red")}" href="/trip/${encodeURIComponent(t.slug || t.id)}" style="transform:rotate(${tilt})">
       <div class="trip__head">
         <span class="trip__count ${cd.cls}">${cd.label}</span>
         <div class="trip__emoji">${esc(t.emoji || "🚗")}</div>
@@ -87,10 +91,114 @@ function tripCard(t, i) {
       </div>
       <div class="trip__body">
         ${tags ? `<div class="trip__tags">${tags}</div>` : ""}
-        ${crewStack(t.crew)}
-        <div style="margin-top:14px"><span class="trip__open">Open itinerary →</span></div>
+        ${crewStack(t.members)}
+        <div style="margin-top:14px"><span class="trip__open">Open trip →</span></div>
       </div>
     </a>`;
+}
+
+function addCard() {
+  return `
+    <a class="add-card" id="addCard" href="#">
+      <span class="add-card__plus">+</span>
+      <span class="add-card__title">New trip</span>
+      <span class="add-card__sub">add the next one</span>
+    </a>`;
+}
+
+// --- Create-trip modal -----------------------------------------------------
+const STICKERS = ["🚗", "✈️", "🏙️", "🏔️", "🏖️", "🏕️", "🎡", "🛶", "🌮", "🍕", "🎸", "📸", "🗺️", "🐻", "🌵", "🛹"];
+
+// Starter templates for different kinds of trips / hangouts. Picking one
+// pre-fills the sticker, theme, tags, and a starter itinerary.
+const TEMPLATES = {
+  blank:    { label: "Blank", emoji: "🚗", theme: "red", tags: [], stops: [] },
+  daytrip:  { label: "🏙️ Day trip", emoji: "🏙️", theme: "red", tags: ["Day trip"], stops: [
+                { time: "09:00", title: "Meet up & depart" }, { time: "12:00", title: "Lunch" },
+                { time: "14:00", title: "Explore" }, { time: "18:00", title: "Head home" } ] },
+  weekend:  { label: "🏔️ Weekend away", emoji: "🏔️", theme: "blue", tags: ["Weekend"], stops: [
+                { time: "10:00", title: "Check in" }, { time: "13:00", title: "Lunch spot" },
+                { time: "19:00", title: "Dinner" }, { time: "10:00", title: "Day 2 adventure" } ] },
+  nightout: { label: "🍸 Night out", emoji: "🍸", theme: "purple", tags: ["Night out"], stops: [
+                { time: "19:00", title: "Pre-game" }, { time: "20:30", title: "Dinner" },
+                { time: "22:00", title: "Main event" }, { time: "00:30", title: "After" } ] },
+  hangout:  { label: "🎮 Hangout", emoji: "🎮", theme: "green", tags: ["Hangout"], stops: [
+                { time: "15:00", title: "Meet up" }, { time: "16:00", title: "Food run" },
+                { time: "17:00", title: "Activity" } ] },
+  roadtrip: { label: "🛣️ Road trip", emoji: "🛣️", theme: "orange", tags: ["Road trip"], stops: [
+                { time: "08:00", title: "Depart" }, { time: "11:00", title: "Pit stop" },
+                { time: "15:00", title: "Arrive" } ] },
+};
+
+let ctEmoji = "🚗";
+let ctTheme = "red";
+let ctTags = [];
+let ctStops = [];
+
+function applyTemplate(key) {
+  const t = TEMPLATES[key];
+  if (!t) return;
+  ctEmoji = t.emoji; ctTheme = t.theme; ctTags = [...t.tags]; ctStops = t.stops.map((s) => ({ ...s }));
+  // reflect in the UI
+  $("#createModal").setAttribute("data-theme", ctTheme);
+  $("#ct-stickers").querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x.dataset.emoji === ctEmoji));
+  $("#ct-themes").querySelectorAll(".theme-dot").forEach((x) => x.classList.toggle("sel", x.dataset.theme === ctTheme));
+  $("#ct-templates").querySelectorAll(".btn").forEach((b) => b.classList.toggle("primary", b.dataset.tpl === key));
+}
+
+function openCreate() {
+  const scrim = $("#createScrim");
+  // build template chips once
+  const tg = $("#ct-templates");
+  if (!tg.dataset.built) {
+    tg.innerHTML = Object.entries(TEMPLATES).map(([k, t]) => `<button type="button" class="btn small${k === "blank" ? " primary" : ""}" data-tpl="${k}">${t.label}</button>`).join("");
+    tg.dataset.built = "1";
+    tg.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tpl]"); if (b) applyTemplate(b.dataset.tpl); });
+  }
+  // build sticker grid once
+  const sg = $("#ct-stickers");
+  if (!sg.dataset.built) {
+    sg.innerHTML = STICKERS.map((e) => `<button type="button" class="sticker${e === ctEmoji ? " sel" : ""}" data-emoji="${e}">${e}</button>`).join("");
+    sg.dataset.built = "1";
+    sg.addEventListener("click", (ev) => {
+      const b = ev.target.closest(".sticker");
+      if (!b) return;
+      ctEmoji = b.dataset.emoji;
+      sg.querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x === b));
+    });
+    $("#ct-themes").addEventListener("click", (ev) => {
+      const d = ev.target.closest(".theme-dot");
+      if (!d) return;
+      ctTheme = d.dataset.theme;
+      $("#createModal").setAttribute("data-theme", ctTheme);
+      $("#ct-themes").querySelectorAll(".theme-dot").forEach((x) => x.classList.toggle("sel", x === d));
+    });
+  }
+  $("#createModal").setAttribute("data-theme", ctTheme);
+  scrim.hidden = false;
+}
+function closeCreate() { $("#createScrim").hidden = true; }
+
+async function createTrip() {
+  const title = $("#ct-title").value.trim();
+  if (!title) return toast("Give your trip a name.", true);
+  try {
+    const { trip } = await api("/api/trips", "POST", {
+      title,
+      date: $("#ct-date").value,
+      subtitle: $("#ct-sub").value.trim(),
+      emoji: ctEmoji,
+      theme: ctTheme,
+      tags: ctTags,
+    });
+    // Seed the template's starter stops, if any.
+    for (const s of ctStops) {
+      await api("/api/trips/" + encodeURIComponent(trip.id) + "/stops", "POST", s).catch(() => {});
+    }
+    location.href = "/trip/" + encodeURIComponent(trip.slug || trip.id);
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 (async function init() {
@@ -115,21 +223,22 @@ function tripCard(t, i) {
     location.href = "/login.html";
   });
 
+  // Create-trip modal wiring (any user can make a trip).
+  $("#ct-cancel").addEventListener("click", closeCreate);
+  $("#ct-create").addEventListener("click", createTrip);
+  $("#createScrim").addEventListener("click", (e) => { if (e.target.id === "createScrim") closeCreate(); });
+
   try {
     const { trips } = await api("/api/trips");
     const grid = $("#grid");
     const n = trips.length;
-    $("#tripCount").textContent = n ? `${n} on the board` : "";
+    $("#tripCount").textContent = n ? `${n} on the board` : "make the first one";
+    $("#empty").style.display = "none";
+    grid.style.display = "";
 
-    if (!n) {
-      grid.style.display = "none";
-      $("#empty").style.display = "block";
-      $("#emptyMsg").textContent = me.isAdmin
-        ? "Add trips and share them from the Admin console."
-        : "Nothing's been shared with you yet. Nudge the trip's owner.";
-      return;
-    }
-    grid.innerHTML = trips.map(tripCard).join("");
+    grid.innerHTML = trips.map(tripCard).join("") + addCard();
+    const add = $("#addCard");
+    if (add) add.addEventListener("click", (e) => { e.preventDefault(); openCreate(); });
   } catch (err) {
     toast(err.message, true);
   }

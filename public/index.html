@@ -65,6 +65,56 @@
     </div>
   </div>
 
+  <!-- Create trip modal -->
+  <div class="scrim" id="createScrim" hidden>
+    <div class="modal" id="createModal">
+      <div class="modal__kicker">where to next?</div>
+      <div class="modal__title">New trip</div>
+
+      <div style="margin-top:16px">
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Start from a template</div>
+        <div class="modal__row" id="ct-templates" style="margin-top:0;gap:8px"></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Trip name</div>
+        <input class="input" id="ct-title" placeholder="e.g. Montreal weekend" />
+      </div>
+
+      <div class="modal__row">
+        <div style="flex:1;min-width:140px">
+          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">When</div>
+          <input class="input" id="ct-date" type="date" />
+        </div>
+        <div style="flex:1;min-width:140px">
+          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Subtitle (optional)</div>
+          <input class="input" id="ct-sub" placeholder="the short version" />
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Pick a sticker</div>
+        <div class="stickers" id="ct-stickers"></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Theme</div>
+        <div class="themes" id="ct-themes">
+          <span class="theme-dot red sel" data-theme="red" title="Highway Red"></span>
+          <span class="theme-dot blue" data-theme="blue" title="Lake Blue"></span>
+          <span class="theme-dot green" data-theme="green" title="Pine Green"></span>
+          <span class="theme-dot purple" data-theme="purple" title="Grape Soda"></span>
+          <span class="theme-dot orange" data-theme="orange" title="Sunset"></span>
+        </div>
+      </div>
+
+      <div class="modal__foot">
+        <button class="btn" id="ct-cancel" type="button">Cancel</button>
+        <button class="btn primary" id="ct-create" type="button">Create trip →</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
   <script src="/js/app.js"></script>
 </body>

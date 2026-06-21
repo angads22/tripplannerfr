@@ -62,8 +62,10 @@ app.get("/trip/:slug", requirePage, (req, res) => {
   if (!trip || !canView(trip, req.user)) {
     return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
+  // Trips without their own rich HTML page get the generic Pitstop detail
+  // page, which renders crew + info from the trip's data via the API.
   if (!trip.pageFile) {
-    return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
+    return res.sendFile(path.join(PUBLIC_DIR, "trip.html"));
   }
   // Guard against path traversal — only ever serve a bare filename from the
   // trips content folder.

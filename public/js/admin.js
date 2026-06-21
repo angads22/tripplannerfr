@@ -50,6 +50,34 @@ $("#inviteSave").addEventListener("click", async () => {
   }
 });
 
+// --- Early-bird code -------------------------------------------------------
+async function loadEarlyBird() {
+  const eb = await api("GET", "/api/users/early-bird");
+  $("#ebEnabled").checked = !!eb.enabled;
+  $("#ebCurrent").textContent = eb.code + (eb.enabled ? "" : "  (currently off)");
+}
+$("#ebEnabled").addEventListener("change", async () => {
+  try {
+    await api("PUT", "/api/users/early-bird", { enabled: $("#ebEnabled").checked });
+    await loadEarlyBird();
+    toast($("#ebEnabled").checked ? "Early-bird sign-ups on." : "Early-bird sign-ups off.");
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
+$("#ebSave").addEventListener("click", async () => {
+  const code = $("#ebInput").value.trim();
+  if (!code) return;
+  try {
+    await api("PUT", "/api/users/early-bird", { code });
+    $("#ebInput").value = "";
+    await loadEarlyBird();
+    toast("Early-bird code updated.");
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
+
 // --- Users -----------------------------------------------------------------
 function userRow(u) {
   const you = u.id === ME.id;
@@ -124,26 +152,22 @@ $("#na-add").addEventListener("click", async () => {
 // --- Trips & access --------------------------------------------------------
 function tripRow(t) {
   const everyone = !!t.shareWithEveryone;
-  const allowed = new Set(t.allowedUsers || []);
-  const checks = USERS.map(
-    (u) => `<label class="${allowed.has(u.id) ? "on" : ""}">
-        <input type="checkbox" data-uid="${u.id}" ${allowed.has(u.id) ? "checked" : ""}/> ${esc(u.displayName)}
-      </label>`
-  ).join("");
+  const crew = (t.members || []).map((m) => esc(m.displayName)).join(", ") || "no one yet";
   return `
-    <div class="row" data-tid="${t.id}" style="align-items:flex-start;flex-direction:column">
-      <div style="display:flex;gap:12px;align-items:center;width:100%;flex-wrap:wrap">
-        <div class="row__main">
-          <div class="row__title">${esc(t.emoji || "✈️")} ${esc(t.title)}</div>
-          <div class="row__meta"><span class="mono">/trip/${esc(t.slug || t.id)}</span> · ${esc(t.date || "no date")} · page: <span class="mono">${esc(t.pageFile || "—")}</span></div>
-        </div>
-        <div class="row__actions">
-          <label class="toggle"><input type="checkbox" data-act="everyone" ${everyone ? "checked" : ""}/><span class="track"></span>Everyone</label>
-          <a class="btn small" href="/trip/${encodeURIComponent(t.slug || t.id)}" target="_blank" rel="noopener">Open</a>
-          <button class="btn danger small" data-act="del">Delete</button>
+    <div class="row" data-tid="${t.id}" data-theme="${esc(t.theme || "red")}">
+      <span class="theme-dot ${esc(t.theme || "red")}" style="width:14px;height:14px;cursor:default" title="${esc(t.theme || "red")} theme"></span>
+      <div class="row__main">
+        <div class="row__title">${esc(t.emoji || "🚗")} ${esc(t.title)}</div>
+        <div class="row__meta">
+          <span class="mono">/trip/${esc(t.slug || t.id)}</span> · ${esc(t.date || "no date")}<br/>
+          by ${esc(t.creatorName || "—")} · ${t.memberCount} on board: ${crew}
         </div>
       </div>
-      <div class="access ${everyone ? "disabled" : ""}">${checks || '<span class="row__meta">No accounts yet.</span>'}</div>
+      <div class="row__actions">
+        <label class="toggle"><input type="checkbox" data-act="everyone" ${everyone ? "checked" : ""}/><span class="track"></span>Everyone</label>
+        <a class="btn small" href="/trip/${encodeURIComponent(t.slug || t.id)}">Open</a>
+        <button class="btn danger small" data-act="del">Delete</button>
+      </div>
     </div>`;
 }
 async function loadTrips() {
@@ -151,25 +175,12 @@ async function loadTrips() {
   TRIPS = trips;
   $("#tripList").innerHTML = trips.length ? trips.map(tripRow).join("") : '<div class="row__meta" style="padding:8px 0">No trips yet — add one below.</div>';
 }
-async function saveAccess(tid) {
-  const row = $(`[data-tid="${tid}"]`);
-  const everyone = row.querySelector('[data-act="everyone"]').checked;
-  const allowedUsers = [...row.querySelectorAll('.access input[data-uid]')].filter((c) => c.checked).map((c) => c.dataset.uid);
-  await api("PUT", `/api/trips/${tid}/access`, { shareWithEveryone: everyone, allowedUsers });
-}
 $("#tripList").addEventListener("change", async (e) => {
   const row = e.target.closest("[data-tid]");
-  if (!row) return;
-  const tid = row.dataset.tid;
-  if (e.target.matches('[data-act="everyone"]')) {
-    row.querySelector(".access").classList.toggle("disabled", e.target.checked);
-  }
-  if (e.target.matches('.access input[data-uid]')) {
-    e.target.closest("label").classList.toggle("on", e.target.checked);
-  }
+  if (!row || !e.target.matches('[data-act="everyone"]')) return;
   try {
-    await saveAccess(tid);
-    toast("Access saved.");
+    await api("PUT", `/api/trips/${row.dataset.tid}/access`, { shareWithEveryone: e.target.checked });
+    toast("Sharing updated.");
   } catch (err) {
     toast(err.message, true);
     await loadTrips();
@@ -256,6 +267,7 @@ $("#logoutBtn").addEventListener("click", async () => {
     if (!ME) return (location.href = "/login.html?next=/admin");
     if (!ME.isAdmin) return (location.href = "/");
     await loadInvite();
+    await loadEarlyBird();
     await loadUsers();
     await loadTrips();
     await checkUpdate();
