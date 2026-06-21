@@ -60,14 +60,21 @@ const TRAVEL_ICON = { walk: "🚶", transit: "🚍", train: "🚆", bus: "🚌",
 const TRAVEL_LABEL = { walk: "Walk", transit: "Transit", train: "Train", bus: "Bus", drive: "Drive", bike: "Bike", ferry: "Ferry" };
 
 function legHtml(travel) {
-  if (!travel || (!travel.mode && !travel.duration && !travel.detail)) return "";
-  const icon = TRAVEL_ICON[travel.mode] || "→";
-  const bits = [TRAVEL_LABEL[travel.mode] || "", travel.duration, travel.detail].filter(Boolean).map(esc).join(" · ");
+  if (!travel) return "";
+  const { mode, durationMin, detail, leaveTime } = travel;
+  if (!mode && !durationMin && !detail && !leaveTime) return "";
+  const icon = TRAVEL_ICON[mode] || "→";
+  const bits = [
+    leaveTime ? "Leave " + Maps.fmtTime(leaveTime) : "",
+    TRAVEL_LABEL[mode] || "",
+    durationMin ? "~" + Maps.fmtDur(durationMin) : "",
+    detail,
+  ].filter(Boolean).map(esc).join(" · ");
   return `<div class="leg"><span class="leg__chip">${icon} ${bits || "Travel"}</span></div>`;
 }
 
 function stopHtml(s, num, prevQuery) {
-  const time = s.time ? `<span class="stop__time">${esc(s.time)}</span>` : "";
+  const time = s.time ? `<span class="stop__time">${esc(Maps.fmtTime(s.time))}</span>` : "";
   const cat = s.category ? `<span class="stop__cat">${esc(s.category)}</span>` : "";
   const query = s.location || s.name || "";
   const mapUrl = s.locationUrl || (query ? Maps.searchUrl(query) : "");
@@ -84,7 +91,7 @@ function stopHtml(s, num, prevQuery) {
   if (dir && prevQuery) links.push(`<a class="btn small" href="${esc(dir)}" target="_blank" rel="noopener noreferrer">Directions from previous</a>`);
   const linkRow = links.length ? `<div class="stop__links">${links.join("")}</div>` : "";
 
-  const embed = query ? Maps.embedUrl(query) : "";
+  const embed = s.lat != null && s.lon != null ? Maps.embedLatLng(s.lat, s.lon) : query ? Maps.embedUrl(query) : "";
   const mapSlot = embed ? `<div class="stop__map" data-embed="${esc(embed)}"></div>` : "";
 
   const hasDrawer = notes || tip || hours || linkRow || mapSlot;

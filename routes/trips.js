@@ -35,10 +35,21 @@ const travelMode = (v) => {
 function normalizeTravel(travel) {
   const t = travel && typeof travel === "object" ? travel : {};
   const mode = travelMode(t.mode);
-  const duration = str(t.duration, 40);
+  // Minutes for this leg (auto-estimated client-side, or typed). Accept the
+  // legacy free-text `duration` ("12 min") from earlier builds too.
+  let durationMin = parseInt(t.durationMin, 10);
+  if (!Number.isFinite(durationMin)) durationMin = parseInt(t.duration, 10);
+  durationMin = Number.isFinite(durationMin) ? Math.min(Math.max(durationMin, 0), 1440) : 0;
   const detail = str(t.detail, 120);
-  return mode || duration || detail ? { mode, duration, detail } : null;
+  const leaveTime = str(t.leaveTime, 20); // when you depart the previous stop
+  return mode || durationMin || detail || leaveTime ? { mode, durationMin, detail, leaveTime } : null;
 }
+
+// A finite coordinate within range, or null.
+const coord = (v, max) => {
+  const n = Number(v);
+  return Number.isFinite(n) && Math.abs(n) <= max ? n : null;
+};
 
 // Keyless Google Maps search link for a place name/address.
 const mapsSearchUrl = (q) => {
@@ -70,6 +81,10 @@ function normalizeContent(content) {
           location,
           // Fall back to a keyless Google Maps search link if none was given.
           locationUrl: safeUrl(stop.locationUrl) || mapsSearchUrl(location || name),
+          // Cached geocode (set by the builder) — speeds re-estimates and gives
+          // the map a precise pin.
+          lat: coord(stop.lat, 90),
+          lon: coord(stop.lon, 180),
           hours: str(stop.hours, 120),
           notes: str(stop.notes, 2000),
           tip: str(stop.tip, 500),

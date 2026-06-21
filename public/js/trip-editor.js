@@ -44,8 +44,10 @@ let CAN_EDIT = false;
 const state = { days: [] }; // overview/crew/meta read straight from their inputs
 
 function blankStop() {
-  return { id: uid(), time: "", name: "", category: "", location: "", locationUrl: "", hours: "", notes: "", tip: "", travel: { mode: "", duration: "", detail: "" } };
+  return { id: uid(), time: "", name: "", category: "", location: "", locationUrl: "", lat: null, lon: null, hours: "", notes: "", tip: "", travel: { mode: "", durationMin: 0, detail: "", leaveTime: "" } };
 }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const TRAVEL_MODES = ["", "walk", "transit", "train", "bus", "drive", "bike", "ferry"];
 const TRAVEL_MODE_LABEL = { "": "— how you get here —", walk: "🚶 Walk", transit: "🚍 Transit", train: "🚆 Train", bus: "🚌 Bus", drive: "🚗 Drive", bike: "🚲 Bike", ferry: "⛴️ Ferry" };
@@ -55,26 +57,37 @@ function blankDay() {
 
 // --- Render ---------------------------------------------------------------
 
-function stopEditHtml(s) {
+function stopEditHtml(s, isFirst) {
   const t = s.travel || {};
   const modeOpts = TRAVEL_MODES.map((m) => `<option value="${m}" ${t.mode === m ? "selected" : ""}>${esc(TRAVEL_MODE_LABEL[m])}</option>`).join("");
+  const coordAttrs = s.lat != null && s.lon != null ? ` data-lat="${s.lat}" data-lon="${s.lon}"` : "";
+
+  // First stop of a day: the user picks the start time directly.
+  // Later stops: the user picks when to LEAVE the previous stop and the
+  // arrival is computed from the (auto-estimated) travel time for the mode.
+  const schedule = isFirst
+    ? `<div class="stop-edit__label">Start time</div>
+       <input class="input" data-k="time" placeholder="9:00 AM" value="${esc(s.time)}" style="max-width:180px" />`
+    : `<div class="stop-edit__label">Getting here</div>
+       <div class="grid-leg">
+         <input class="input" type="time" data-k="travel.leaveTime" value="${esc(t.leaveTime)}" title="Leave the previous stop at" />
+         <select class="input" data-k="travel.mode">${modeOpts}</select>
+         <input class="input" type="number" min="0" inputmode="numeric" data-k="travel.durationMin" value="${t.durationMin || ""}" placeholder="min" title="Travel minutes" />
+         <button type="button" class="btn small" data-act="auto-leg" title="Estimate travel time">⟳ Auto</button>
+       </div>
+       <input class="input" data-k="travel.detail" placeholder="Route / line / note (optional)" value="${esc(t.detail)}" style="margin-top:10px" />
+       <div class="stop-edit__label">Arrives (auto)</div>
+       <input class="input" data-k="time" value="${esc(s.time)}" readonly style="max-width:180px;background:#F1F4F1" />`;
+
   return `
-    <div class="stop-edit" data-stop data-id="${esc(s.id)}">
-      <div class="stop-edit__label">Getting here (optional)</div>
-      <div class="grid3">
-        <select class="input" data-k="travel.mode">${modeOpts}</select>
-        <input class="input" data-k="travel.duration" placeholder="12 min" value="${esc(t.duration)}" />
-        <input class="input" data-k="travel.detail" placeholder="Route / line / note" value="${esc(t.detail)}" />
-      </div>
+    <div class="stop-edit" data-stop data-id="${esc(s.id)}"${coordAttrs}>
+      ${schedule}
       <div class="stop-edit__label">The stop</div>
       <div class="grid2">
-        <input class="input" data-k="time" placeholder="Time (9:00 AM)" value="${esc(s.time)}" />
         <input class="input" data-k="name" placeholder="Stop name" value="${esc(s.name)}" />
-      </div>
-      <div class="grid2" style="margin-top:10px">
         <input class="input" data-k="category" placeholder="Category (food, sight…)" value="${esc(s.category)}" />
-        <input class="input" data-k="location" placeholder="Location / address (used for the map)" value="${esc(s.location)}" />
       </div>
+      <input class="input" data-k="location" placeholder="Location / address (used for the map & travel time)" value="${esc(s.location)}" style="margin-top:10px" />
       <input class="input" data-k="hours" placeholder="Hours (optional, e.g. Open 11–22)" value="${esc(s.hours)}" style="margin-top:10px" />
       <textarea class="input" data-k="notes" placeholder="Notes" style="margin-top:10px">${esc(s.notes)}</textarea>
       <input class="input" data-k="tip" placeholder="Tip (optional)" value="${esc(s.tip)}" style="margin-top:10px" />
@@ -103,7 +116,7 @@ function dayEditHtml(d, i) {
         </div>
       </div>
       <textarea class="input" data-k="note" placeholder="Day note (optional)" style="margin-bottom:12px">${esc(d.note)}</textarea>
-      <div data-stops>${d.stops.map(stopEditHtml).join("")}</div>
+      <div data-stops>${d.stops.map((s, si) => stopEditHtml(s, si === 0)).join("")}</div>
       <button type="button" class="btn small" data-act="stop-add" style="margin-top:4px">+ Add stop</button>
     </div>`;
 }
@@ -165,8 +178,12 @@ function renderShell() {
     </div>
 
     <div class="sec-label">Itinerary</div>
+    <p class="row__meta" style="margin:-6px 2px 12px">Set when you <b>leave</b> each stop and pick how you travel — <b>Auto</b> estimates the time (keyless, via OpenStreetMap) and fills in the arrival. Estimates, not live transit schedules.</p>
     <div id="days"></div>
-    <button type="button" class="btn" id="add-day">+ Add a day</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+      <button type="button" class="btn" id="add-day">+ Add a day</button>
+      <button type="button" class="btn" id="auto-all">⟳ Auto travel times</button>
+    </div>
 
     ${messageField}
 
@@ -191,6 +208,8 @@ function syncFromDom() {
         const el = sEl.querySelector(`[data-k="${k}"]`);
         return el ? el.value : "";
       };
+      const lat = sEl.dataset.lat != null ? parseFloat(sEl.dataset.lat) : null;
+      const lon = sEl.dataset.lon != null ? parseFloat(sEl.dataset.lon) : null;
       return {
         id: sEl.dataset.id || uid(),
         time: v("time"),
@@ -198,10 +217,17 @@ function syncFromDom() {
         category: v("category"),
         location: v("location"),
         locationUrl: v("locationUrl"),
+        lat: Number.isFinite(lat) ? lat : null,
+        lon: Number.isFinite(lon) ? lon : null,
         hours: v("hours"),
         notes: v("notes"),
         tip: v("tip"),
-        travel: { mode: v("travel.mode"), duration: v("travel.duration"), detail: v("travel.detail") },
+        travel: {
+          mode: v("travel.mode"),
+          durationMin: parseInt(v("travel.durationMin"), 10) || 0,
+          detail: v("travel.detail"),
+          leaveTime: v("travel.leaveTime"),
+        },
       };
     }),
   }));
@@ -248,10 +274,116 @@ function toggleMapPreview(btn) {
   btn.textContent = "🗺️ Hide map";
 }
 
+// --- Auto travel times (keyless) ------------------------------------------
+
+function placeOf(stopEl) {
+  const lat = stopEl.dataset.lat != null ? parseFloat(stopEl.dataset.lat) : null;
+  const lon = stopEl.dataset.lon != null ? parseFloat(stopEl.dataset.lon) : null;
+  const loc = stopEl.querySelector('[data-k="location"]').value.trim();
+  const name = (stopEl.querySelector('[data-k="name"]') || {}).value || "";
+  return { query: loc || name.trim(), lat: Number.isFinite(lat) ? lat : null, lon: Number.isFinite(lon) ? lon : null };
+}
+function setCoords(stopEl, c) {
+  if (c && Number.isFinite(c.lat) && Number.isFinite(c.lon)) {
+    stopEl.dataset.lat = c.lat;
+    stopEl.dataset.lon = c.lon;
+  }
+}
+
+// Arrival = leave time + travel minutes (only for non-first stops).
+function recomputeArrival(stopEl) {
+  const leave = stopEl.querySelector('[data-k="travel.leaveTime"]');
+  const dur = stopEl.querySelector('[data-k="travel.durationMin"]');
+  const arr = stopEl.querySelector('input[readonly][data-k="time"]');
+  if (!leave || !dur || !arr) return; // first stop has no leg
+  arr.value = leave.value ? Maps.addMinutes(leave.value, parseInt(dur.value, 10) || 0) : "";
+}
+
+// Estimate one leg (previous stop -> this stop) and fill its minutes + arrival.
+async function estimateLeg(stopEl) {
+  const dayEl = stopEl.closest("[data-day]");
+  const stops = [...dayEl.querySelectorAll("[data-stop]")];
+  const idx = stops.indexOf(stopEl);
+  if (idx <= 0) return false;
+  const from = placeOf(stops[idx - 1]);
+  const to = placeOf(stopEl);
+  if (!to.query && to.lat == null) {
+    toast("Add a location for this stop first.", true);
+    return false;
+  }
+  const mode = stopEl.querySelector('[data-k="travel.mode"]').value || "drive";
+  const est = await Maps.travelEstimate(from, to, mode);
+  if (!est) {
+    toast("Couldn't find one of those places.", true);
+    return false;
+  }
+  setCoords(stops[idx - 1], est.a);
+  setCoords(stopEl, est.b);
+  stopEl.querySelector('[data-k="travel.durationMin"]').value = est.durationMin;
+  recomputeArrival(stopEl);
+  return est.durationMin;
+}
+
+async function autoLeg(btn) {
+  const stopEl = btn.closest("[data-stop]");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "…";
+  try {
+    const min = await estimateLeg(stopEl);
+    if (min) toast(`~${Maps.fmtDur(min)} estimated.`);
+  } catch (e) {
+    toast("Travel lookup failed (offline?).", true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+async function autoFillAll() {
+  const btn = $("#auto-all");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "Estimating…";
+  try {
+    const legs = [...document.querySelectorAll("[data-day]")].flatMap((dayEl) => {
+      const ss = [...dayEl.querySelectorAll("[data-stop]")];
+      return ss.slice(1); // every stop except each day's first has a leg
+    });
+    let done = 0;
+    for (const stopEl of legs) {
+      try {
+        if (await estimateLeg(stopEl)) done++;
+      } catch (e) {
+        /* keep going */
+      }
+      await sleep(1100); // be polite to the free OpenStreetMap geocoder (≤1/s)
+    }
+    toast(done ? `Estimated ${done} leg(s).` : "Nothing to estimate yet.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+// Live-update an arrival when its leave time, mode, or minutes change.
+function onFieldInput(e) {
+  const k = e.target.dataset.k;
+  if (!k) return;
+  const stopEl = e.target.closest("[data-stop]");
+  if (k === "location" || k === "name") {
+    // The place changed — drop the cached geocode so the next Auto re-resolves.
+    delete stopEl.dataset.lat;
+    delete stopEl.dataset.lon;
+  }
+  if (k === "travel.leaveTime" || k === "travel.durationMin") recomputeArrival(stopEl);
+}
+
 function onDaysClick(e) {
   const btn = e.target.closest("[data-act]");
   if (!btn) return;
   if (btn.dataset.act === "map-preview") return toggleMapPreview(btn);
+  if (btn.dataset.act === "auto-leg") return autoLeg(btn);
   syncFromDom();
   const dayEl = btn.closest("[data-day]");
   const dayIdx = [...document.querySelectorAll("[data-day]")].indexOf(dayEl);
@@ -318,11 +450,14 @@ async function onSave() {
 
     renderShell();
     $("#days").addEventListener("click", onDaysClick);
+    $("#days").addEventListener("input", onFieldInput);
+    $("#days").addEventListener("change", onFieldInput);
     $("#add-day").addEventListener("click", () => {
       syncFromDom();
       state.days.push(blankDay());
       renderDays();
     });
+    $("#auto-all").addEventListener("click", autoFillAll);
     $("#save-btn").addEventListener("click", onSave);
   } catch (err) {
     if (err.message === "redirecting") return;

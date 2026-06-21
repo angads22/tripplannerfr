@@ -51,16 +51,27 @@ Trips are built in-app — no HTML, no files to edit.
 1. On the board, click **+ New trip** (admins), name it, and you jump straight
    into the builder. (You can also use the Admin console → **Add a trip**.)
 2. In the **builder**, add an overview and as many **days** and **stops** as you
-   like. Each stop takes a time, name, category, **location**, **hours**, notes,
-   and a tip — plus a **"getting here"** leg (walk / transit / train / bus /
-   drive / bike / ferry, with a duration and route note) shown between stops.
-   Reorder or remove anything, hit **Preview map** to check a place, then **Save**.
+   like. Each stop takes a name, category, **location**, **hours**, notes, and a
+   tip. The first stop of a day has a **start time**; every later stop has a
+   **"getting here"** leg — set when you **leave** the previous stop and pick the
+   mode (walk / transit / train / bus / drive / bike / ferry). Reorder or remove
+   anything, hit **Preview map** to check a place, then **Save**.
 3. Set who can **see** it and who can **edit** it (board card ✎, or the Admin console).
 
-### 🗺️ Maps (no setup)
+### 🗺️ Maps & travel times (keyless, no setup)
 Type a place into a stop's **location** and the trip page automatically gets a
 **Google Maps** link, an embedded map (in the stop's expandable drawer), and a
-**Directions from the previous stop** link. No API key, no billing — it just works.
+**Directions from the previous stop** link.
+
+Hit **⟳ Auto** on a leg (or **Auto travel times** for the whole trip) and the
+builder estimates how long the leg takes by the mode you picked and fills in the
+**arrival time** (arrival = leave time + travel). You choose the leave times; the
+arrivals follow from the mode.
+
+> Travel times are **estimates** — computed keyless from OpenStreetMap geocoding
+> and a per-mode average speed (no API key, no billing). They're not live transit
+> schedules; Google's Directions/transit API needs a paid key, so it can't be
+> used keyless. The estimate refreshes whenever you change the mode.
 
 ### Who can change a trip
 - **Admins** and a trip's **creator** can always edit.
