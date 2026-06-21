@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const db = require("../lib/db");
 const { codeAccepted } = require("../lib/auth-middleware");
+const { claimOwnerlessTrips } = require("../lib/seed");
 
 const router = express.Router();
 
@@ -66,6 +67,9 @@ router.post("/register", async (req, res) => {
     createdAt: new Date().toISOString(),
   };
   db.addUser(user);
+
+  // The first account owns the app — give it the starter trip(s).
+  if (isFirstUser) claimOwnerlessTrips(user);
 
   req.session.userId = user.id;
   res.json({ user: publicUser(user) });
@@ -129,13 +133,14 @@ router.put("/me", requireSelf, async (req, res) => {
 });
 
 // Delete your own account (after confirming your password). The last admin
-// can't delete themselves and lock everyone out.
+// can only be blocked when there are OTHER users who'd be locked out — if
+// you're the only account, deleting is fine (it resets the app).
 router.delete("/me", requireSelf, async (req, res) => {
   const { password } = req.body || {};
   const ok = await bcrypt.compare(String(password || ""), req.me.passwordHash);
   if (!ok) return res.status(403).json({ error: "Wrong password." });
-  if (req.me.isAdmin && db.adminCount() <= 1) {
-    return res.status(400).json({ error: "You're the only admin — make someone else an admin first." });
+  if (req.me.isAdmin && db.adminCount() <= 1 && db.userCount() > 1) {
+    return res.status(400).json({ error: "You're the only admin — make someone else an admin first, then you can delete your account." });
   }
   db.deleteUser(req.me.id);
   req.session.destroy(() => {

@@ -56,25 +56,35 @@ npm run build      # pkg -> dist/TripPlanner.exe (Windows)
   The first account created becomes the admin.
 - **trip**: `{ id, slug, title, subtitle, date, emoji, theme, tags[], crew[],
   members[] (userIds), stops[] {id,time,title,place,note}, mapUrl,
-  activity[] {id,ts,userId,userName,text}, shareWithEveryone, pageFile,
-  createdBy, createdByName, createdAt, updatedAt }`.
-- **settings**: `{ inviteCode, earlyBirdEnabled, earlyBirdCode }`.
+  activity[] {id,ts,userId,userName,text}, proposals[] {id,ts,userId,userName,
+  text,status}, joinCode, shareWithEveryone, pageFile, createdBy,
+  createdByName, createdAt, updatedAt }`.
+  - `theme` is a preset keyword (`red|blue|green|purple|orange`) **or** a custom
+    `#rrggbb` hex accent.
+  - `joinCode` is the private code carried in a share link (`/trip/<slug>?j=...`)
+    that lets someone view + join an otherwise-private trip.
+- **settings**: `{ inviteCode }` — the single shared sign-up code.
 
 ## Permissions (see `lib/auth-middleware.js`)
 
 - `canView`: admin | shareWithEveryone | creator | member (legacy allowedUsers).
+  A private trip is **not** visible to other signed-in users — only the crew,
+  or someone presenting the trip's `joinCode` (in `routes/trips.js` `canSee`).
 - Create a trip: any logged-in user (becomes creator + first member).
 - `canAddMembers` / `canEditPlan`: admin | creator | any member (anyone on the
   trip can invite others and edit the itinerary/map).
 - `canRemoveMembers` / `canManageTrip`: admin | creator only (remove people,
-  edit details/theme, delete).
+  edit details/theme, delete, rotate the join code).
 - New trips are **private to the crew** by default (`shareWithEveryone:false`).
+  Others join via the per-trip invite link/code, not by being a user.
+- The first account claims any ownerless seeded trips (e.g. Toronto) on sign-up.
 
 ## Sign-up
 
-- Shared **invite code** (default from config/`.env`, editable in admin).
-- Optional **early-bird code** (default `potato 21`, on by default, toggle in
-  admin). `codeAccepted()` accepts either; first user skips the check.
+- A single shared **sign-up code** (`settings.inviteCode`, default from
+  config/`.env` = `potato 21`, editable in admin). `codeAccepted()` matches it
+  (case-insensitive); the first user skips the check and becomes admin. This
+  code only gates **account creation** — it grants no access to any trip.
 
 ## Theming
 
