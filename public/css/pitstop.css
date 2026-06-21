@@ -1,5 +1,5 @@
 /* Pitstop design system - warm road-trip aesthetic
-   Fonts: Anton (display), Archivo (UI), Permanent Marker (accent)
+   Fonts: Anton (display), Archivo (UI), Space Mono (labels/accents)
    Accent: Highway Red #E23B26 */
 
 :root {
@@ -66,7 +66,7 @@ input:focus, textarea:focus { outline: none; }
   font-size: 25px; transform: rotate(-4deg); flex: none;
 }
 .logo__name { font-family: "Anton", sans-serif; font-size: 23px; letter-spacing: .02em; line-height: 1; text-transform: uppercase; }
-.logo__tag { font-family: "Permanent Marker", cursive; font-size: 12px; color: var(--muted-light-2); margin-top: 3px; }
+.logo__tag { font-family: "Space Mono", monospace; font-size: 12px; color: var(--muted-light-2); margin-top: 3px; }
 
 /* Cards */
 .card-dark {
@@ -83,7 +83,7 @@ input:focus, textarea:focus { outline: none; }
 }
 
 /* Type helpers */
-.kicker { font-family: "Permanent Marker", cursive; font-size: 14px; color: var(--amber); }
+.kicker { font-family: "Space Mono", monospace; font-size: 14px; color: var(--amber); }
 .display { font-family: "Anton", sans-serif; text-transform: uppercase; line-height: .95; }
 .flabel { font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-dark); }
 
@@ -126,7 +126,9 @@ input:focus, textarea:focus { outline: none; }
   border-radius: 30px; padding: 8px 16px; cursor: pointer; text-decoration: none;
   display: inline-flex; align-items: center; gap: 6px; transition: background .15s;
 }
-.btn-pill:hover { background: rgba(28,23,18,.12); }
+.btn-pill:hover { background: rgba(28,23,18,.12); transform: translateY(-1px); }
+.btn-pill { transition: background .15s, transform .12s; }
+.btn-pill:active { transform: translateY(0) scale(.97); }
 
 /* Error / hint */
 .err-msg { color: #ffb3a8; font-size: 13px; min-height: 0; margin: 0; display: none; }
@@ -136,7 +138,7 @@ input:focus, textarea:focus { outline: none; }
 .sec-row { display: flex; align-items: center; gap: 12px; margin: 26px 2px 14px; }
 .sec-row__label { font-family: "Anton", sans-serif; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
 .sec-row__rule { flex: 1; height: 2px; background: rgba(28,23,18,.14); }
-.sec-row__count { font-family: "Permanent Marker", cursive; font-size: 14px; color: var(--accent); }
+.sec-row__count { font-family: "Space Mono", monospace; font-size: 14px; color: var(--accent); }
 
 /* Trip grid + cards */
 .trip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 18px; }
@@ -176,7 +178,7 @@ input:focus, textarea:focus { outline: none; }
 .add-card:hover { border-color: var(--ink); color: var(--ink); }
 .add-card__plus { width: 46px; height: 46px; border-radius: 50%; border: 2px dashed currentColor; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .add-card__title { font-family: "Anton", sans-serif; font-size: 17px; text-transform: uppercase; }
-.add-card__sub { font-family: "Permanent Marker", cursive; font-size: 12px; }
+.add-card__sub { font-family: "Space Mono", monospace; font-size: 12px; }
 
 /* Avatar stack */
 .crew { display: flex; align-items: center; gap: 8px; }
@@ -247,7 +249,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 22px; transform: rotate(-4deg); flex: none;
 }
 .brand__name { font-family: "Anton", sans-serif; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; display: block; }
-.brand__sub { font-family: "Permanent Marker", cursive; font-size: 11px; color: var(--muted-light-2); margin-top: 3px; display: block; }
+.brand__sub { font-family: "Space Mono", monospace; font-size: 11px; color: var(--muted-light-2); margin-top: 3px; display: block; }
 .header-spacer { flex: 1; }
 
 /* Generic buttons (admin reuses these class names) */
@@ -289,10 +291,12 @@ a { color: inherit; text-decoration: none; }
   background: rgba(255,255,255,.5); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid rgba(255,255,255,.6); border-radius: 20px;
   box-shadow: 0 22px 48px -32px rgba(40,28,16,.55); overflow: hidden; margin-bottom: 14px;
+  transition: box-shadow .2s, transform .2s;
 }
+.panel:hover { box-shadow: 0 26px 54px -30px rgba(40,28,16,.6); }
 .panel__head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid rgba(28,23,18,.1); flex-wrap: wrap; }
 .panel__head h2 { font-family: "Anton", sans-serif; font-size: 18px; font-weight: 400; text-transform: uppercase; letter-spacing: .02em; }
-.panel__head .muted { font-family: "Permanent Marker", cursive; font-size: 12px; color: var(--muted-light-2); }
+.panel__head .muted { font-family: "Space Mono", monospace; font-size: 12px; color: var(--muted-light-2); }
 .panel__body { padding: 6px 20px 16px; }
 
 /* Rows */
@@ -341,7 +345,7 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
   box-shadow: 0 40px 80px -30px rgba(0,0,0,.5); padding: 24px; animation: rise .35s both;
 }
 .modal__title { font-family: "Anton", sans-serif; font-size: 26px; text-transform: uppercase; line-height: 1; }
-.modal__kicker { font-family: "Permanent Marker", cursive; font-size: 13px; color: var(--accent); margin-bottom: 4px; }
+.modal__kicker { font-family: "Space Mono", monospace; font-size: 13px; color: var(--accent); margin-bottom: 4px; }
 .modal__row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .modal__foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
 
@@ -378,7 +382,7 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .crew-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); }
 .crew-item__face { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; }
 .crew-item__name { font-weight: 700; font-size: 14px; flex: 1; }
-.crew-item__tag { font-family: "Permanent Marker", cursive; font-size: 11px; color: var(--muted-light-2); }
+.crew-item__tag { font-family: "Space Mono", monospace; font-size: 11px; color: var(--muted-light-2); }
 .crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; }
 .crew-item__x:hover { background: rgba(226,59,38,.1); color: var(--red); }
 .crew-item__x:disabled { opacity: .3; cursor: default; }
@@ -387,6 +391,19 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .stop-check { width: 19px; height: 19px; accent-color: var(--accent); cursor: pointer; flex: none; }
 .crew-item.stop-done { opacity: .62; }
 .crew-item.stop-done .stop-title { text-decoration: line-through; }
+
+/* Spinner (update in progress) */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+
+/* Group chat */
+.chat { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding: 4px 2px; }
+.msg { display: flex; flex-direction: column; max-width: 80%; }
+.msg.mine { align-self: flex-end; align-items: flex-end; }
+.msg__who { font-size: 11px; font-weight: 700; color: var(--muted-light); margin: 0 6px 2px; }
+.msg__bubble { background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.7); border-radius: 14px; padding: 8px 12px; font-size: 14px; line-height: 1.4; word-break: break-word; animation: rise .25s both; }
+.msg.mine .msg__bubble { background: var(--accent); color: #fff; border-color: transparent; }
+.msg__time { font-size: 10px; color: var(--muted-light); margin: 2px 6px 0; }
 
 /* Auth-style centered card (404) */
 .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 18px; position: relative; z-index: 1; }

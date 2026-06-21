@@ -501,4 +501,28 @@ router.put("/:id/proposals/:pid", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
+// --- Group chat ----------------------------------------------------------
+
+// Read the trip's chat (anyone who can see the trip).
+router.get("/:id/messages", requireAuth, (req, res) => {
+  const trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
+  const code = req.query.code || req.query.j;
+  if (!trip || !canSee(trip, req.user, code)) return res.status(404).json({ error: "Trip not found." });
+  res.json({ messages: (Array.isArray(trip.messages) ? trip.messages : []).slice(-100) });
+});
+
+// Post to the trip's chat (anyone on the trip).
+router.post("/:id/messages", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip) return res.status(404).json({ error: "Trip not found." });
+  if (!canAddMembers(trip, req.user)) return res.status(403).json({ error: "Join the trip to chat." });
+  const text = str((req.body || {}).text, 1000);
+  if (!text) return res.status(400).json({ error: "Type a message first." });
+  const msg = { id: crypto.randomUUID(), ts: new Date().toISOString(), userId: req.user.id, userName: req.user.displayName, text };
+  // Chat doesn't spam the changelog; keep the last 500 messages.
+  const messages = [...(Array.isArray(trip.messages) ? trip.messages : []), msg].slice(-500);
+  const updated = db.updateTrip(trip.id, { messages });
+  res.status(201).json({ messages: updated.messages.slice(-100) });
+});
+
 module.exports = router;
