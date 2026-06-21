@@ -50,6 +50,32 @@ app.use(
   })
 );
 
+// Terminal logging: print each meaningful request to the console so whoever is
+// running the app (the host) can watch what's happening live. Skips static
+// assets and the update health-poll to stay readable.
+app.use((req, res, next) => {
+  const start = Date.now();
+  // Capture the full path now — nested routers rewrite req.url during handling.
+  const fullPath = req.path;
+  const url = (req.originalUrl || req.url || "").split("?")[0];
+  res.on("finish", () => {
+    if (fullPath.startsWith("/css/") || fullPath.startsWith("/js/") || fullPath === "/favicon.ico" || fullPath === "/api/health") return;
+    const ms = Date.now() - start;
+    let who = "";
+    try {
+      if (req.session && req.session.userId) {
+        const u = db.findUserById(req.session.userId);
+        if (u) who = "  @" + u.username;
+      }
+    } catch { /* ignore */ }
+    const time = new Date().toTimeString().slice(0, 8);
+    const code = res.statusCode;
+    const mark = code >= 500 ? "✖" : code >= 400 ? "!" : "·";
+    console.log(`  ${time}  ${mark} ${req.method.padEnd(6)} ${url}  →  ${code}  ${ms}ms${who}`);
+  });
+  next();
+});
+
 // Seed the starter trip(s) on first run, then tidy any existing data so old
 // shared/ownerless trips become private under the new invite-link model.
 seedIfEmpty();
@@ -124,8 +150,10 @@ try {
 }
 
 const server = app.listen(config.PORT, config.HOST, () => {
+  let buildStr = "dev";
+  try { const info = require("./build-info.json"); buildStr = `v${info.version || ""} build ${info.build}`; } catch { /* dev */ }
   console.log("");
-  console.log("  🧳  Trip Planner is running!");
+  console.log(`  🧳  Trip Planner is running!  (${buildStr})`);
   console.log("  ----------------------------------------");
   console.log(`  On this computer:  http://localhost:${config.PORT}`);
   for (const ip of localAddresses()) {
