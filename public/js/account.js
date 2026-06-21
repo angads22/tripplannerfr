@@ -48,6 +48,7 @@ function paintAvatar() {
 
   $("#whoUser").textContent = "@" + ME.username;
   $("#ac-name").value = ME.displayName;
+  $("#ac-bio").value = ME.bio || "";
   $("#ac-emoji").value = ME.avatarEmoji || "";
   $("#ac-color").value = ME.avatarColor || avatarColor(ME.displayName);
   paintAvatar();
@@ -64,6 +65,7 @@ function paintAvatar() {
     try {
       await api("/api/auth/me", "PUT", {
         displayName: $("#ac-name").value.trim(),
+        bio: $("#ac-bio").value.trim(),
         avatarEmoji: $("#ac-emoji").value.trim(),
         avatarColor: $("#ac-color").value,
       });

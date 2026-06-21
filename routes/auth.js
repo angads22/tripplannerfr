@@ -18,6 +18,7 @@ function publicUser(u) {
     isAdmin: u.isAdmin,
     avatarEmoji: u.avatarEmoji || "",
     avatarColor: u.avatarColor || "",
+    bio: u.bio || "",
   };
 }
 
@@ -118,6 +119,7 @@ router.put("/me", requireSelf, async (req, res) => {
   }
   if (avatarEmoji != null) patch.avatarEmoji = String(avatarEmoji).trim().slice(0, 8);
   if (avatarColor != null) patch.avatarColor = String(avatarColor).trim().slice(0, 16);
+  if (req.body.bio != null) patch.bio = String(req.body.bio).trim().slice(0, 280);
 
   if (password != null && String(password) !== "") {
     // Changing the password requires confirming the current one.

@@ -63,7 +63,10 @@ function fmtDate(dateStr) {
 function renderHead() {
   const cd = countdown(TRIP.date);
   const tags = (TRIP.tags || []).map((x) => `<span class="chip" style="background:rgba(244,236,221,.14);border-color:rgba(255,255,255,.2);color:var(--on-dark)">${esc(x)}</span>`).join("");
+  const cover = TRIP.coverUrl ? `<img class="hero__cover" src="${esc(TRIP.coverUrl)}" alt="" onerror="this.remove()" />` : "";
+  const desc = TRIP.description ? `<div class="trip-desc">${esc(TRIP.description)}</div>` : "";
   $("#tripHead").innerHTML = `
+    ${cover}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
       <div class="kicker">${esc(cd.label)}</div>
     </div>
@@ -71,6 +74,7 @@ function renderHead() {
     <div class="hero__title" style="font-size:clamp(34px,9vw,52px);margin:8px 0 6px">${esc(TRIP.title)}</div>
     <div class="trip__date" style="color:var(--muted-dark)">${[fmtDate(TRIP.date), esc(TRIP.subtitle || "")].filter(Boolean).join(" · ").toUpperCase()}</div>
     ${tags ? `<div class="trip__tags" style="margin-top:12px">${tags}</div>` : ""}
+    ${desc}
     <div class="hero__body" style="margin-top:12px">Started by ${esc(TRIP.creatorName || "someone")}.</div>`;
 }
 
@@ -134,8 +138,8 @@ function renderStops() {
           ${s.note ? `<div class="crew-item__tag">${esc(s.note)}</div>` : ""}
           ${s.place ? `<a class="crew-item__tag" style="color:var(--accent)" href="${mapsSearch(s.place)}" target="_blank" rel="noopener">📍 ${esc(s.place)}</a>` : ""}
         </div>
-        ${canEdit ? `<button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
-      </div>`).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
+        ${canEdit ? `<button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit">✎</button><button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
+      </div>`).join("") || '<p class="row__meta">No stops yet. Add the first one below. Tip: the timeline sorts by time, so editing a time reorders it.</p>';
   $("#addStopRow").style.display = canEdit ? "flex" : "none";
 }
 
@@ -208,6 +212,18 @@ async function reload() {
   renderProposals();
   renderLog();
   $("#manageBar").style.display = trip.canManage ? "block" : "none";
+  if (trip.canManage) {
+    // Populate the edit-details form (only when not actively editing it).
+    const ae = document.activeElement;
+    if (!ae || !/^ed-/.test(ae.id || "")) {
+      $("#ed-title").value = trip.title || "";
+      $("#ed-date").value = trip.date || "";
+      $("#ed-sub").value = trip.subtitle || "";
+      $("#ed-desc").value = trip.description || "";
+      $("#ed-cover").value = trip.coverUrl || "";
+      $("#ed-tags").value = (trip.tags || []).join(", ");
+    }
+  }
   if (trip.canManage) {
     $("#editThemes").querySelectorAll(".theme-dot").forEach((d) => d.classList.toggle("sel", d.dataset.theme === (trip.theme || "red")));
   }
@@ -344,16 +360,30 @@ async function reload() {
     }
   });
 
-  // Remove a stop (any member)
+  // Edit or remove a stop (any member)
   $("#stopList").addEventListener("click", async (e) => {
-    const btn = e.target.closest("[data-delstop]");
-    if (!btn) return;
-    try {
-      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(btn.dataset.delstop), "DELETE");
-      await reload();
-      toast("Stop removed.");
-    } catch (e) {
-      toast(e.message, true);
+    const editBtn = e.target.closest("[data-editstop]");
+    const delBtn = e.target.closest("[data-delstop]");
+    if (editBtn) {
+      const s = (TRIP.stops || []).find((x) => x.id === editBtn.dataset.editstop);
+      if (!s) return;
+      const time = prompt("Time (e.g. 14:30) — the timeline sorts by this:", s.time || "");
+      if (time === null) return;
+      const title = prompt("What's the stop?", s.title || "");
+      if (title === null || !title.trim()) return;
+      try {
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(s.id), "PUT", { time: time.trim(), title: title.trim() });
+        await reload();
+        toast("Stop updated.");
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
+    if (delBtn) {
+      try {
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(delBtn.dataset.delstop), "DELETE");
+        await reload();
+        toast("Stop removed.");
+      } catch (err) { toast(err.message, true); }
     }
   });
 
@@ -401,6 +431,24 @@ async function reload() {
       const url = location.origin + "/trip/" + encodeURIComponent(slug) + "?j=" + encodeURIComponent(trip.joinCode);
       try { await navigator.clipboard.writeText(url); toast("New invite link copied."); }
       catch { prompt("New private invite link:", url); }
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Save edited trip details (creator/admin)
+  $("#ed-save").addEventListener("click", async () => {
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id), "PUT", {
+        title: $("#ed-title").value.trim(),
+        date: $("#ed-date").value,
+        subtitle: $("#ed-sub").value.trim(),
+        description: $("#ed-desc").value.trim(),
+        coverUrl: $("#ed-cover").value.trim(),
+        tags: $("#ed-tags").value.split(",").map((s) => s.trim()).filter(Boolean),
+      });
+      await reload();
+      toast("Details saved.");
     } catch (e) {
       toast(e.message, true);
     }

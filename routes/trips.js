@@ -29,7 +29,7 @@ const slugify = (v) =>
 // Accent themes (all share the Pitstop aesthetic; the first three are the
 // design's Highway Red / Lake Blue / Pine Green). A custom #rrggbb is also
 // allowed so people can pick their own accent.
-const THEMES = ["red", "blue", "green", "purple", "orange"];
+const THEMES = ["red", "blue", "green", "purple", "orange", "pink", "teal", "gold", "slate"];
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const cleanTheme = (v) => {
   const s = String(v || "").trim();
@@ -62,6 +62,8 @@ function publicTrip(t, user) {
     emoji: t.emoji || "🚗",
     tags: t.tags || [],
     theme: cleanTheme(t.theme),
+    description: t.description || "",
+    coverUrl: t.coverUrl || "",
     members,
     memberCount: members.length,
     stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))),
@@ -104,6 +106,8 @@ function normalizeTripInput(body) {
       .slice(0, 8),
     pageFile: str(body.pageFile, 120),
     shareWithEveryone: !!body.shareWithEveryone,
+    description: str(body.description, 1000),
+    coverUrl: str(body.coverUrl, 500),
   };
 }
 
