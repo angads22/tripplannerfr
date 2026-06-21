@@ -18,7 +18,7 @@ const path = require("path");
 const https = require("https");
 const { spawn } = require("child_process");
 const { requireAdmin } = require("../lib/auth-middleware");
-const { isPackaged, APP_DIR } = require("../lib/paths");
+const { isPackaged, EXE_DIR } = require("../lib/paths");
 
 const REPO = "angads22/tripplannerfr";
 const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`;
@@ -129,8 +129,9 @@ router.post("/apply-update", async (req, res) => {
     if (!latest.exeUrl) return res.status(500).json({ error: "Latest release has no TripPlanner.exe asset." });
 
     const exeName = path.basename(process.execPath); // e.g. TripPlanner.exe
-    const newPath = path.join(APP_DIR, "TripPlanner-new.exe");
-    const batPath = path.join(APP_DIR, "apply-update.bat");
+    // Write next to the real exe — NOT into the read-only pkg snapshot.
+    const newPath = path.join(EXE_DIR, "TripPlanner-new.exe");
+    const batPath = path.join(EXE_DIR, "apply-update.bat");
 
     await download(latest.exeUrl, newPath);
 
@@ -148,7 +149,7 @@ router.post("/apply-update", async (req, res) => {
     ].join("\r\n");
     fs.writeFileSync(batPath, bat, "utf8");
 
-    const child = spawn("cmd.exe", ["/c", batPath], { detached: true, stdio: "ignore", cwd: APP_DIR });
+    const child = spawn("cmd.exe", ["/c", batPath], { detached: true, stdio: "ignore", cwd: EXE_DIR });
     child.unref();
 
     res.json({ ok: true, message: `Updating to build ${latest.build}. The app will restart on its own.` });
