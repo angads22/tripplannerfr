@@ -219,12 +219,18 @@ $("#nt-add").addEventListener("click", async () => {
 });
 
 // --- Updates ---------------------------------------------------------------
-async function checkUpdate() {
+const autoUpdate = {
+  get on() { return localStorage.getItem("autoUpdate") === "1"; },
+  set on(v) { localStorage.setItem("autoUpdate", v ? "1" : "0"); },
+};
+
+async function checkUpdate(silent) {
   const status = $("#updateStatus");
   const meta = $("#updateMeta");
   const applyBtn = $("#applyUpdateBtn");
   try {
     $("#checkUpdateBtn").disabled = true;
+    if (!silent) { status.textContent = "Checking…"; meta.textContent = "Looking for a newer build."; }
     applyBtn.style.display = "none";
     const r = await api("GET", "/api/admin/check-update");
     $("#curVer").textContent = `${r.currentVersion} (build ${r.currentBuild})`;
@@ -239,6 +245,10 @@ async function checkUpdate() {
       if (r.canSelfUpdate) {
         meta.innerHTML = `A newer build is ready. Click <b>Update now</b> to download and restart automatically.`;
         applyBtn.style.display = "";
+        applyBtn.textContent = "Update now";
+        applyBtn.disabled = false;
+        // Auto-install if the admin turned it on.
+        if (autoUpdate.on) applyUpdate(true);
       } else if (!r.isPackaged) {
         meta.innerHTML = `You're running from source. Update with <code>git pull</code> then restart.`;
       } else {
@@ -250,25 +260,49 @@ async function checkUpdate() {
       meta.textContent = "Running the latest build.";
     }
   } catch (e) {
-    toast(e.message, true);
+    if (!silent) toast(e.message, true);
   } finally {
     $("#checkUpdateBtn").disabled = false;
   }
 }
-$("#checkUpdateBtn").addEventListener("click", checkUpdate);
-$("#applyUpdateBtn").addEventListener("click", async () => {
-  if (!confirm("Download the latest build and restart the app? Anyone using it will be briefly disconnected.")) return;
+
+async function applyUpdate(auto) {
   const btn = $("#applyUpdateBtn");
+  if (!auto && !confirm("Download the latest build and restart the app? Anyone using it will be briefly disconnected.")) return;
+  // Immediate, obvious feedback.
   btn.disabled = true;
-  btn.textContent = "Updating...";
+  btn.textContent = "Downloading…";
+  $("#updateStatus").textContent = "Updating…";
+  $("#updateStatus").style.color = "var(--accent)";
+  $("#updateMeta").textContent = "Downloading the new build…";
+  toast("Update started — downloading…");
   try {
     const r = await api("POST", "/api/admin/apply-update");
-    document.body.innerHTML = '<div class="auth-wrap"><div class="card-dark auth-card" style="color:var(--on-dark)"><div class="empty" style="color:var(--on-dark)"><div class="big">⬇️</div><h3 class="display" style="color:var(--on-dark)">Updating</h3><p style="color:var(--muted-dark-2)">' + (r.message || "Downloading the new build. The app will restart on its own — give it a few seconds, then refresh.") + '</p></div></div></div>';
+    document.body.innerHTML =
+      '<div class="auth-wrap"><div class="card-dark auth-card" style="color:var(--on-dark)"><div class="empty" style="color:var(--on-dark)">' +
+      '<div class="big spin">⟳</div>' +
+      '<h3 class="display" style="color:var(--on-dark)">Installing the update</h3>' +
+      '<p style="color:var(--muted-dark-2)">' + (r.message || "Downloading the new build. The app restarts on its own — give it ~10 seconds, then this page reloads.") + '</p></div></div></div>';
+    // The server exits + relaunches; poll until it's back, then reload.
+    setTimeout(function ping() {
+      fetch("/api/health", { cache: "no-store" })
+        .then((res) => { if (res.ok) location.reload(); else setTimeout(ping, 1500); })
+        .catch(() => setTimeout(ping, 1500));
+    }, 4000);
   } catch (e) {
     toast(e.message, true);
     btn.disabled = false;
     btn.textContent = "Update now";
+    $("#updateMeta").textContent = "Update failed: " + e.message;
   }
+}
+
+$("#checkUpdateBtn").addEventListener("click", () => checkUpdate(false));
+$("#applyUpdateBtn").addEventListener("click", () => applyUpdate(false));
+$("#autoUpdateToggle").addEventListener("change", (e) => {
+  autoUpdate.on = e.target.checked;
+  toast(e.target.checked ? "Auto-update on — new builds install themselves." : "Auto-update off.");
+  if (e.target.checked) checkUpdate(true);
 });
 
 // --- Server power ----------------------------------------------------------
@@ -293,12 +327,14 @@ $("#logoutBtn").addEventListener("click", async () => {
     ME = (await api("GET", "/api/auth/me")).user;
     if (!ME) return (location.href = "/login.html?next=/admin");
     if (!ME.isAdmin) return (location.href = "/");
+    $("#autoUpdateToggle").checked = autoUpdate.on;
     await loadInvite();
     await loadUsers();
     await loadTrips();
     await loadLogs();
     await checkUpdate();
-    setInterval(checkUpdate, 60 * 60 * 1000);
+    // Check periodically; with auto-update on, new builds install themselves.
+    setInterval(() => checkUpdate(true), 20 * 60 * 1000);
   } catch (e) {
     toast(e.message, true);
   }

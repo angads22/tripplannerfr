@@ -21,6 +21,24 @@ function pub(u) {
 }
 const resolve = (ids) => arr(ids).map((id) => db.findUserById(id)).filter(Boolean).map(pub);
 
+// Search everyone by username or display name (for finding people to add).
+// Returns each match with your current relationship status so the UI shows the
+// right button.
+router.get("/search", (req, res) => {
+  const me = db.findUserById(req.user.id);
+  const q = String(req.query.q || "").trim().toLowerCase();
+  if (!q) return res.json({ results: [] });
+  const fr = new Set(arr(me.friends));
+  const inc = new Set(arr(me.friendReqIn));
+  const out = new Set(arr(me.friendReqOut));
+  const results = db
+    .getUsers()
+    .filter((u) => u.id !== me.id && (String(u.username).toLowerCase().includes(q) || String(u.displayName || "").toLowerCase().includes(q)))
+    .slice(0, 25)
+    .map((u) => ({ ...pub(u), status: fr.has(u.id) ? "friend" : inc.has(u.id) ? "incoming" : out.has(u.id) ? "outgoing" : "none" }));
+  res.json({ results });
+});
+
 // My friends + pending requests (in and out).
 router.get("/", (req, res) => {
   const me = db.findUserById(req.user.id);

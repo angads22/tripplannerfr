@@ -6,7 +6,7 @@
   <title>Trip · Pitstop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/pitstop.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
@@ -115,6 +115,20 @@
           <div id="propAddRow" class="modal__row" style="display:none;margin-top:14px">
             <input class="input" id="propInput" style="flex:1;min-width:160px" placeholder="suggest a change to the group" />
             <button class="btn primary" id="propAdd" type="button">Suggest</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-row">
+        <span class="sec-row__label">Group chat</span>
+        <span class="sec-row__rule"></span>
+      </div>
+      <div class="panel">
+        <div class="panel__body">
+          <div id="chatList" class="chat"></div>
+          <div id="chatAddRow" class="modal__row" style="display:none;margin-top:12px">
+            <input class="input" id="chatInput" style="flex:1;min-width:160px" placeholder="message the crew…" maxlength="1000" />
+            <button class="btn primary" id="chatSend" type="button">Send</button>
           </div>
         </div>
       </div>

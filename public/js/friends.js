@@ -89,18 +89,36 @@ document.addEventListener("click", async (e) => {
     location.href = "/login.html";
   });
 
-  async function sendReq() {
-    const username = $("#fr-user").value.trim();
-    if (!username) return toast("Enter a username.", true);
+  // Live search of everyone, debounced.
+  function statusBtn(u) {
+    if (u.status === "friend") return `<span class="badge you">friends</span>`;
+    if (u.status === "outgoing") return `<button class="btn small" data-cancel="${u.id}">Cancel</button>`;
+    if (u.status === "incoming") return `<button class="btn primary small" data-accept="${u.id}">Accept</button>`;
+    return `<button class="btn primary small" data-req="${u.username}">Add</button>`;
+  }
+  async function runSearch() {
+    const q = $("#fr-search").value.trim();
+    if (!q) { $("#searchResults").innerHTML = ""; $("#searchHint").style.display = ""; return; }
     try {
-      const r = await api("/api/friends/request", "POST", { username });
-      $("#fr-user").value = "";
-      toast(r.status === "friends" ? "You're friends now!" : "Request sent.");
-      await load();
+      const { results } = await api("/api/friends/search?q=" + encodeURIComponent(q));
+      $("#searchHint").style.display = results.length ? "none" : "";
+      $("#searchResults").innerHTML = results.map((u) => personRow(u, statusBtn(u))).join("") || '<p class="row__meta">No one found.</p>';
     } catch (e) { toast(e.message, true); }
   }
-  $("#fr-add").addEventListener("click", sendReq);
-  $("#fr-user").addEventListener("keydown", (e) => { if (e.key === "Enter") sendReq(); });
+  let searchT;
+  $("#fr-search").addEventListener("input", () => { clearTimeout(searchT); searchT = setTimeout(runSearch, 220); });
+
+  // "Add" from search results sends a request by username.
+  $("#searchResults").addEventListener("click", async (e) => {
+    const add = e.target.closest("[data-req]");
+    if (!add) return;
+    try {
+      const r = await api("/api/friends/request", "POST", { username: add.dataset.req });
+      toast(r.status === "friends" ? "You're friends now!" : "Request sent.");
+      await runSearch();
+      await load();
+    } catch (err) { toast(err.message, true); }
+  });
 
   await load();
 })();

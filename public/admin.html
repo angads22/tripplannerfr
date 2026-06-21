@@ -6,7 +6,7 @@
   <title>Admin · Pitstop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/pitstop.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
@@ -109,6 +109,11 @@
             <button class="btn small" id="checkUpdateBtn">Check now</button>
             <button class="btn primary small" id="applyUpdateBtn" style="display:none">Update now</button>
           </div>
+        </div>
+        <div class="row">
+          <div class="row__main"><div class="row__title">Auto-install new builds</div>
+          <div class="row__meta">When on, new builds download and install themselves in the background.</div></div>
+          <div class="row__actions"><label class="toggle"><input type="checkbox" id="autoUpdateToggle" /><span class="track"></span>Auto</label></div>
         </div>
       </div>
     </div>

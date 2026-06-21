@@ -157,6 +157,34 @@ function renderMap() {
   $("#mapEditRow").style.display = TRIP.canEditPlan ? "flex" : "none";
 }
 
+// --- Group chat -----------------------------------------------------------
+let CHAT_SIG = "";
+async function loadChat() {
+  if (!TRIP) return;
+  const onTrip = TRIP.isMember || TRIP.isCreator;
+  $("#chatAddRow").style.display = onTrip ? "flex" : "none";
+  let messages = [];
+  try {
+    const q = JOIN_CODE ? "?code=" + encodeURIComponent(JOIN_CODE) : "";
+    messages = (await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/messages" + q)).messages || [];
+  } catch { return; }
+  const sig = messages.map((m) => m.id).join(",");
+  if (sig === CHAT_SIG) return; // nothing new; don't disrupt scroll
+  CHAT_SIG = sig;
+  const box = $("#chatList");
+  box.innerHTML = messages.length
+    ? messages.map((m) => {
+        const mine = ME && m.userId === ME.id;
+        return `<div class="msg${mine ? " mine" : ""}">
+          ${mine ? "" : `<span class="msg__who">${esc(m.userName)}</span>`}
+          <span class="msg__bubble">${esc(m.text)}</span>
+          <span class="msg__time">${esc(relTime(m.ts))}</span>
+        </div>`;
+      }).join("")
+    : '<p class="row__meta">No messages yet — say hi 👋</p>';
+  box.scrollTop = box.scrollHeight;
+}
+
 function renderProposals() {
   const props = TRIP.proposals || [];
   $("#propCount").textContent = props.length ? `${props.length} open` : "";
@@ -243,6 +271,7 @@ async function reload() {
     ME = (await api("/api/auth/me")).user;
     if (!ME) return (location.href = "/login.html?next=" + encodeURIComponent(location.pathname));
     await reload();
+    await loadChat();
     await loadDirectory();
   } catch (e) {
     toast(e.message, true);
@@ -512,11 +541,28 @@ async function reload() {
     }
   });
 
-  // Live updates: refresh the trip every 15s so others' changes appear without
-  // a manual reload. Skip while the user is typing or a dialog is open.
+  // Send a chat message
+  async function sendChat() {
+    const text = $("#chatInput").value.trim();
+    if (!text) return;
+    $("#chatInput").value = "";
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/messages", "POST", { text });
+      await loadChat();
+    } catch (e) {
+      toast(e.message, true);
+      $("#chatInput").value = text;
+    }
+  }
+  $("#chatSend").addEventListener("click", sendChat);
+  $("#chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
+
+  // Live updates: refresh the trip + chat every ~8s so others' changes appear
+  // without a manual reload. Skip while the user is typing or a dialog is open.
   setInterval(() => {
     const ae = document.activeElement;
     if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
     reload().catch(() => {});
-  }, 15000);
+    loadChat().catch(() => {});
+  }, 8000);
 })();

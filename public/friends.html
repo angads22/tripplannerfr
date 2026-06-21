@@ -6,7 +6,7 @@
   <title>Friends · Pitstop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/pitstop.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
@@ -27,14 +27,14 @@
 
   <main class="wrap" style="max-width:560px">
 
-    <div class="sec-label">Add a friend</div>
+    <div class="sec-label">Find people</div>
     <div class="panel reveal">
       <div class="panel__body">
         <div class="row" style="border:none;gap:10px">
-          <input class="input" id="fr-user" style="flex:1;min-width:140px" placeholder="their username" />
-          <button class="btn primary" id="fr-add">Send request</button>
+          <input class="input" id="fr-search" style="flex:1;min-width:140px" placeholder="search by name or username" />
         </div>
-        <p class="row__meta" style="padding:0">They'll get a request to accept. Once you're friends, you can add each other to trips in one tap.</p>
+        <div id="searchResults" class="crew-list"></div>
+        <p class="row__meta" id="searchHint" style="padding:0">Search everyone, then send a request. Once you're friends, you can add each other to trips in one tap.</p>
       </div>
     </div>
 
