@@ -248,6 +248,18 @@ async function reload() {
     }
   });
 
+  // Duplicate this trip into a private copy you own
+  $("#dupBtn").addEventListener("click", async () => {
+    if (!confirm(`Make your own private copy of "${TRIP.title}"?`)) return;
+    try {
+      const { trip } = await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/duplicate", "POST", JOIN_CODE ? { code: JOIN_CODE } : {});
+      toast("Duplicated — opening your copy…");
+      location.href = "/trip/" + encodeURIComponent(trip.slug);
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
   // Join via the shared invite link (uses the code from the URL)
   $("#joinBtn").addEventListener("click", async () => {
     try {

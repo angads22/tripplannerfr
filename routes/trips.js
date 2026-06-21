@@ -190,6 +190,46 @@ router.post("/:id/rotate-code", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
+// Duplicate a trip into a private copy owned by whoever duplicates it. Handy
+// for forking a plan (e.g. the admin making the shared Toronto their own).
+// Anyone who can see the trip (crew, admin, or someone with the code) can.
+router.post("/:id/duplicate", requireAuth, (req, res) => {
+  const src = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
+  const code = (req.body && (req.body.code || req.body.j)) || req.query.code || req.query.j;
+  if (!src || !canSee(src, req.user, code)) return res.status(404).json({ error: "Trip not found." });
+
+  const now = new Date().toISOString();
+  const baseTitle = str(src.title, 110) + " (copy)";
+  let slug = slugify(baseTitle);
+  for (let n = 2; db.findTripBySlug(slug); n++) slug = slugify(baseTitle + " " + n);
+
+  const copy = db.addTrip({
+    id: crypto.randomUUID(),
+    slug,
+    title: baseTitle,
+    subtitle: src.subtitle || "",
+    date: src.date || "",
+    emoji: src.emoji || "🚗",
+    theme: cleanTheme(src.theme),
+    tags: Array.isArray(src.tags) ? [...src.tags] : [],
+    crew: Array.isArray(src.crew) ? [...src.crew] : [],
+    members: [req.user.id], // the duplicator is the owner + first member
+    stops: (Array.isArray(src.stops) ? src.stops : []).map((s) => ({ ...s, id: crypto.randomUUID() })),
+    mapUrl: src.mapUrl || "",
+    activity: [{ id: crypto.randomUUID(), ts: now, userId: req.user.id, userName: req.user.displayName, text: `duplicated from "${src.title}"` }],
+    proposals: [],
+    pageFile: "", // a copy uses the generic detail page, not the original's custom HTML
+    shareWithEveryone: false, // private to the new owner
+    joinCode: genJoinCode(),
+    allowedUsers: [],
+    createdBy: req.user.id,
+    createdByName: req.user.displayName,
+    createdAt: now,
+    updatedAt: now,
+  });
+  res.status(201).json({ trip: publicTrip(copy, req.user) });
+});
+
 // --- Create (any logged-in user) -----------------------------------------
 
 router.post("/", requireAuth, (req, res) => {
