@@ -8,7 +8,7 @@ const FileStore = require("session-file-store")(session);
 
 const config = require("./lib/config");
 const db = require("./lib/db");
-const { seedIfEmpty } = require("./lib/seed");
+const { seedIfEmpty, tidyExistingTrips } = require("./lib/seed");
 const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
 const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
 
@@ -49,8 +49,10 @@ app.use(
   })
 );
 
-// Seed the starter trip(s) on first run.
+// Seed the starter trip(s) on first run, then tidy any existing data so old
+// shared/ownerless trips become private under the new invite-link model.
 seedIfEmpty();
+tidyExistingTrips();
 
 // --- API -------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
