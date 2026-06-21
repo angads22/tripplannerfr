@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const db = require("../lib/db");
 const config = require("../lib/config");
-const { requireAdmin, requireAuth, inviteCode } = require("../lib/auth-middleware");
+const { requireAdmin, requireAuth, inviteCode, earlyBird } = require("../lib/auth-middleware");
 
 const router = express.Router();
 
@@ -49,6 +49,24 @@ router.put("/invite-code", (req, res) => {
   }
   db.updateSettings({ inviteCode: code });
   res.json({ inviteCode: code, isDefault: false });
+});
+
+// The "early bird" code (on by default; admin can flip it off or change it).
+router.get("/early-bird", (req, res) => {
+  res.json(earlyBird());
+});
+
+router.put("/early-bird", (req, res) => {
+  const { enabled, code } = req.body || {};
+  const patch = {};
+  if (typeof enabled === "boolean") patch.earlyBirdEnabled = enabled;
+  if (code != null) {
+    const c = String(code).trim();
+    if (c.length < 4) return res.status(400).json({ error: "Early-bird code must be at least 4 characters." });
+    patch.earlyBirdCode = c;
+  }
+  db.updateSettings(patch);
+  res.json(earlyBird());
 });
 
 // Update a user: toggle admin, or reset their password.

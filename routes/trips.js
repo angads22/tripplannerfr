@@ -15,6 +15,7 @@ const {
   isCreator,
   isMember,
   canAddMembers,
+  canEditPlan,
   canRemoveMembers,
   canManageTrip,
 } = require("../lib/auth-middleware");
@@ -25,8 +26,9 @@ const str = (v, max = 2000) => String(v == null ? "" : v).slice(0, max).trim();
 const slugify = (v) =>
   str(v, 80).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || crypto.randomUUID();
 
-// The three accent themes from the design (all share the Pitstop aesthetic).
-const THEMES = ["red", "blue", "green"];
+// Accent themes (all share the Pitstop aesthetic; the first three are the
+// design's Highway Red / Lake Blue / Pine Green).
+const THEMES = ["red", "blue", "green", "purple", "orange"];
 const cleanTheme = (v) => (THEMES.includes(String(v || "").trim()) ? String(v).trim() : "red");
 
 // Turn a list of member user-ids into {id, displayName, initials} for display.
@@ -55,6 +57,9 @@ function publicTrip(t, user) {
     theme: cleanTheme(t.theme),
     members,
     memberCount: members.length,
+    stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))),
+    mapUrl: t.mapUrl || "",
+    activity: (Array.isArray(t.activity) ? t.activity : []).slice(-30).reverse(),
     hasPage: !!t.pageFile,
     creatorId: t.createdBy || null,
     creatorName: t.createdByName || "",
@@ -62,6 +67,7 @@ function publicTrip(t, user) {
     isCreator: isCreator(t, user),
     isMember: isMember(t, user),
     canAddMembers: canAddMembers(t, user),
+    canEditPlan: canEditPlan(t, user),
     canRemoveMembers: canRemoveMembers(t, user),
     canManage: canManageTrip(t, user),
   };
@@ -124,6 +130,9 @@ router.post("/", requireAuth, (req, res) => {
     ...input,
     members: [req.user.id], // creator is the first member
     crew: [],
+    stops: [],
+    mapUrl: "",
+    activity: [{ id: crypto.randomUUID(), ts: now, userId: req.user.id, userName: req.user.displayName, text: "created the trip" }],
     createdBy: req.user.id,
     createdByName: req.user.displayName,
     createdAt: now,
@@ -141,7 +150,8 @@ router.put("/:id", requireAuth, (req, res) => {
     return res.status(403).json({ error: "Only the trip's creator can edit it." });
   }
   const input = normalizeTripInput({ ...existing, ...req.body });
-  const updated = db.updateTrip(existing.id, input);
+  const note = req.body && req.body.theme && req.body.theme !== existing.theme ? `changed the theme to ${input.theme}` : "updated trip details";
+  const updated = db.updateTrip(existing.id, withActivity(existing, req.user, note, input));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
@@ -173,7 +183,7 @@ router.post("/:id/members", requireAuth, (req, res) => {
     return res.status(409).json({ error: `${target.displayName} is already on this trip.` });
   }
   members.push(target.id);
-  const updated = db.updateTrip(trip.id, { members });
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `added ${target.displayName} to the trip`, { members }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
@@ -187,8 +197,9 @@ router.delete("/:id/members/:userId", requireAuth, (req, res) => {
   if (req.params.userId === trip.createdBy) {
     return res.status(400).json({ error: "The creator can't be removed from their own trip." });
   }
+  const removed = db.findUserById(req.params.userId);
   const members = (Array.isArray(trip.members) ? trip.members : []).filter((id) => id !== req.params.userId);
-  const updated = db.updateTrip(trip.id, { members });
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `removed ${removed ? removed.displayName : "someone"} from the trip`, { members }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
@@ -201,6 +212,89 @@ router.put("/:id/access", requireAuth, (req, res) => {
     return res.status(403).json({ error: "Only the trip's creator can change sharing." });
   }
   const updated = db.updateTrip(existing.id, { shareWithEveryone: !!(req.body || {}).shareWithEveryone });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// --- Activity log helper -------------------------------------------------
+
+// Append a "who did what" entry (kept to the last 50) and return the patch.
+function withActivity(trip, user, text, patch) {
+  const activity = Array.isArray(trip.activity) ? trip.activity.slice(-49) : [];
+  activity.push({
+    id: crypto.randomUUID(),
+    ts: new Date().toISOString(),
+    userId: user.id,
+    userName: user.displayName,
+    text,
+  });
+  return { ...patch, activity };
+}
+
+// A Google Maps search link from a free-text place name.
+const mapsLink = (place) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place);
+
+// --- Itinerary / timing events (any trip member) -------------------------
+
+router.post("/:id/stops", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the plan." });
+
+  const title = str((req.body || {}).title, 120);
+  if (!title) return res.status(400).json({ error: "Give the stop a name." });
+  const stop = {
+    id: crypto.randomUUID(),
+    time: str((req.body || {}).time, 10),
+    title,
+    place: str((req.body || {}).place, 160),
+    note: str((req.body || {}).note, 300),
+  };
+  const stops = [...(Array.isArray(trip.stops) ? trip.stops : []), stop];
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `added a stop: ${stop.time ? stop.time + " " : ""}${stop.title}`, { stops }));
+  res.status(201).json({ trip: publicTrip(updated, req.user) });
+});
+
+router.put("/:id/stops/:stopId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the plan." });
+
+  const stops = (Array.isArray(trip.stops) ? trip.stops : []).map((s) => {
+    if (s.id !== req.params.stopId) return s;
+    return {
+      ...s,
+      time: req.body.time != null ? str(req.body.time, 10) : s.time,
+      title: req.body.title != null ? str(req.body.title, 120) || s.title : s.title,
+      place: req.body.place != null ? str(req.body.place, 160) : s.place,
+      note: req.body.note != null ? str(req.body.note, 300) : s.note,
+    };
+  });
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `edited a stop`, { stops }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+router.delete("/:id/stops/:stopId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the plan." });
+
+  const removed = (Array.isArray(trip.stops) ? trip.stops : []).find((s) => s.id === req.params.stopId);
+  const stops = (Array.isArray(trip.stops) ? trip.stops : []).filter((s) => s.id !== req.params.stopId);
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `removed a stop${removed ? ": " + removed.title : ""}`, { stops }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// --- The map link (any trip member) --------------------------------------
+
+router.put("/:id/map", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the plan." });
+
+  let mapUrl = str((req.body || {}).mapUrl, 600);
+  // Accept either a pasted Google Maps URL or a plain place name.
+  if (mapUrl && !/^https?:\/\//i.test(mapUrl)) mapUrl = mapsLink(mapUrl);
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, mapUrl ? "updated the map" : "cleared the map", { mapUrl }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 

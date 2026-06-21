@@ -17,9 +17,11 @@
 }
 
 /* Per-trip accent themes (all share the Pitstop look, just a different accent) */
+[data-theme="red"] { --accent: #E23B26; }
 [data-theme="blue"] { --accent: #2D6CA2; }
 [data-theme="green"] { --accent: #2F8F5B; }
-[data-theme="red"] { --accent: #E23B26; }
+[data-theme="purple"] { --accent: #7A4FB5; }
+[data-theme="orange"] { --accent: #C8741C; }
 
 * { box-sizing: border-box; }
 
@@ -350,6 +352,8 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .theme-dot.red { background: #E23B26; }
 .theme-dot.blue { background: #2D6CA2; }
 .theme-dot.green { background: #2F8F5B; }
+.theme-dot.purple { background: #7A4FB5; }
+.theme-dot.orange { background: #C8741C; }
 
 /* Emoji sticker picker */
 .stickers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

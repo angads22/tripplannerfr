@@ -108,11 +108,53 @@ function addCard() {
 
 // --- Create-trip modal -----------------------------------------------------
 const STICKERS = ["🚗", "✈️", "🏙️", "🏔️", "🏖️", "🏕️", "🎡", "🛶", "🌮", "🍕", "🎸", "📸", "🗺️", "🐻", "🌵", "🛹"];
+
+// Starter templates for different kinds of trips / hangouts. Picking one
+// pre-fills the sticker, theme, tags, and a starter itinerary.
+const TEMPLATES = {
+  blank:    { label: "Blank", emoji: "🚗", theme: "red", tags: [], stops: [] },
+  daytrip:  { label: "🏙️ Day trip", emoji: "🏙️", theme: "red", tags: ["Day trip"], stops: [
+                { time: "09:00", title: "Meet up & depart" }, { time: "12:00", title: "Lunch" },
+                { time: "14:00", title: "Explore" }, { time: "18:00", title: "Head home" } ] },
+  weekend:  { label: "🏔️ Weekend away", emoji: "🏔️", theme: "blue", tags: ["Weekend"], stops: [
+                { time: "10:00", title: "Check in" }, { time: "13:00", title: "Lunch spot" },
+                { time: "19:00", title: "Dinner" }, { time: "10:00", title: "Day 2 adventure" } ] },
+  nightout: { label: "🍸 Night out", emoji: "🍸", theme: "purple", tags: ["Night out"], stops: [
+                { time: "19:00", title: "Pre-game" }, { time: "20:30", title: "Dinner" },
+                { time: "22:00", title: "Main event" }, { time: "00:30", title: "After" } ] },
+  hangout:  { label: "🎮 Hangout", emoji: "🎮", theme: "green", tags: ["Hangout"], stops: [
+                { time: "15:00", title: "Meet up" }, { time: "16:00", title: "Food run" },
+                { time: "17:00", title: "Activity" } ] },
+  roadtrip: { label: "🛣️ Road trip", emoji: "🛣️", theme: "orange", tags: ["Road trip"], stops: [
+                { time: "08:00", title: "Depart" }, { time: "11:00", title: "Pit stop" },
+                { time: "15:00", title: "Arrive" } ] },
+};
+
 let ctEmoji = "🚗";
 let ctTheme = "red";
+let ctTags = [];
+let ctStops = [];
+
+function applyTemplate(key) {
+  const t = TEMPLATES[key];
+  if (!t) return;
+  ctEmoji = t.emoji; ctTheme = t.theme; ctTags = [...t.tags]; ctStops = t.stops.map((s) => ({ ...s }));
+  // reflect in the UI
+  $("#createModal").setAttribute("data-theme", ctTheme);
+  $("#ct-stickers").querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x.dataset.emoji === ctEmoji));
+  $("#ct-themes").querySelectorAll(".theme-dot").forEach((x) => x.classList.toggle("sel", x.dataset.theme === ctTheme));
+  $("#ct-templates").querySelectorAll(".btn").forEach((b) => b.classList.toggle("primary", b.dataset.tpl === key));
+}
 
 function openCreate() {
   const scrim = $("#createScrim");
+  // build template chips once
+  const tg = $("#ct-templates");
+  if (!tg.dataset.built) {
+    tg.innerHTML = Object.entries(TEMPLATES).map(([k, t]) => `<button type="button" class="btn small${k === "blank" ? " primary" : ""}" data-tpl="${k}">${t.label}</button>`).join("");
+    tg.dataset.built = "1";
+    tg.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tpl]"); if (b) applyTemplate(b.dataset.tpl); });
+  }
   // build sticker grid once
   const sg = $("#ct-stickers");
   if (!sg.dataset.built) {
@@ -147,7 +189,12 @@ async function createTrip() {
       subtitle: $("#ct-sub").value.trim(),
       emoji: ctEmoji,
       theme: ctTheme,
+      tags: ctTags,
     });
+    // Seed the template's starter stops, if any.
+    for (const s of ctStops) {
+      await api("/api/trips/" + encodeURIComponent(trip.id) + "/stops", "POST", s).catch(() => {});
+    }
     location.href = "/trip/" + encodeURIComponent(trip.slug || trip.id);
   } catch (e) {
     toast(e.message, true);
