@@ -32,6 +32,30 @@ async function api(method, path, body) {
   return data;
 }
 
+function relTime(iso) {
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (isNaN(d)) return "";
+  if (d < 60) return "just now";
+  if (d < 3600) return Math.floor(d / 60) + "m ago";
+  if (d < 86400) return Math.floor(d / 3600) + "h ago";
+  return Math.floor(d / 86400) + "d ago";
+}
+
+// --- Activity log ----------------------------------------------------------
+async function loadLogs() {
+  const { logs } = await api("GET", "/api/admin/logs");
+  $("#logFeed").innerHTML = logs.length
+    ? logs.map((e) => `
+        <div class="row" style="padding:9px 0">
+          <div class="row__main">
+            <div class="row__title" style="font-size:14px"><b>${esc(e.who)}</b> ${esc(e.text)}</div>
+            <div class="row__meta">${e.trip ? esc(e.trip) + " · " : ""}${esc(relTime(e.ts))}</div>
+          </div>
+        </div>`).join("")
+    : '<p class="row__meta">No activity yet.</p>';
+}
+$("#logRefresh").addEventListener("click", () => loadLogs().catch((e) => toast(e.message, true)));
+
 // --- Invite code -----------------------------------------------------------
 async function loadInvite() {
   const { inviteCode, isDefault } = await api("GET", "/api/users/invite-code");
@@ -272,6 +296,7 @@ $("#logoutBtn").addEventListener("click", async () => {
     await loadInvite();
     await loadUsers();
     await loadTrips();
+    await loadLogs();
     await checkUpdate();
     setInterval(checkUpdate, 60 * 60 * 1000);
   } catch (e) {

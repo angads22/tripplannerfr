@@ -19,6 +19,7 @@ const https = require("https");
 const { spawn } = require("child_process");
 const { requireAdmin } = require("../lib/auth-middleware");
 const { isPackaged, EXE_DIR } = require("../lib/paths");
+const db = require("../lib/db");
 
 const REPO = "angads22/tripplannerfr";
 const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`;
@@ -92,6 +93,24 @@ async function getLatestRelease() {
 }
 
 // --- routes ----------------------------------------------------------------
+
+// Activity log: every trip's changelog merged with account sign-ups, newest
+// first. Gives the admin one place to see who did what across the whole app.
+router.get("/logs", (req, res) => {
+  const events = [];
+  for (const t of db.getTrips()) {
+    for (const a of Array.isArray(t.activity) ? t.activity : []) {
+      events.push({ ts: a.ts, who: a.userName || "someone", text: a.text || "", trip: t.title || "", slug: t.slug || "" });
+    }
+  }
+  for (const u of db.getUsers()) {
+    if (u.createdAt) {
+      events.push({ ts: u.createdAt, who: u.displayName, text: u.isAdmin ? "created the admin account" : "created an account", trip: "", slug: "" });
+    }
+  }
+  events.sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+  res.json({ logs: events.slice(0, 200) });
+});
 
 router.post("/shutdown", (req, res) => {
   res.json({ ok: true, message: "Shutting down. Run Start Trip Planner.bat (or the exe) to turn it back on." });
