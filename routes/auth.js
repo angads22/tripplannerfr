@@ -10,7 +10,14 @@ const router = express.Router();
 
 function publicUser(u) {
   if (!u) return null;
-  return { id: u.id, username: u.username, displayName: u.displayName, isAdmin: u.isAdmin };
+  return {
+    id: u.id,
+    username: u.username,
+    displayName: u.displayName,
+    isAdmin: u.isAdmin,
+    avatarEmoji: u.avatarEmoji || "",
+    avatarColor: u.avatarColor || "",
+  };
 }
 
 // Who am I? Used by the frontend to decide what to show.
@@ -79,6 +86,58 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.json({ ok: true });
+  });
+});
+
+// --- Account settings (edit your own profile / delete your account) --------
+
+function requireSelf(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: "Please log in." });
+  const u = db.findUserById(req.session.userId);
+  if (!u) return res.status(401).json({ error: "Session expired, please log in again." });
+  req.me = u;
+  next();
+}
+
+// Update your own display name, avatar, and (optionally) password.
+router.put("/me", requireSelf, async (req, res) => {
+  const { displayName, avatarEmoji, avatarColor, password, currentPassword } = req.body || {};
+  const patch = {};
+
+  if (displayName != null) {
+    const d = String(displayName).trim();
+    if (d.length < 1) return res.status(400).json({ error: "Name can't be empty." });
+    patch.displayName = d.slice(0, 60);
+  }
+  if (avatarEmoji != null) patch.avatarEmoji = String(avatarEmoji).trim().slice(0, 8);
+  if (avatarColor != null) patch.avatarColor = String(avatarColor).trim().slice(0, 16);
+
+  if (password != null && String(password) !== "") {
+    // Changing the password requires confirming the current one.
+    const ok = await bcrypt.compare(String(currentPassword || ""), req.me.passwordHash);
+    if (!ok) return res.status(403).json({ error: "Current password is wrong." });
+    if (String(password).length < 6) return res.status(400).json({ error: "New password must be at least 6 characters." });
+    patch.passwordHash = await bcrypt.hash(String(password), 10);
+  }
+
+  if (!Object.keys(patch).length) return res.status(400).json({ error: "Nothing to update." });
+  const updated = db.updateUser(req.me.id, patch);
+  res.json({ user: publicUser(updated) });
+});
+
+// Delete your own account (after confirming your password). The last admin
+// can't delete themselves and lock everyone out.
+router.delete("/me", requireSelf, async (req, res) => {
+  const { password } = req.body || {};
+  const ok = await bcrypt.compare(String(password || ""), req.me.passwordHash);
+  if (!ok) return res.status(403).json({ error: "Wrong password." });
+  if (req.me.isAdmin && db.adminCount() <= 1) {
+    return res.status(400).json({ error: "You're the only admin — make someone else an admin first." });
+  }
+  db.deleteUser(req.me.id);
   req.session.destroy(() => {
     res.clearCookie("connect.sid");
     res.json({ ok: true });
