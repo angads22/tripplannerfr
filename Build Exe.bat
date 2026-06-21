@@ -22,7 +22,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-call npx pkg . --targets node18-win-x64 --output "dist\TripPlanner.exe"
+call npx pkg . --targets node18-win-x64 --no-bytecode --public-packages "*" --public --output "dist\TripPlanner.exe"
 if errorlevel 1 (
   echo  Build failed. See errors above.
   pause

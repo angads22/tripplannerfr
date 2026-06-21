@@ -7,7 +7,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "build": "pkg . --targets node18-win-x64 --output dist/TripPlanner.exe"
+    "build": "pkg . --targets node18-win-x64 --no-bytecode --public-packages \"*\" --public --output dist/TripPlanner.exe"
   },
   "bin": "server.js",
   "pkg": {
