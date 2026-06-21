@@ -63,11 +63,18 @@
     <!-- Trips -->
     <div class="sec-label">Trips &amp; access</div>
     <div class="panel reveal">
-      <div class="panel__head"><h2>Trips</h2><span class="muted">control who can see each one</span></div>
+      <div class="panel__head"><h2>Trips</h2><span class="muted">who can see it · who can edit it</span></div>
       <div class="panel__body" id="tripList"></div>
     </div>
+
+    <!-- Change requests -->
     <div class="panel reveal">
-      <div class="panel__head"><h2>Add a trip</h2><span class="muted">register a page that lives in <code>content/trips/</code></span></div>
+      <div class="panel__head"><h2>Change requests</h2><span class="muted" id="crCount"></span></div>
+      <div class="panel__body" id="crList"></div>
+    </div>
+
+    <div class="panel reveal">
+      <div class="panel__head"><h2>Add a trip</h2><span class="muted">create it, then build the itinerary in-app</span></div>
       <div class="panel__body">
         <div class="row" style="gap:10px">
           <input class="input" id="nt-emoji" style="width:64px" placeholder="🏙️" />
@@ -76,10 +83,9 @@
         </div>
         <div class="row" style="gap:10px;border-top:none;padding-top:0">
           <input class="input" id="nt-sub" style="flex:1;min-width:160px" placeholder="Subtitle (optional)" />
-          <input class="input" id="nt-page" style="flex:1;min-width:160px" placeholder="Page file, e.g. montreal.html" />
-          <button class="btn primary small" id="nt-add">Add trip</button>
+          <button class="btn primary small" id="nt-add">Create &amp; build itinerary</button>
         </div>
-        <p class="row__meta" style="padding:4px 0 0">Tip: ask Claude to "add a trip" and it'll create the page in <code>content/trips/</code> and register it for you.</p>
+        <p class="row__meta" style="padding:4px 0 0">After it's created you'll jump straight into the builder to add days and stops — no HTML, no code. Advanced: you can still point a trip at a custom page in <code>content/trips/</code> by setting its <code>pageFile</code> in <code>data/db.json</code>.</p>
       </div>
     </div>
 

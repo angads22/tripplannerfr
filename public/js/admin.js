@@ -5,6 +5,13 @@ const $ = (s, r = document) => r.querySelector(s);
 let ME = null;
 let USERS = [];
 let TRIPS = [];
+let REQUESTS = [];
+
+function fmtWhen(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
 
 function toast(msg, isErr) {
   const t = $("#toast");
@@ -122,28 +129,40 @@ $("#na-add").addEventListener("click", async () => {
 });
 
 // --- Trips & access --------------------------------------------------------
+function aclChecks(role, selected) {
+  return USERS.map(
+    (u) => `<label class="${selected.has(u.id) ? "on" : ""}">
+        <input type="checkbox" data-role="${role}" data-uid="${u.id}" ${selected.has(u.id) ? "checked" : ""}/> ${esc(u.displayName)}
+      </label>`
+  ).join("");
+}
+
 function tripRow(t) {
   const everyone = !!t.shareWithEveryone;
   const allowed = new Set(t.allowedUsers || []);
-  const checks = USERS.map(
-    (u) => `<label class="${allowed.has(u.id) ? "on" : ""}">
-        <input type="checkbox" data-uid="${u.id}" ${allowed.has(u.id) ? "checked" : ""}/> ${esc(u.displayName)}
-      </label>`
-  ).join("");
+  const editors = new Set(t.editorUsers || []);
+  const pending = t.pendingRequestCount || 0;
+  const slug = t.slug || t.id;
   return `
     <div class="row" data-tid="${t.id}" style="align-items:flex-start;flex-direction:column">
       <div style="display:flex;gap:12px;align-items:center;width:100%;flex-wrap:wrap">
         <div class="row__main">
-          <div class="row__title">${esc(t.emoji || "✈️")} ${esc(t.title)}</div>
-          <div class="row__meta"><span class="mono">/trip/${esc(t.slug || t.id)}</span> · ${esc(t.date || "no date")} · page: <span class="mono">${esc(t.pageFile || "—")}</span></div>
+          <div class="row__title">${esc(t.emoji || "✈️")} ${esc(t.title)} ${pending ? `<span class="cr-badge">${pending} pending</span>` : ""}</div>
+          <div class="row__meta"><span class="mono">/trip/${esc(slug)}</span> · ${esc(t.date || "no date")}</div>
         </div>
         <div class="row__actions">
           <label class="toggle"><input type="checkbox" data-act="everyone" ${everyone ? "checked" : ""}/><span class="track"></span>Everyone</label>
-          <a class="btn small" href="/trip/${encodeURIComponent(t.slug || t.id)}" target="_blank" rel="noopener">Open</a>
+          <a class="btn small" href="/trip/${encodeURIComponent(slug)}/edit">Build</a>
+          <a class="btn small" href="/trip/${encodeURIComponent(slug)}" target="_blank" rel="noopener">Open</a>
           <button class="btn danger small" data-act="del">Delete</button>
         </div>
       </div>
-      <div class="access ${everyone ? "disabled" : ""}">${checks || '<span class="row__meta">No accounts yet.</span>'}</div>
+      <div style="width:100%">
+        <div class="row__meta" style="margin:6px 0 4px">Who can see it${everyone ? " — everyone's in" : ""}</div>
+        <div class="access ${everyone ? "disabled" : ""}" data-acl="view">${USERS.length ? aclChecks("view", allowed) : '<span class="row__meta">No accounts yet.</span>'}</div>
+        <div class="row__meta" style="margin:12px 0 4px">Who can edit directly <span class="muted">(everyone else can only suggest)</span></div>
+        <div class="access" data-acl="edit">${USERS.length ? aclChecks("edit", editors) : '<span class="row__meta">No accounts yet.</span>'}</div>
+      </div>
     </div>`;
 }
 async function loadTrips() {
@@ -154,18 +173,27 @@ async function loadTrips() {
 async function saveAccess(tid) {
   const row = $(`[data-tid="${tid}"]`);
   const everyone = row.querySelector('[data-act="everyone"]').checked;
-  const allowedUsers = [...row.querySelectorAll('.access input[data-uid]')].filter((c) => c.checked).map((c) => c.dataset.uid);
-  await api("PUT", `/api/trips/${tid}/access`, { shareWithEveryone: everyone, allowedUsers });
+  const allowedUsers = [...row.querySelectorAll('[data-acl="view"] input[data-uid]')].filter((c) => c.checked).map((c) => c.dataset.uid);
+  const editorUsers = [...row.querySelectorAll('[data-acl="edit"] input[data-uid]')].filter((c) => c.checked).map((c) => c.dataset.uid);
+  await api("PUT", `/api/trips/${tid}/access`, { shareWithEveryone: everyone, allowedUsers, editorUsers });
 }
 $("#tripList").addEventListener("change", async (e) => {
   const row = e.target.closest("[data-tid]");
   if (!row) return;
   const tid = row.dataset.tid;
   if (e.target.matches('[data-act="everyone"]')) {
-    row.querySelector(".access").classList.toggle("disabled", e.target.checked);
+    row.querySelector('[data-acl="view"]').classList.toggle("disabled", e.target.checked);
   }
-  if (e.target.matches('.access input[data-uid]')) {
+  if (e.target.matches(".access input[data-uid]")) {
     e.target.closest("label").classList.toggle("on", e.target.checked);
+    // An editor must also be able to see the trip — mirror the view tick.
+    if (e.target.dataset.role === "edit" && e.target.checked) {
+      const viewBox = row.querySelector(`[data-acl="view"] input[data-uid="${e.target.dataset.uid}"]`);
+      if (viewBox && !viewBox.checked) {
+        viewBox.checked = true;
+        viewBox.closest("label").classList.add("on");
+      }
+    }
   }
   try {
     await saveAccess(tid);
@@ -180,7 +208,7 @@ $("#tripList").addEventListener("click", async (e) => {
   if (!btn) return;
   const row = e.target.closest("[data-tid]");
   const t = TRIPS.find((x) => x.id === row.dataset.tid);
-  if (!confirm(`Remove "${t ? t.title : "this trip"}" from the board? (The page file stays on disk.)`)) return;
+  if (!confirm(`Remove "${t ? t.title : "this trip"}" from the board? This can't be undone.`)) return;
   try {
     await api("DELETE", `/api/trips/${row.dataset.tid}`);
     toast("Trip removed.");
@@ -193,20 +221,76 @@ $("#nt-add").addEventListener("click", async () => {
   const title = $("#nt-title").value.trim();
   if (!title) return toast("Give the trip a title.", true);
   try {
-    await api("POST", "/api/trips", {
+    const { trip } = await api("POST", "/api/trips", {
       title,
       emoji: $("#nt-emoji").value.trim(),
       date: $("#nt-date").value,
       subtitle: $("#nt-sub").value.trim(),
-      pageFile: $("#nt-page").value.trim(),
       shareWithEveryone: true,
     });
-    $("#nt-title").value = $("#nt-emoji").value = $("#nt-sub").value = $("#nt-page").value = "";
-    $("#nt-date").value = "";
-    toast("Trip added (shared with everyone).");
-    await loadTrips();
+    toast("Trip created — opening the builder…");
+    setTimeout(() => (location.href = "/trip/" + encodeURIComponent(trip.slug || trip.id) + "/edit"), 650);
   } catch (e) {
     toast(e.message, true);
+  }
+});
+
+// --- Change requests -------------------------------------------------------
+function tripSlug(tripId) {
+  const t = TRIPS.find((x) => x.id === tripId);
+  return (t && t.slug) || tripId;
+}
+// A readable text preview of a proposed itinerary (no diffing — full snapshot).
+function summarize(c) {
+  if (!c) return "(empty)";
+  const lines = [];
+  if (c.overview) lines.push("Overview: " + c.overview.slice(0, 160));
+  if (Array.isArray(c.crew) && c.crew.length) lines.push("Crew: " + c.crew.join(", "));
+  (c.days || []).forEach((d, i) => {
+    lines.push(`${d.label || "Day " + (i + 1)} — ${(d.stops || []).length} stop(s)`);
+    (d.stops || []).forEach((s) => lines.push(`   • ${s.time ? s.time + "  " : ""}${s.name || "(unnamed)"}${s.location ? "  @ " + s.location : ""}`));
+  });
+  return lines.join("\n") || "(empty itinerary)";
+}
+function crRow(r) {
+  return `
+    <div class="cr" data-rid="${r.id}">
+      <div class="cr__head">
+        <span class="cr__who">${esc(r.userName)} → ${esc(r.tripTitle)}</span>
+        <span class="cr__when">${esc(fmtWhen(r.createdAt))}</span>
+      </div>
+      ${r.message ? `<div class="cr__msg">“${esc(r.message)}”</div>` : ""}
+      <div class="cr__preview">${esc(summarize(r.proposedContent))}</div>
+      <div class="cr__actions">
+        <a class="btn small" href="/trip/${encodeURIComponent(tripSlug(r.tripId))}" target="_blank" rel="noopener">See current</a>
+        <button class="btn primary small" data-act="approve">Approve &amp; apply</button>
+        <button class="btn danger small" data-act="reject">Reject</button>
+      </div>
+    </div>`;
+}
+async function loadRequests() {
+  const { requests } = await api("GET", "/api/trips/requests");
+  REQUESTS = requests;
+  $("#crCount").textContent = requests.length ? `${requests.length} pending` : "all caught up";
+  $("#crList").innerHTML = requests.length
+    ? requests.map(crRow).join("")
+    : '<div class="row__meta" style="padding:8px 0">No pending suggestions.</div>';
+}
+$("#crList").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const rid = e.target.closest("[data-rid]").dataset.rid;
+  const act = btn.dataset.act;
+  if (act === "reject" && !confirm("Reject this suggestion? The member can send a new one.")) return;
+  btn.disabled = true;
+  try {
+    await api("POST", `/api/trips/requests/${rid}/${act}`, {});
+    toast(act === "approve" ? "Applied to the trip." : "Suggestion rejected.");
+    await loadRequests();
+    await loadTrips();
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
   }
 });
 
@@ -235,6 +319,7 @@ $("#logoutBtn").addEventListener("click", async () => {
     await loadInvite();
     await loadUsers();
     await loadTrips();
+    await loadRequests();
   } catch (e) {
     toast(e.message, true);
   }

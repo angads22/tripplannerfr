@@ -5,8 +5,8 @@ with a shared invite code, claim their name, and only see the trips you've given
 them access to. You get an **admin console** to manage people, the invite code,
 and per-trip access — and an easy on/off button.
 
-Trips are **live interactive pages** (like the Toronto day-trip itinerary).
-Adding a new one is modular: drop an HTML page in `content/trips/` and register it.
+Trips are **live interactive itineraries** you build right in the app — add days
+and stops (time, place, notes, tips, map links) with no HTML and no code.
 
 ---
 
@@ -38,20 +38,33 @@ Adding a new one is modular: drop an HTML page in `content/trips/` and register 
 - **People** — make/remove admins, reset a password, delete an account, or
   pre-create a login for a friend.
 - **Trips & access** — for each trip, toggle **Everyone** or tick exactly which
-  people can see it. Add or remove trips from the board.
+  people can **see** it, and tick who can **edit** it directly. Add or remove
+  trips from the board.
+- **Change requests** — members who can see a trip (but aren't editors) can
+  suggest changes; you review them here and **approve** (applies it) or **reject**.
 - **Server power** — shut the whole thing down remotely.
 
-## ➕ Adding another trip (modular)
+## ➕ Adding & editing trips
 
-Each trip is just an HTML page in `content/trips/` plus a small registry entry.
+Trips are built in-app — no HTML, no files to edit.
 
-1. Put your page at `content/trips/<name>.html`.
-2. In the Admin console → **Add a trip**, fill in the title/emoji/date and set
-   **Page file** to `<name>.html`. (Or it'll be created for you — see below.)
-3. Set who can see it.
+1. Admin console → **Add a trip**: give it a title/emoji/date and click
+   **Create & build itinerary**. You jump straight into the builder.
+2. In the **builder**, add an overview and as many **days** and **stops** as you
+   like (time, name, category, location + map link, notes, a tip). Reorder or
+   remove anything, then **Save**.
+3. Back in the admin console, set who can **see** it and who can **edit** it.
 
-**Easiest:** just tell Claude *"add a trip to <place>"* and it will generate the
-interactive page in `content/trips/` and wire it into the board for you.
+### Who can change a trip
+- **Admins** and a trip's **creator** can always edit.
+- An admin can **elevate** any member to **editor** for a trip — they then edit
+  it directly.
+- Everyone else who can see a trip can **Suggest a change** from the trip page;
+  it goes to the admin's **Change requests** queue for approval.
+
+> **Legacy custom pages:** older trips can still point at a hand-written HTML file
+> in `content/trips/` via a `pageFile` (the seeded Toronto trip works this way).
+> Those keep rendering as-is; new trips use the in-app builder.
 
 ---
 

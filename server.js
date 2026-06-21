@@ -56,23 +56,47 @@ app.get(["/admin", "/admin.html"], requirePage, (req, res) => {
 
 const TRIPS_CONTENT_DIR = path.join(CONTENT_DIR, "trips");
 
-// A trip's rich page, served behind login + access check at /trip/<slug>.
+// Does this trip have an in-app (structured) itinerary worth rendering?
+function hasStructuredContent(trip) {
+  const c = trip && trip.content;
+  if (!c) return false;
+  return (Array.isArray(c.days) && c.days.length > 0) || !!(c.overview && c.overview.trim());
+}
+
+// A trip's page, served behind login + access check at /trip/<slug>.
+// Structured trips render via the in-app shell; older trips can still point at
+// a hand-written HTML file in content/trips/ via pageFile.
 app.get("/trip/:slug", requirePage, (req, res) => {
   const trip = db.findTripBySlug(req.params.slug) || db.findTripById(req.params.slug);
   if (!trip || !canView(trip, req.user)) {
     return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
-  if (!trip.pageFile) {
+
+  // Legacy custom page wins only when there's no structured content yet.
+  if (!hasStructuredContent(trip) && trip.pageFile) {
+    // Guard against path traversal — only ever serve a bare filename from the
+    // trips content folder.
+    const safe = path.basename(trip.pageFile);
+    const file = path.join(TRIPS_CONTENT_DIR, safe);
+    if (file.startsWith(TRIPS_CONTENT_DIR) && fs.existsSync(file)) {
+      return res.sendFile(file);
+    }
+  }
+
+  // Structured trips (and brand-new empty ones) render in the in-app shell,
+  // which fetches the itinerary from the API and builds the page client-side.
+  res.sendFile(path.join(PUBLIC_DIR, "trip.html"));
+});
+
+// The in-app itinerary builder. The page itself decides between "save" (for
+// editors) and "suggest a change" (for everyone else) using the API's canEdit
+// flag; the access check here just keeps non-members out.
+app.get("/trip/:slug/edit", requirePage, (req, res) => {
+  const trip = db.findTripBySlug(req.params.slug) || db.findTripById(req.params.slug);
+  if (!trip || !canView(trip, req.user)) {
     return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
-  // Guard against path traversal — only ever serve a bare filename from the
-  // trips content folder.
-  const safe = path.basename(trip.pageFile);
-  const file = path.join(TRIPS_CONTENT_DIR, safe);
-  if (!file.startsWith(TRIPS_CONTENT_DIR) || !fs.existsSync(file)) {
-    return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
-  }
-  res.sendFile(file);
+  res.sendFile(path.join(PUBLIC_DIR, "trip-editor.html"));
 });
 
 // --- Static frontend (login, board, css, js) -------------------------------
