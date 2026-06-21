@@ -48,12 +48,19 @@ and stops (time, place, notes, tips, map links) with no HTML and no code.
 
 Trips are built in-app — no HTML, no files to edit.
 
-1. Admin console → **Add a trip**: give it a title/emoji/date and click
-   **Create & build itinerary**. You jump straight into the builder.
+1. On the board, click **+ New trip** (admins), name it, and you jump straight
+   into the builder. (You can also use the Admin console → **Add a trip**.)
 2. In the **builder**, add an overview and as many **days** and **stops** as you
-   like (time, name, category, location + map link, notes, a tip). Reorder or
-   remove anything, then **Save**.
-3. Back in the admin console, set who can **see** it and who can **edit** it.
+   like. Each stop takes a time, name, category, **location**, **hours**, notes,
+   and a tip — plus a **"getting here"** leg (walk / transit / train / bus /
+   drive / bike / ferry, with a duration and route note) shown between stops.
+   Reorder or remove anything, hit **Preview map** to check a place, then **Save**.
+3. Set who can **see** it and who can **edit** it (board card ✎, or the Admin console).
+
+### 🗺️ Maps (no setup)
+Type a place into a stop's **location** and the trip page automatically gets a
+**Google Maps** link, an embedded map (in the stop's expandable drawer), and a
+**Directions from the previous stop** link. No API key, no billing — it just works.
 
 ### Who can change a trip
 - **Admins** and a trip's **creator** can always edit.

@@ -49,20 +49,44 @@ function fmtDate(dateStr) {
 
 function tripCard(t) {
   const cd = countdown(t.date);
+  const slug = t.slug || t.id;
   const tags = (t.tags || []).slice(0, 3).map((x) => `<span class="tag">${esc(x)}</span>`).join("");
+  const edit = t.canEdit
+    ? `<a class="trip__edit" href="/trip/${encodeURIComponent(slug)}/edit" title="Edit itinerary" aria-label="Edit ${esc(t.title)}">✎</a>`
+    : "";
   return `
-    <a class="trip reveal" href="/trip/${encodeURIComponent(t.slug || t.id)}">
-      <div class="trip__top">
-        ${cd ? `<span class="trip__count">${cd}</span>` : ""}
-        <div class="trip__emoji">${esc(t.emoji || "✈️")}</div>
-        <div class="trip__name">${esc(t.title)}</div>
-        <div class="trip__date">${[fmtDate(t.date), esc(t.subtitle || "")].filter(Boolean).join(" · ")}</div>
-      </div>
-      <div class="trip__body">
-        ${tags ? `<div class="trip__row">${tags}</div>` : ""}
-        <div class="trip__cta"><span class="trip__open">Open trip <span class="arr">→</span></span></div>
-      </div>
-    </a>`;
+    <div class="trip reveal">
+      <a class="trip__link" href="/trip/${encodeURIComponent(slug)}" aria-label="Open ${esc(t.title)}">
+        <div class="trip__top">
+          ${cd ? `<span class="trip__count">${cd}</span>` : ""}
+          <div class="trip__emoji">${esc(t.emoji || "✈️")}</div>
+          <div class="trip__name">${esc(t.title)}</div>
+          <div class="trip__date">${[fmtDate(t.date), esc(t.subtitle || "")].filter(Boolean).join(" · ")}</div>
+        </div>
+        <div class="trip__body">
+          ${tags ? `<div class="trip__row">${tags}</div>` : ""}
+          <div class="trip__cta"><span class="trip__open">Open trip <span class="arr">→</span></span></div>
+        </div>
+      </a>
+      ${edit}
+    </div>`;
+}
+
+async function createTrip() {
+  const title = (prompt("Name your trip (e.g. Montréal weekend):") || "").trim();
+  if (!title) return;
+  try {
+    const res = await fetch("/api/trips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, shareWithEveryone: true }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not create the trip.");
+    location.href = "/trip/" + encodeURIComponent(data.trip.slug || data.trip.id) + "/edit";
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 function esc(s) {
@@ -83,7 +107,12 @@ function esc(s) {
   $("#whoName").textContent = me.displayName;
   $("#avatar").textContent = initials(me.displayName);
   $("#greeting").textContent = `Hey ${me.displayName.split(" ")[0]} 👋`;
-  if (me.isAdmin) $("#adminLink").style.display = "";
+  if (me.isAdmin) {
+    $("#adminLink").style.display = "";
+    const nt = $("#newTripBtn");
+    nt.style.display = "";
+    nt.addEventListener("click", createTrip);
+  }
 
   $("#logoutBtn").addEventListener("click", async () => {
     await fetch("/api/auth/logout", { method: "POST" });

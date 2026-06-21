@@ -44,8 +44,11 @@ let CAN_EDIT = false;
 const state = { days: [] }; // overview/crew/meta read straight from their inputs
 
 function blankStop() {
-  return { id: uid(), time: "", name: "", category: "", location: "", locationUrl: "", notes: "", tip: "" };
+  return { id: uid(), time: "", name: "", category: "", location: "", locationUrl: "", hours: "", notes: "", tip: "", travel: { mode: "", duration: "", detail: "" } };
 }
+
+const TRAVEL_MODES = ["", "walk", "transit", "train", "bus", "drive", "bike", "ferry"];
+const TRAVEL_MODE_LABEL = { "": "— how you get here —", walk: "🚶 Walk", transit: "🚍 Transit", train: "🚆 Train", bus: "🚌 Bus", drive: "🚗 Drive", bike: "🚲 Bike", ferry: "⛴️ Ferry" };
 function blankDay() {
   return { id: uid(), label: "", note: "", stops: [blankStop()] };
 }
@@ -53,20 +56,33 @@ function blankDay() {
 // --- Render ---------------------------------------------------------------
 
 function stopEditHtml(s) {
+  const t = s.travel || {};
+  const modeOpts = TRAVEL_MODES.map((m) => `<option value="${m}" ${t.mode === m ? "selected" : ""}>${esc(TRAVEL_MODE_LABEL[m])}</option>`).join("");
   return `
     <div class="stop-edit" data-stop data-id="${esc(s.id)}">
+      <div class="stop-edit__label">Getting here (optional)</div>
+      <div class="grid3">
+        <select class="input" data-k="travel.mode">${modeOpts}</select>
+        <input class="input" data-k="travel.duration" placeholder="12 min" value="${esc(t.duration)}" />
+        <input class="input" data-k="travel.detail" placeholder="Route / line / note" value="${esc(t.detail)}" />
+      </div>
+      <div class="stop-edit__label">The stop</div>
       <div class="grid2">
         <input class="input" data-k="time" placeholder="Time (9:00 AM)" value="${esc(s.time)}" />
         <input class="input" data-k="name" placeholder="Stop name" value="${esc(s.name)}" />
       </div>
       <div class="grid2" style="margin-top:10px">
-        <input class="input" data-k="category" placeholder="Category" value="${esc(s.category)}" />
-        <input class="input" data-k="location" placeholder="Location / address" value="${esc(s.location)}" />
+        <input class="input" data-k="category" placeholder="Category (food, sight…)" value="${esc(s.category)}" />
+        <input class="input" data-k="location" placeholder="Location / address (used for the map)" value="${esc(s.location)}" />
       </div>
-      <input class="input" data-k="locationUrl" placeholder="Map or website link (https://…)" value="${esc(s.locationUrl)}" style="margin-top:10px" />
+      <input class="input" data-k="hours" placeholder="Hours (optional, e.g. Open 11–22)" value="${esc(s.hours)}" style="margin-top:10px" />
       <textarea class="input" data-k="notes" placeholder="Notes" style="margin-top:10px">${esc(s.notes)}</textarea>
       <input class="input" data-k="tip" placeholder="Tip (optional)" value="${esc(s.tip)}" style="margin-top:10px" />
-      <div class="mini-actions" style="margin-top:10px;justify-content:flex-end">
+      <input class="input" data-k="locationUrl" placeholder="Custom map/website link (optional — auto-filled from location)" value="${esc(s.locationUrl)}" style="margin-top:10px" />
+      <div class="map-preview" hidden></div>
+      <div class="mini-actions" style="margin-top:10px">
+        <button type="button" class="btn small" data-act="map-preview">🗺️ Preview map</button>
+        <span style="flex:1"></span>
         <button type="button" class="iconbtn" data-act="stop-up" title="Move up">↑</button>
         <button type="button" class="iconbtn" data-act="stop-down" title="Move down">↓</button>
         <button type="button" class="iconbtn" data-act="stop-del" title="Remove stop">✕</button>
@@ -126,9 +142,17 @@ function renderShell() {
 
   const saveLabel = CAN_EDIT ? "Save itinerary" : "Submit suggestion";
 
+  // Trips that still use a hand-written custom page have no structured content,
+  // so this builder opens blank. Explain that saving will take over the page.
+  const isLegacy = TRIP.hasPage && !(c.days && c.days.length) && !((c.overview || "").trim());
+  const banner = isLegacy && CAN_EDIT
+    ? `<div class="banner">This trip currently uses a custom page. Building an itinerary here and saving will replace that page for everyone.</div>`
+    : "";
+
   $("#editor").innerHTML = `
     <h1 class="page-title">${CAN_EDIT ? "Edit" : "Suggest a change"}</h1>
     <p class="page-sub">${esc(TRIP.emoji || "✈️")} ${esc(TRIP.title)}${CAN_EDIT ? "" : " — your edits go to the admin for approval."}</p>
+    ${banner}
 
     ${metaFields}
 
@@ -162,16 +186,24 @@ function syncFromDom() {
     id: dayEl.dataset.id || uid(),
     label: dayEl.querySelector('[data-k="label"]').value,
     note: dayEl.querySelector('[data-k="note"]').value,
-    stops: [...dayEl.querySelectorAll("[data-stop]")].map((sEl) => ({
-      id: sEl.dataset.id || uid(),
-      time: sEl.querySelector('[data-k="time"]').value,
-      name: sEl.querySelector('[data-k="name"]').value,
-      category: sEl.querySelector('[data-k="category"]').value,
-      location: sEl.querySelector('[data-k="location"]').value,
-      locationUrl: sEl.querySelector('[data-k="locationUrl"]').value,
-      notes: sEl.querySelector('[data-k="notes"]').value,
-      tip: sEl.querySelector('[data-k="tip"]').value,
-    })),
+    stops: [...dayEl.querySelectorAll("[data-stop]")].map((sEl) => {
+      const v = (k) => {
+        const el = sEl.querySelector(`[data-k="${k}"]`);
+        return el ? el.value : "";
+      };
+      return {
+        id: sEl.dataset.id || uid(),
+        time: v("time"),
+        name: v("name"),
+        category: v("category"),
+        location: v("location"),
+        locationUrl: v("locationUrl"),
+        hours: v("hours"),
+        notes: v("notes"),
+        tip: v("tip"),
+        travel: { mode: v("travel.mode"), duration: v("travel.duration"), detail: v("travel.detail") },
+      };
+    }),
   }));
 }
 
@@ -193,9 +225,33 @@ function move(arr, idx, dir) {
   [arr[idx], arr[j]] = [arr[j], arr[idx]];
 }
 
+// Toggle a lazy, keyless map preview for a stop without re-rendering the form.
+function toggleMapPreview(btn) {
+  const stopEl = btn.closest("[data-stop]");
+  const slot = stopEl.querySelector(".map-preview");
+  if (!slot.hidden) {
+    slot.hidden = true;
+    slot.innerHTML = "";
+    btn.textContent = "🗺️ Preview map";
+    return;
+  }
+  const loc = stopEl.querySelector('[data-k="location"]').value.trim() || stopEl.querySelector('[data-k="name"]').value.trim();
+  if (!loc) return toast("Add a location or name first.", true);
+  const src = Maps.embedUrl(loc);
+  if (!src) return;
+  const f = document.createElement("iframe");
+  f.src = src;
+  f.loading = "lazy";
+  f.referrerPolicy = "no-referrer-when-downgrade";
+  slot.appendChild(f);
+  slot.hidden = false;
+  btn.textContent = "🗺️ Hide map";
+}
+
 function onDaysClick(e) {
   const btn = e.target.closest("[data-act]");
   if (!btn) return;
+  if (btn.dataset.act === "map-preview") return toggleMapPreview(btn);
   syncFromDom();
   const dayEl = btn.closest("[data-day]");
   const dayIdx = [...document.querySelectorAll("[data-day]")].indexOf(dayEl);

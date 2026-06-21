@@ -26,6 +26,26 @@ const safeUrl = (v) => {
   return /^https?:\/\//i.test(s) ? s : "";
 };
 
+// How you get from the previous stop to this one. Unknown modes drop to "".
+const TRAVEL_MODES = new Set(["walk", "transit", "train", "bus", "drive", "bike", "ferry"]);
+const travelMode = (v) => {
+  const m = str(v, 20).toLowerCase();
+  return TRAVEL_MODES.has(m) ? m : "";
+};
+function normalizeTravel(travel) {
+  const t = travel && typeof travel === "object" ? travel : {};
+  const mode = travelMode(t.mode);
+  const duration = str(t.duration, 40);
+  const detail = str(t.detail, 120);
+  return mode || duration || detail ? { mode, duration, detail } : null;
+}
+
+// Keyless Google Maps search link for a place name/address.
+const mapsSearchUrl = (q) => {
+  const s = str(q, 200);
+  return s ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(s) : "";
+};
+
 // Coerce whatever the editor sends into a clean, size-capped itinerary. This is
 // the single source of truth for trip content shape (used on create, edit, and
 // when approving a change request), so stored data can never blow up the file
@@ -40,15 +60,20 @@ function normalizeContent(content) {
       note: str(day.note, 1000),
       stops: (Array.isArray(day.stops) ? day.stops : []).slice(0, 40).map((s) => {
         const stop = s && typeof s === "object" ? s : {};
+        const name = str(stop.name, 160);
+        const location = str(stop.location, 200);
         return {
           id: str(stop.id, 40) || crypto.randomUUID(),
           time: str(stop.time, 20),
-          name: str(stop.name, 160),
+          name,
           category: str(stop.category, 40),
-          location: str(stop.location, 200),
-          locationUrl: safeUrl(stop.locationUrl),
+          location,
+          // Fall back to a keyless Google Maps search link if none was given.
+          locationUrl: safeUrl(stop.locationUrl) || mapsSearchUrl(location || name),
+          hours: str(stop.hours, 120),
           notes: str(stop.notes, 2000),
           tip: str(stop.tip, 500),
+          travel: normalizeTravel(stop.travel),
         };
       }),
     };
