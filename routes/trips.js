@@ -66,7 +66,7 @@ function publicTrip(t, user) {
     coverUrl: t.coverUrl || "",
     members,
     memberCount: members.length,
-    stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))),
+    stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => ((a.order ?? 1e9) - (b.order ?? 1e9)) || String(a.time || "").localeCompare(String(b.time || ""))),
     mapUrl: t.mapUrl || "",
     activity: (Array.isArray(t.activity) ? t.activity : []).slice(-30).reverse(),
     proposals: (Array.isArray(t.proposals) ? t.proposals : []).filter((p) => p.status === "open").reverse(),
@@ -278,15 +278,22 @@ router.post("/", requireAuth, (req, res) => {
   res.status(201).json({ trip: publicTrip(trip, req.user) });
 });
 
-// --- Edit details / delete (creator or admin) ----------------------------
+// --- Edit details (any member) / delete (creator or admin) ---------------
 
+// Anyone on the trip can edit its details (title, date, theme, description,
+// cover, tags). Two settings stay creator/admin-only: making the trip public
+// (shareWithEveryone) and the custom page file.
 router.put("/:id", requireAuth, (req, res) => {
   const existing = db.findTripById(req.params.id);
   if (!existing) return res.status(404).json({ error: "Trip not found." });
-  if (!canManageTrip(existing, req.user)) {
-    return res.status(403).json({ error: "Only the trip's creator can edit it." });
+  if (!canEditPlan(existing, req.user)) {
+    return res.status(403).json({ error: "Join the trip to edit it." });
   }
   const input = normalizeTripInput({ ...existing, ...req.body });
+  if (!canManageTrip(existing, req.user)) {
+    input.shareWithEveryone = !!existing.shareWithEveryone; // members can't change visibility
+    input.pageFile = existing.pageFile || ""; // or the custom page binding
+  }
   const note = req.body && req.body.theme && req.body.theme !== existing.theme ? `changed the theme to ${input.theme}` : "updated trip details";
   const updated = db.updateTrip(existing.id, withActivity(existing, req.user, note, input));
   res.json({ trip: publicTrip(updated, req.user) });
@@ -379,14 +386,17 @@ router.post("/:id/stops", requireAuth, (req, res) => {
 
   const title = str((req.body || {}).title, 120);
   if (!title) return res.status(400).json({ error: "Give the stop a name." });
+  const existing = Array.isArray(trip.stops) ? trip.stops : [];
   const stop = {
     id: crypto.randomUUID(),
     time: str((req.body || {}).time, 10),
     title,
     place: str((req.body || {}).place, 160),
     note: str((req.body || {}).note, 300),
+    done: false,
+    order: existing.length, // append to the end of the manual order
   };
-  const stops = [...(Array.isArray(trip.stops) ? trip.stops : []), stop];
+  const stops = [...existing, stop];
   const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `added a stop: ${stop.time ? stop.time + " " : ""}${stop.title}`, { stops }));
   res.status(201).json({ trip: publicTrip(updated, req.user) });
 });
@@ -396,17 +406,38 @@ router.put("/:id/stops/:stopId", requireAuth, (req, res) => {
   if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
   if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the plan." });
 
+  let note = "edited a stop";
   const stops = (Array.isArray(trip.stops) ? trip.stops : []).map((s) => {
     if (s.id !== req.params.stopId) return s;
+    if (req.body.done != null && req.body.time == null && req.body.title == null) {
+      note = req.body.done ? `checked off: ${s.title}` : `un-checked: ${s.title}`;
+    }
     return {
       ...s,
       time: req.body.time != null ? str(req.body.time, 10) : s.time,
       title: req.body.title != null ? str(req.body.title, 120) || s.title : s.title,
       place: req.body.place != null ? str(req.body.place, 160) : s.place,
       note: req.body.note != null ? str(req.body.note, 300) : s.note,
+      done: req.body.done != null ? !!req.body.done : !!s.done,
     };
   });
-  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `edited a stop`, { stops }));
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, note, { stops }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// Reorder the plan: body { ids: [stopId, ...] } in the desired order.
+router.put("/:id/stops-order", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the plan." });
+
+  const ids = Array.isArray((req.body || {}).ids) ? req.body.ids : [];
+  const pos = new Map(ids.map((id, i) => [id, i]));
+  const stops = (Array.isArray(trip.stops) ? trip.stops : []).map((s) => ({
+    ...s,
+    order: pos.has(s.id) ? pos.get(s.id) : (s.order ?? 9999),
+  }));
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, "reordered the plan", { stops }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 

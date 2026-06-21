@@ -25,9 +25,13 @@ npm run build      # pkg -> dist/TripPlanner.exe (Windows)
 ```
 
 - **Dev**: `node server.js`. `data/`, `public/`, `content/` resolve to the repo.
-- **Packaged exe**: paths resolve next to the `.exe` (see `lib/paths.js`,
-  which checks `process.pkg`). `public/` and `content/` are bundled inside the
-  binary; `data/` is created next to the exe at runtime.
+- **Packaged exe**: read-only assets (`public/`, `content/`) are bundled inside
+  the binary; the update download + `.bat` are written next to the exe
+  (`EXE_DIR`). **Data** (`db.json`, sessions, secret) lives in a stable per-user
+  folder — `%LOCALAPPDATA%\TripPlanner\data` — so it survives re-downloading or
+  moving the exe and in-app updates (older builds stored it next to the exe; a
+  one-time migration in `lib/paths.js` moves it over). See `lib/paths.js`, which
+  checks `process.pkg`.
 - Always build with `--no-bytecode --public-packages "*" --public` (already in
   `npm run build` and the CI). Plain JS in the binary greatly reduces antivirus
   false positives vs pkg's default bytecode.

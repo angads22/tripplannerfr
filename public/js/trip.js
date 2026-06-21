@@ -130,16 +130,21 @@ function renderStops() {
   const stops = TRIP.stops || [];
   $("#stopCount").textContent = stops.length ? `${stops.length} ${stops.length === 1 ? "stop" : "stops"}` : "";
   const canEdit = TRIP.canEditPlan;
-  $("#stopList").innerHTML = stops.map((s) => `
-      <div class="crew-item" data-stop="${esc(s.id)}">
+  $("#stopList").innerHTML = stops.map((s, i) => `
+      <div class="crew-item${s.done ? " stop-done" : ""}" data-stop="${esc(s.id)}">
+        <input type="checkbox" class="stop-check" data-check="${esc(s.id)}" ${s.done ? "checked" : ""} ${canEdit ? "" : "disabled"} title="Check off" />
         <span class="crew-item__face" style="background:var(--accent);font-size:11px">${esc(s.time || "·")}</span>
         <div style="flex:1">
-          <div class="crew-item__name">${esc(s.title)}</div>
+          <div class="crew-item__name stop-title">${esc(s.title)}</div>
           ${s.note ? `<div class="crew-item__tag">${esc(s.note)}</div>` : ""}
           ${s.place ? `<a class="crew-item__tag" style="color:var(--accent)" href="${mapsSearch(s.place)}" target="_blank" rel="noopener">📍 ${esc(s.place)}</a>` : ""}
         </div>
-        ${canEdit ? `<button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit">✎</button><button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
-      </div>`).join("") || '<p class="row__meta">No stops yet. Add the first one below. Tip: the timeline sorts by time, so editing a time reorders it.</p>';
+        ${canEdit ? `
+          <button class="crew-item__x" data-move="${esc(s.id)}" data-dir="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="crew-item__x" data-move="${esc(s.id)}" data-dir="down" title="Move down" ${i === stops.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit">✎</button>
+          <button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
+      </div>`).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
   $("#addStopRow").style.display = canEdit ? "flex" : "none";
 }
 
@@ -211,8 +216,12 @@ async function reload() {
   renderMap();
   renderProposals();
   renderLog();
-  $("#manageBar").style.display = trip.canManage ? "block" : "none";
-  if (trip.canManage) {
+  // Any member can edit details/theme; only the creator/admin sees the
+  // destructive actions (reset invite link, delete trip).
+  $("#manageBar").style.display = trip.canEditPlan ? "block" : "none";
+  $("#rowInviteLink").style.display = trip.canManage ? "" : "none";
+  $("#rowDelete").style.display = trip.canManage ? "" : "none";
+  if (trip.canEditPlan) {
     // Populate the edit-details form (only when not actively editing it).
     const ae = document.activeElement;
     if (!ae || !/^ed-/.test(ae.id || "")) {
@@ -360,10 +369,35 @@ async function reload() {
     }
   });
 
-  // Edit or remove a stop (any member)
+  // Check a stop off as you go (any member)
+  $("#stopList").addEventListener("change", async (e) => {
+    const cb = e.target.closest("[data-check]");
+    if (!cb) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(cb.dataset.check), "PUT", { done: cb.checked });
+      await reload();
+      toast(cb.checked ? "Checked off ✓" : "Unchecked");
+    } catch (err) { toast(err.message, true); await reload(); }
+  });
+
+  // Edit, remove, or reorder a stop (any member)
   $("#stopList").addEventListener("click", async (e) => {
     const editBtn = e.target.closest("[data-editstop]");
     const delBtn = e.target.closest("[data-delstop]");
+    const moveBtn = e.target.closest("[data-move]");
+    if (moveBtn) {
+      const ids = (TRIP.stops || []).map((s) => s.id);
+      const idx = ids.indexOf(moveBtn.dataset.move);
+      const swap = moveBtn.dataset.dir === "up" ? idx - 1 : idx + 1;
+      if (idx < 0 || swap < 0 || swap >= ids.length) return;
+      [ids[idx], ids[swap]] = [ids[swap], ids[idx]];
+      try {
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops-order", "PUT", { ids });
+        await reload();
+        toast("Order saved ✓");
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
     if (editBtn) {
       const s = (TRIP.stops || []).find((x) => x.id === editBtn.dataset.editstop);
       if (!s) return;
