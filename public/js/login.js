@@ -4,6 +4,8 @@ const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const nextUrl = params.get("next") || "/";
 
+let needsSetup = false;
+
 function showError(msg) {
   const e = $("#error");
   e.textContent = msg;
@@ -24,21 +26,52 @@ async function send(path, body) {
   return data;
 }
 
-// Tabs
+// --- Tabs / copy -----------------------------------------------------------
 const tabLogin = $("#tabLogin");
 const tabRegister = $("#tabRegister");
+
 function selectTab(which) {
   clearError();
   const reg = which === "register";
   tabLogin.classList.toggle("active", !reg);
   tabRegister.classList.toggle("active", reg);
-  $("#loginForm").style.display = reg ? "none" : "block";
-  $("#registerForm").style.display = reg ? "block" : "none";
+  $("#loginForm").style.display = reg ? "none" : "flex";
+  $("#registerForm").style.display = reg ? "flex" : "none";
+  $("#kicker").textContent = reg ? "pull up a seat" : "welcome back, driver";
+  $("#heading").textContent = reg ? "Let's roll." : "Keys, please.";
+  $("#footerNote").textContent = reg
+    ? "By signing up you agree to split gas money. Probably."
+    : "New here? Tap sign up, it takes ten seconds.";
+  validate();
 }
 tabLogin.addEventListener("click", () => selectTab("login"));
 tabRegister.addEventListener("click", () => selectTab("register"));
 
-// First-run setup: if there are no accounts yet, nudge toward creating the admin.
+// --- Password eye ----------------------------------------------------------
+document.querySelectorAll(".pw-toggle").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const input = document.getElementById(btn.dataset.for);
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.textContent = show ? "🙈" : "👁️";
+  });
+});
+
+// --- Live validation (button opacity) --------------------------------------
+function validate() {
+  const loginOk = $("#li-user").value.trim() && $("#li-pass").value.trim();
+  $("#loginSubmit").disabled = !loginOk;
+
+  const regOk =
+    $("#re-name").value.trim() &&
+    $("#re-user").value.trim() &&
+    $("#re-pass").value.trim() &&
+    (needsSetup || $("#re-code").value.trim());
+  $("#registerSubmit").disabled = !regOk;
+}
+document.querySelectorAll("input").forEach((i) => i.addEventListener("input", validate));
+
+// --- First-run setup -------------------------------------------------------
 (async function init() {
   try {
     const me = await fetch("/api/auth/me").then((r) => r.json());
@@ -46,22 +79,20 @@ tabRegister.addEventListener("click", () => selectTab("register"));
       location.href = nextUrl;
       return;
     }
-    const { needsSetup } = await fetch("/api/auth/needs-setup").then((r) => r.json());
+    const data = await fetch("/api/auth/needs-setup").then((r) => r.json());
+    needsSetup = !!data.needsSetup;
     if (needsSetup) {
       $("#setupBanner").style.display = "block";
-      $("#inviteField").style.display = "none"; // first account skips the code
+      $("#inviteField").style.display = "none";
       selectTab("register");
-      $("#hint").textContent = "No accounts yet — make yours to become the admin.";
-    } else {
-      $("#hint").innerHTML = 'New here? Switch to <span class="linkish" id="goReg">Create account</span> and use the invite code.';
-      const go = $("#goReg");
-      if (go) go.addEventListener("click", () => selectTab("register"));
     }
   } catch {
     /* offline-ish; forms still work */
   }
+  validate();
 })();
 
+// --- Submit ----------------------------------------------------------------
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   clearError();

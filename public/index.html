@@ -3,42 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trip Board</title>
+  <title>Pitstop · Trips</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/pitstop.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand__logo">🧳</span>
-      <span><span class="brand__name">Trip Board</span><span class="brand__sub">plans, together</span></span>
+  <div class="bg">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  </div>
+
+  <div class="stage">
+    <div class="wrap-board">
+
+      <header class="topbar">
+        <div class="logo">
+          <div class="logo__mark">🚗</div>
+          <div>
+            <div class="logo__name">Pitstop</div>
+            <div class="logo__tag">plans, shotgun not included</div>
+          </div>
+        </div>
+        <div class="topbar__spacer"></div>
+        <a class="btn-pill" id="adminLink" href="/admin" style="display:none">⚙ Admin</a>
+        <div class="who"><span class="who__avatar" id="avatar">?</span><span id="whoName">…</span></div>
+        <button class="btn-pill" id="logoutBtn" type="button">Log out</button>
+      </header>
+
+      <div class="card-dark hero" style="animation:rise .5s both">
+        <div class="kicker">shotgun's calling. let's go.</div>
+        <div class="hero__title" id="greeting">Where to next?</div>
+        <div class="hero__body" id="heroBody">The trips you've been let in on. Tap one to open the full plan.</div>
+        <div class="route">
+          <span class="route__dot" style="background:var(--amber)"></span>
+          <span class="route__line"></span>
+          <span class="route__dot" style="background:var(--red)"></span>
+          <span class="route__line"></span>
+          <span class="route__dot" style="background:var(--green)"></span>
+        </div>
+      </div>
+
+      <div class="sec-row">
+        <span class="sec-row__label">Upcoming</span>
+        <span class="sec-row__rule"></span>
+        <span class="sec-row__count" id="tripCount"></span>
+      </div>
+
+      <div id="grid" class="trip-grid"></div>
+      <div id="empty" class="empty" style="display:none">
+        <div class="big">🗺️</div>
+        <h3>No trips yet</h3>
+        <p id="emptyMsg">Nothing's been shared with you yet.</p>
+      </div>
+
+      <div class="foot-note">
+        Friends only. Everyone here signed in with the shared invite code, and only sees the trips they've been given access to.
+      </div>
+
     </div>
-    <div class="header-spacer"></div>
-    <a class="btn ghost small" id="adminLink" href="/admin" style="display:none">⚙ Admin</a>
-    <div class="who"><span class="avatar" id="avatar">?</span><span id="whoName">…</span></div>
-    <button class="btn ghost small" id="logoutBtn">Log out</button>
-  </header>
-
-  <main class="wrap">
-    <h1 class="page-title reveal" id="greeting">Where to next?</h1>
-    <p class="page-sub reveal" style="animation-delay:.04s">The trips you've been let in on.</p>
-
-    <div class="sec-label">Trips</div>
-    <div id="grid" class="grid"></div>
-    <div id="empty" class="empty" style="display:none">
-      <div class="big">🗺️</div>
-      <h3>No trips yet</h3>
-      <p id="emptyMsg">Nothing's been shared with you yet.</p>
-    </div>
-
-    <p class="foot">
-      <b>Friends-only.</b> Everyone here signed in with the shared invite code, and only sees the
-      trips they've been given access to. Trips are live interactive pages — tap one to open it.
-    </p>
-  </main>
+  </div>
 
   <div class="toast" id="toast"></div>
   <script src="/js/app.js"></script>
