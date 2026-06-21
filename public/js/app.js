@@ -226,7 +226,9 @@ async function createTrip() {
   let me;
   try {
     me = (await api("/api/auth/me")).user;
-  } catch {
+  } catch (err) {
+    // Don't fail silently — show what went wrong so it's debuggable.
+    toast("Couldn't reach the app: " + err.message, true);
     return;
   }
   if (!me) {

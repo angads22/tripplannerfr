@@ -19,7 +19,20 @@ const adminRoutes = require("./routes/admin");
 
 const app = express();
 app.disable("x-powered-by");
+// Behind the Cloudflare tunnel the app is proxied; trust it so sessions and
+// protocol detection work correctly.
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
+
+// Never let the browser (or Cloudflare) cache the API or the app pages. This
+// avoids stale UI after an update — the #1 cause of "I clicked and nothing
+// happened" right after a new build.
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/") || /\.(html)$/.test(req.path) || req.path === "/" || req.path.startsWith("/trip/") || req.path === "/admin") {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  }
+  next();
+});
 
 // Persist sessions to disk so logins survive the server being turned off/on.
 const SESSIONS_DIR = path.join(DATA_DIR, "sessions");
@@ -81,7 +94,14 @@ app.get("/trip/:slug", requirePage, (req, res) => {
 });
 
 // --- Static frontend (login, board, css, js) -------------------------------
-app.use(express.static(PUBLIC_DIR));
+app.use(
+  express.static(PUBLIC_DIR, {
+    setHeaders: (res, p) => {
+      // Don't cache app scripts so updates take effect immediately.
+      if (/\.(js|html)$/.test(p)) res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    },
+  })
+);
 
 // Fallback: send the board shell for any other non-API route.
 app.get("*", (req, res) => {
