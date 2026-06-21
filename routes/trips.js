@@ -27,9 +27,16 @@ const slugify = (v) =>
   str(v, 80).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || crypto.randomUUID();
 
 // Accent themes (all share the Pitstop aesthetic; the first three are the
-// design's Highway Red / Lake Blue / Pine Green).
+// design's Highway Red / Lake Blue / Pine Green). A custom #rrggbb is also
+// allowed so people can pick their own accent.
 const THEMES = ["red", "blue", "green", "purple", "orange"];
-const cleanTheme = (v) => (THEMES.includes(String(v || "").trim()) ? String(v).trim() : "red");
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const cleanTheme = (v) => {
+  const s = String(v || "").trim();
+  if (THEMES.includes(s)) return s;
+  if (HEX.test(s)) return s;
+  return "red";
+};
 
 // Turn a list of member user-ids into {id, displayName, initials} for display.
 function resolveMembers(trip) {
@@ -60,6 +67,8 @@ function publicTrip(t, user) {
     stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))),
     mapUrl: t.mapUrl || "",
     activity: (Array.isArray(t.activity) ? t.activity : []).slice(-30).reverse(),
+    proposals: (Array.isArray(t.proposals) ? t.proposals : []).filter((p) => p.status === "open").reverse(),
+    linkJoin: t.linkJoin !== false,
     hasPage: !!t.pageFile,
     creatorId: t.createdBy || null,
     creatorName: t.createdByName || "",
@@ -92,7 +101,13 @@ function normalizeTripInput(body) {
       .slice(0, 8),
     pageFile: str(body.pageFile, 120),
     shareWithEveryone: !!body.shareWithEveryone,
+    linkJoin: body.linkJoin === undefined ? true : !!body.linkJoin,
   };
+}
+
+// Anyone who can view, OR anyone holding the link when link-join is on.
+function canSee(trip, user) {
+  return canView(trip, user) || trip.linkJoin !== false;
 }
 
 // --- Member-facing -------------------------------------------------------
@@ -109,10 +124,24 @@ router.get("/", requireAuth, (req, res) => {
 
 router.get("/:id", requireAuth, (req, res) => {
   const trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
-  if (!trip || !canView(trip, req.user)) {
+  if (!trip || !canSee(trip, req.user)) {
     return res.status(404).json({ error: "Trip not found." });
   }
   res.json({ trip: publicTrip(trip, req.user) });
+});
+
+// Join a trip from a shared link (when link-join is on, or it's public).
+router.post("/:id/join", requireAuth, (req, res) => {
+  const trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
+  if (!trip || !canSee(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+
+  const members = Array.isArray(trip.members) ? [...trip.members] : [];
+  if (members.includes(req.user.id) || isCreator(trip, req.user)) {
+    return res.json({ trip: publicTrip(trip, req.user) }); // already on it
+  }
+  members.push(req.user.id);
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, "joined the trip", { members }));
+  res.json({ trip: publicTrip(updated, req.user) });
 });
 
 // --- Create (any logged-in user) -----------------------------------------
@@ -295,6 +324,41 @@ router.put("/:id/map", requireAuth, (req, res) => {
   // Accept either a pasted Google Maps URL or a plain place name.
   if (mapUrl && !/^https?:\/\//i.test(mapUrl)) mapUrl = mapsLink(mapUrl);
   const updated = db.updateTrip(trip.id, withActivity(trip, req.user, mapUrl ? "updated the map" : "cleared the map", { mapUrl }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// --- Suggestions / proposals (ask the group) -----------------------------
+
+// Anyone on the trip can suggest a change. It shows up for everyone as a
+// pending note until the creator (or an admin) marks it done or dismisses it.
+router.post("/:id/proposals", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canSee(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canAddMembers(trip, req.user)) return res.status(403).json({ error: "Join the trip to suggest changes." });
+
+  const text = str((req.body || {}).text, 300);
+  if (!text) return res.status(400).json({ error: "Write your suggestion first." });
+  const proposal = { id: crypto.randomUUID(), ts: new Date().toISOString(), userId: req.user.id, userName: req.user.displayName, text, status: "open" };
+  const proposals = [...(Array.isArray(trip.proposals) ? trip.proposals : []), proposal];
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `suggested: ${text}`, { proposals }));
+  res.status(201).json({ trip: publicTrip(updated, req.user) });
+});
+
+// Resolve a suggestion: "done" or "dismissed". Creator/admin only.
+router.put("/:id/proposals/:pid", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canSee(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canManageTrip(trip, req.user)) return res.status(403).json({ error: "Only the trip's creator can resolve suggestions." });
+
+  const status = ["done", "dismissed"].includes((req.body || {}).status) ? req.body.status : "dismissed";
+  let resolvedText = "";
+  const proposals = (Array.isArray(trip.proposals) ? trip.proposals : []).map((p) => {
+    if (p.id !== req.params.pid) return p;
+    resolvedText = p.text;
+    return { ...p, status };
+  });
+  const verb = status === "done" ? "marked a suggestion done" : "dismissed a suggestion";
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `${verb}${resolvedText ? ": " + resolvedText : ""}`, { proposals }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 

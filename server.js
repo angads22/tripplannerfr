@@ -59,7 +59,10 @@ const TRIPS_CONTENT_DIR = path.join(CONTENT_DIR, "trips");
 // A trip's rich page, served behind login + access check at /trip/<slug>.
 app.get("/trip/:slug", requirePage, (req, res) => {
   const trip = db.findTripBySlug(req.params.slug) || db.findTripById(req.params.slug);
-  if (!trip || !canView(trip, req.user)) {
+  // Members/admins can always view; anyone with the link can view when the
+  // trip allows link-join (default), so they can sign in and join.
+  const linkJoinable = trip && trip.linkJoin !== false;
+  if (!trip || (!canView(trip, req.user) && !linkJoinable)) {
     return res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
   }
   // Trips without their own rich HTML page get the generic Pitstop detail

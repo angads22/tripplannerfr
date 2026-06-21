@@ -76,13 +76,20 @@ function crewStack(members) {
   return `<div class="crew"><div class="crew__stack">${faces}</div><span class="crew__count">${n} going</span></div>`;
 }
 
+// A theme is either a keyword (data-theme) or a custom #hex (inline --accent).
+function themeAttrs(theme) {
+  const t = theme || "red";
+  if (t.charAt(0) === "#") return `data-theme="custom" style="--accent:${esc(t)};`;
+  return `data-theme="${esc(t)}" style="`;
+}
+
 function tripCard(t, i) {
   const cd = countdown(t.date);
   const tags = (t.tags || []).slice(0, 3).map((x) => `<span class="chip">${esc(x)}</span>`).join("");
   const tilt = TILTS[i % TILTS.length];
   const dateRow = [fmtDate(t.date), esc(t.subtitle || "")].filter(Boolean).join(" · ");
   return `
-    <a class="trip card-light" data-theme="${esc(t.theme || "red")}" href="/trip/${encodeURIComponent(t.slug || t.id)}" style="transform:rotate(${tilt})">
+    <a class="trip card-light" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
       <div class="trip__head">
         <span class="trip__count ${cd.cls}">${cd.label}</span>
         <div class="trip__emoji">${esc(t.emoji || "🚗")}</div>
@@ -135,14 +142,25 @@ let ctTheme = "red";
 let ctTags = [];
 let ctStops = [];
 
+// Preview a theme on the modal: keyword via data-theme, #hex via inline accent.
+function applyModalTheme(theme) {
+  const m = $("#createModal");
+  if (theme.charAt(0) === "#") {
+    m.setAttribute("data-theme", "custom");
+    m.style.setProperty("--accent", theme);
+  } else {
+    m.style.removeProperty("--accent");
+    m.setAttribute("data-theme", theme);
+  }
+  $("#ct-themes").querySelectorAll(".theme-dot[data-theme]").forEach((x) => x.classList.toggle("sel", x.dataset.theme === theme));
+}
+
 function applyTemplate(key) {
   const t = TEMPLATES[key];
   if (!t) return;
   ctEmoji = t.emoji; ctTheme = t.theme; ctTags = [...t.tags]; ctStops = t.stops.map((s) => ({ ...s }));
-  // reflect in the UI
-  $("#createModal").setAttribute("data-theme", ctTheme);
+  applyModalTheme(ctTheme);
   $("#ct-stickers").querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x.dataset.emoji === ctEmoji));
-  $("#ct-themes").querySelectorAll(".theme-dot").forEach((x) => x.classList.toggle("sel", x.dataset.theme === ctTheme));
   $("#ct-templates").querySelectorAll(".btn").forEach((b) => b.classList.toggle("primary", b.dataset.tpl === key));
 }
 
@@ -167,14 +185,17 @@ function openCreate() {
       sg.querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x === b));
     });
     $("#ct-themes").addEventListener("click", (ev) => {
-      const d = ev.target.closest(".theme-dot");
+      const d = ev.target.closest(".theme-dot[data-theme]");
       if (!d) return;
       ctTheme = d.dataset.theme;
-      $("#createModal").setAttribute("data-theme", ctTheme);
-      $("#ct-themes").querySelectorAll(".theme-dot").forEach((x) => x.classList.toggle("sel", x === d));
+      applyModalTheme(ctTheme);
+    });
+    $("#ct-custom").addEventListener("input", (ev) => {
+      ctTheme = ev.target.value;
+      applyModalTheme(ctTheme);
     });
   }
-  $("#createModal").setAttribute("data-theme", ctTheme);
+  applyModalTheme(ctTheme);
   scrim.hidden = false;
 }
 function closeCreate() { $("#createScrim").hidden = true; }
@@ -213,8 +234,8 @@ async function createTrip() {
     return;
   }
   $("#whoName").textContent = me.displayName;
-  $("#avatar").textContent = initials(me.displayName);
-  $("#avatar").style.background = avatarColor(me.displayName);
+  $("#avatar").textContent = me.avatarEmoji || initials(me.displayName);
+  $("#avatar").style.background = me.avatarColor || avatarColor(me.displayName);
   $("#greeting").textContent = `Hey ${me.displayName.split(" ")[0]}, where to next?`;
   if (me.isAdmin) $("#adminLink").style.display = "";
 

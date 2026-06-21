@@ -17,9 +17,22 @@
 
   <div class="stage">
     <div class="wrap-board" style="padding-top:24px">
-      <a class="btn-pill" href="/" style="margin-bottom:16px">← all trips</a>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <a class="btn-pill" href="/">← all trips</a>
+        <button class="btn-pill" id="shareBtn" type="button">🔗 Copy share link</button>
+      </div>
 
       <div id="tripHead" class="card-dark hero" style="animation:rise .5s both"></div>
+
+      <div id="joinBanner" class="panel" style="display:none;margin-top:14px">
+        <div class="panel__body"><div class="row" style="border:none">
+          <div class="row__main">
+            <div class="row__title">You're not on this trip yet</div>
+            <div class="row__meta">Someone shared it with you. Join to see the crew and help plan.</div>
+          </div>
+          <div class="row__actions"><button class="btn primary" id="joinBtn">Join this trip</button></div>
+        </div></div>
+      </div>
 
       <div class="sec-row">
         <span class="sec-row__label">The crew</span>
@@ -81,6 +94,21 @@
           <div id="mapEditRow" class="modal__row" style="display:none">
             <input class="input" id="mapInput" style="flex:1;min-width:180px" placeholder="https://maps.google.com/... or 'CN Tower'" />
             <button class="btn" id="mapSave" type="button">Save map</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-row">
+        <span class="sec-row__label">Suggestions</span>
+        <span class="sec-row__rule"></span>
+        <span class="sec-row__count" id="propCount"></span>
+      </div>
+      <div class="panel">
+        <div class="panel__body">
+          <div id="propList" class="crew-list"></div>
+          <div id="propAddRow" class="modal__row" style="display:none;margin-top:14px">
+            <input class="input" id="propInput" style="flex:1;min-width:160px" placeholder="suggest a change to the group" />
+            <button class="btn primary" id="propAdd" type="button">Suggest</button>
           </div>
         </div>
       </div>

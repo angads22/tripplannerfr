@@ -131,6 +131,23 @@ function renderMap() {
   $("#mapEditRow").style.display = TRIP.canEditPlan ? "flex" : "none";
 }
 
+function renderProposals() {
+  const props = TRIP.proposals || [];
+  $("#propCount").textContent = props.length ? `${props.length} open` : "";
+  const canResolve = TRIP.canManage;
+  $("#propList").innerHTML = props.map((p) => `
+      <div class="crew-item">
+        <span class="crew-item__face" style="background:${avatarColor(p.userName)}">${esc(initials(p.userName))}</span>
+        <div style="flex:1">
+          <div class="crew-item__name">${esc(p.text)}</div>
+          <div class="crew-item__tag">${esc(p.userName)} · ${esc(relTime(p.ts))}</div>
+        </div>
+        ${canResolve ? `<button class="btn small" data-done="${esc(p.id)}" title="Mark done">✓</button><button class="crew-item__x" data-dismiss="${esc(p.id)}" title="Dismiss">✕</button>` : ""}
+      </div>`).join("") || '<p class="row__meta">No open suggestions.</p>';
+  // anyone on the trip can suggest
+  $("#propAddRow").style.display = TRIP.canAddMembers ? "flex" : "none";
+}
+
 function renderLog() {
   const log = TRIP.activity || [];
   $("#logList").innerHTML = log.map((a) => `
@@ -153,11 +170,23 @@ async function loadDirectory() {
 async function reload() {
   const { trip } = await api("/api/trips/" + encodeURIComponent(slug));
   TRIP = trip;
-  document.body.setAttribute("data-theme", trip.theme || "red");
+  // theme: keyword via data-theme, custom #hex via inline accent
+  const theme = trip.theme || "red";
+  if (theme.charAt(0) === "#") {
+    document.body.setAttribute("data-theme", "custom");
+    document.body.style.setProperty("--accent", theme);
+  } else {
+    document.body.style.removeProperty("--accent");
+    document.body.setAttribute("data-theme", theme);
+  }
+  // join banner for people who arrived via a shared link but aren't on it yet
+  const onTrip = trip.isMember || trip.isCreator;
+  $("#joinBanner").style.display = onTrip ? "none" : "block";
   renderHead();
   renderCrew();
   renderStops();
   renderMap();
+  renderProposals();
   renderLog();
   $("#manageBar").style.display = trip.canManage ? "block" : "none";
   if (trip.canManage) {
@@ -199,6 +228,56 @@ async function reload() {
       await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/members/" + encodeURIComponent(btn.dataset.remove), "DELETE");
       await reload();
       toast("Removed.");
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Copy a shareable link to this trip
+  $("#shareBtn").addEventListener("click", async () => {
+    const url = location.origin + "/trip/" + encodeURIComponent(slug);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Link copied! Anyone you send it to can join.");
+    } catch {
+      prompt("Copy this link:", url);
+    }
+  });
+
+  // Join via shared link
+  $("#joinBtn").addEventListener("click", async () => {
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/join", "POST");
+      await reload();
+      toast("You're on the trip!");
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Suggest a change (any member)
+  $("#propAdd").addEventListener("click", async () => {
+    const text = $("#propInput").value.trim();
+    if (!text) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/proposals", "POST", { text });
+      $("#propInput").value = "";
+      await reload();
+      toast("Suggestion sent to the group.");
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Resolve a suggestion (creator/admin)
+  $("#propList").addEventListener("click", async (e) => {
+    const done = e.target.closest("[data-done]");
+    const dismiss = e.target.closest("[data-dismiss]");
+    if (!done && !dismiss) return;
+    const pid = (done || dismiss).dataset.done || (done || dismiss).dataset.dismiss;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/proposals/" + encodeURIComponent(pid), "PUT", { status: done ? "done" : "dismissed" });
+      await reload();
     } catch (e) {
       toast(e.message, true);
     }
