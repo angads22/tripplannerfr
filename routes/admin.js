@@ -199,6 +199,49 @@ router.delete("/trips/:id/activity/:activityId", (req, res) => {
   res.json({ ok: true });
 });
 
+// Migrate the old seeded Toronto trip to the new system.
+// Copies members and data, deletes the old trip.
+router.post("/migrate-toronto", (req, res) => {
+  const crypto = require("crypto");
+  const old = db.getTrips().find((t) => t.slug === "toronto");
+  if (!old) return res.status(404).json({ error: "Toronto trip not found." });
+
+  const now = new Date().toISOString();
+  const members = Array.isArray(old.members) ? [...old.members] : [];
+  const newTrip = {
+    id: crypto.randomUUID(),
+    slug: "toronto",
+    title: old.title || "Toronto",
+    subtitle: old.subtitle || "the Yonge Street run",
+    date: old.date || "2026-06-24",
+    emoji: old.emoji || "🏙️",
+    theme: old.theme || "red",
+    tags: Array.isArray(old.tags) ? [...old.tags] : [],
+    crew: Array.isArray(old.crew) ? [...old.crew] : [],
+    members,
+    stops: Array.isArray(old.stops) ? [...old.stops] : [],
+    activity: Array.isArray(old.activity) ? [...old.activity] : [],
+    proposals: Array.isArray(old.proposals) ? [...old.proposals] : [],
+    mapUrl: old.mapUrl || "",
+    pageFile: old.pageFile || "toronto.html",
+    joinCode: old.joinCode || crypto.randomBytes(5).toString("hex"),
+    shareWithEveryone: false,
+    createdBy: old.createdBy || null,
+    createdByName: old.createdByName || "seed",
+    createdAt: old.createdAt || now,
+    updatedAt: now,
+  };
+
+  db.addTrip(newTrip);
+  db.deleteTrip(old.id);
+
+  res.json({
+    ok: true,
+    message: `Migrated Toronto trip. ${members.length} member(s) retained access.`,
+    trip: adminTrip(newTrip),
+  });
+});
+
 router.post("/shutdown", (req, res) => {
   res.json({ ok: true, message: "Shutting down. Run Start Trip Planner.bat (or the exe) to turn it back on." });
   setTimeout(() => process.kill(process.pid, "SIGTERM"), 250);
