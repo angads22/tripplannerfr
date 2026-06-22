@@ -21,6 +21,7 @@ router.get("/directory", requireAuth, (req, res) => {
       displayName: u.displayName,
       avatarEmoji: u.avatarEmoji || "",
       avatarColor: u.avatarColor || "",
+      avatarImage: u.avatarImage || "",
     })),
   });
 });

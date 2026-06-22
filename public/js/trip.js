@@ -84,11 +84,13 @@ function renderCrew() {
   $("#crewList").innerHTML = (TRIP.members || []).map((m) => {
     const removable = canRemove && m.id && m.id !== TRIP.creatorId;
     const isCreator = m.id && m.id === TRIP.creatorId;
-    const face = m.avatarEmoji || esc(initials(m.displayName));
-    const color = m.avatarColor || avatarColor(m.displayName);
+    const faceStyle = m.avatarImage
+      ? `background:url('${m.avatarImage}') center/cover no-repeat`
+      : `background:${m.avatarColor || avatarColor(m.displayName)}`;
+    const face = m.avatarImage ? "" : (m.avatarEmoji || esc(initials(m.displayName)));
     return `
       <div class="crew-item">
-        <span class="crew-item__face" style="background:${color}">${face}</span>
+        <span class="crew-item__face" style="${faceStyle}">${face}</span>
         <span class="crew-item__name">${esc(m.displayName)}</span>
         ${isCreator ? '<span class="crew-item__tag">host</span>' : ""}
         ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove from trip">✕</button>` : ""}
@@ -115,10 +117,12 @@ async function renderFriendAdd() {
   if (!addable.length) { box.style.display = "none"; return; }
   box.style.display = "block";
   $("#friendChips").innerHTML = addable.map((f) => {
-    const face = f.avatarEmoji || esc(initials(f.displayName));
-    const color = f.avatarColor || avatarColor(f.displayName);
+    const faceStyle = f.avatarImage
+      ? `background:url('${f.avatarImage}') center/cover no-repeat`
+      : `background:${f.avatarColor || avatarColor(f.displayName)}`;
+    const face = f.avatarImage ? "" : (f.avatarEmoji || esc(initials(f.displayName)));
     return `<button class="friend-chip" data-addfriend="${esc(f.id)}" title="Add ${esc(f.displayName)} to the trip">
-      <span class="friend-chip__face" style="background:${color}">${face}</span>
+      <span class="friend-chip__face" style="${faceStyle}">${face}</span>
       <span>${esc(f.displayName)}</span>
       <span class="friend-chip__plus">＋</span>
     </button>`;

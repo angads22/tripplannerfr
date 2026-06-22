@@ -32,12 +32,53 @@ async function api(path, method, body) {
   return data;
 }
 
+// The currently-staged photo data URL (null = unchanged, "" = cleared).
+let PHOTO = undefined;
+
+function currentImage() {
+  return PHOTO !== undefined ? PHOTO : (ME.avatarImage || "");
+}
+
 function paintAvatar() {
   const av = $("#avPreview");
-  const emoji = $("#ac-emoji").value.trim();
-  const color = $("#ac-color").value || avatarColor(ME.displayName);
-  av.style.background = color;
-  av.textContent = emoji || initials($("#ac-name").value || ME.displayName);
+  const img = currentImage();
+  if (img) {
+    av.style.backgroundImage = `url('${img}')`;
+    av.style.background = `url('${img}') center/cover no-repeat`;
+    av.textContent = "";
+    $("#ac-photo-clear").style.display = "";
+  } else {
+    av.style.backgroundImage = "";
+    av.style.background = $("#ac-color").value || avatarColor(ME.displayName);
+    av.textContent = $("#ac-emoji").value.trim() || initials($("#ac-name").value || ME.displayName);
+    $("#ac-photo-clear").style.display = "none";
+  }
+}
+
+// Read a chosen file, downscale it to a small square thumbnail on a canvas,
+// and return a compact JPEG data URL. Keeps db.json small and avoids any
+// server-side upload handling (this app is file-backed).
+function fileToThumb(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That image won't load."));
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = max;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, max, max);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 (async function init() {
@@ -56,6 +97,25 @@ function paintAvatar() {
   $("#ac-emoji").addEventListener("input", paintAvatar);
   $("#ac-color").addEventListener("input", paintAvatar);
 
+  // Photo upload: pick a file, downscale, stage it for the next save.
+  $("#ac-photo-btn").addEventListener("click", () => $("#ac-photo").click());
+  $("#ac-photo").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ""; // let the same file be re-picked later
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("Pick an image file.", true);
+    try {
+      PHOTO = await fileToThumb(file);
+      paintAvatar();
+      toast("Photo ready — hit Save profile to keep it.");
+    } catch (err) { toast(err.message, true); }
+  });
+  $("#ac-photo-clear").addEventListener("click", () => {
+    PHOTO = "";
+    paintAvatar();
+    toast("Photo removed — hit Save profile to confirm.");
+  });
+
   $("#logoutBtn").addEventListener("click", async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     location.href = "/login.html";
@@ -63,12 +123,17 @@ function paintAvatar() {
 
   $("#ac-save").addEventListener("click", async () => {
     try {
-      await api("/api/auth/me", "PUT", {
+      const payload = {
         displayName: $("#ac-name").value.trim(),
         bio: $("#ac-bio").value.trim(),
         avatarEmoji: $("#ac-emoji").value.trim(),
         avatarColor: $("#ac-color").value,
-      });
+      };
+      if (PHOTO !== undefined) payload.avatarImage = PHOTO; // only send when changed
+      const { user } = await api("/api/auth/me", "PUT", payload);
+      ME = user;
+      PHOTO = undefined;
+      paintAvatar();
       toast("Profile saved.");
     } catch (e) { toast(e.message, true); }
   });

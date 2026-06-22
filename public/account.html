@@ -31,10 +31,15 @@
     <div class="panel reveal">
       <div class="panel__body">
         <div class="row" style="border:none">
-          <span class="who__avatar" id="avPreview" style="width:54px;height:54px;font-size:20px">?</span>
+          <span class="who__avatar" id="avPreview" style="width:54px;height:54px;font-size:20px;background-size:cover;background-position:center">?</span>
           <div class="row__main">
             <div class="row__title mono" id="whoUser">@…</div>
             <div class="row__meta">This is how you show up to the crew.</div>
+          </div>
+          <div class="row__actions" style="display:flex;gap:6px">
+            <button class="btn small" id="ac-photo-btn" type="button">Upload photo</button>
+            <button class="btn small" id="ac-photo-clear" type="button" style="display:none">Remove</button>
+            <input type="file" id="ac-photo" accept="image/*" hidden />
           </div>
         </div>
         <div class="field"><label>Display name</label><input class="input" id="ac-name" /></div>

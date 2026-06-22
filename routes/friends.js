@@ -17,7 +17,7 @@ router.use(requireAuth);
 const arr = (x) => (Array.isArray(x) ? x : []);
 const uniq = (a) => [...new Set(a)];
 function pub(u) {
-  return u ? { id: u.id, username: u.username, displayName: u.displayName, avatarEmoji: u.avatarEmoji || "", avatarColor: u.avatarColor || "" } : null;
+  return u ? { id: u.id, username: u.username, displayName: u.displayName, avatarEmoji: u.avatarEmoji || "", avatarColor: u.avatarColor || "", avatarImage: u.avatarImage || "" } : null;
 }
 const resolve = (ids) => arr(ids).map((id) => db.findUserById(id)).filter(Boolean).map(pub);
 
