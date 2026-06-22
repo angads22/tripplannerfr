@@ -400,6 +400,13 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .crew-item__x:hover { background: rgba(226,59,38,.15); color: var(--red); transform: scale(1.1); }
 .crew-item__x:disabled { opacity: .3; cursor: default; }
 
+/* One-tap friend chips for adding people to a trip */
+.friend-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 999px; border: 1px solid rgba(28,23,18,.16); background: rgba(255,255,255,.55); cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink); transition: all .15s; }
+.friend-chip:hover { border-color: var(--accent); background: rgba(226,59,38,.08); color: var(--accent); transform: translateY(-1px); }
+.friend-chip__face { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff; flex: none; }
+.friend-chip__plus { font-size: 15px; font-weight: 700; opacity: .7; }
+.friend-chip:hover .friend-chip__plus { opacity: 1; }
+
 /* Check a stop off as you go through the day */
 .stop-check { width: 19px; height: 19px; accent-color: var(--accent); cursor: pointer; flex: none; }
 .crew-item.stop-done { opacity: .62; }

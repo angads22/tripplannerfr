@@ -257,7 +257,7 @@ router.post("/migrate-toronto", (req, res) => {
     emoji: old.emoji || "🏙️",
     theme: old.theme || "red",
     tags: Array.isArray(old.tags) ? [...old.tags] : ["Day trip", "Yonge St run", "Hot pot", "GO train"],
-    crew: Array.isArray(old.crew) ? [...old.crew] : [],
+    crew: [], // legacy display-only names are dropped; only real accounts are members
     members,
     stops: [...portedStops, ...existingStops],
     activity: [

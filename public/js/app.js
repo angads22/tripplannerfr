@@ -70,7 +70,9 @@ function crewStack(members) {
   if (!members || !members.length) return "";
   const faces = members.slice(0, 5).map((c) => {
     const name = c.displayName || c.name || c || "?";
-    return `<span class="crew__face" style="background:${avatarColor(name)}" title="${esc(name)}">${esc(initials(name))}</span>`;
+    const color = (c && c.avatarColor) || avatarColor(name);
+    const face = (c && c.avatarEmoji) || esc(initials(name));
+    return `<span class="crew__face" style="background:${color}" title="${esc(name)}">${face}</span>`;
   }).join("");
   const n = members.length;
   return `<div class="crew"><div class="crew__stack">${faces}</div><span class="crew__count">${n} going</span></div>`;

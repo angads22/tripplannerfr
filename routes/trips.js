@@ -43,16 +43,21 @@ const cleanTheme = (v) => {
   return "red";
 };
 
-// Turn a list of member user-ids into {id, displayName, initials} for display.
+// Turn a list of member user-ids into display objects. Only real accounts are
+// members now — the old display-only "crew" name strings (people without an
+// account) are no longer shown. Each member carries their chosen avatar so the
+// crew/board reflect profile customization.
 function resolveMembers(trip) {
   const ids = Array.isArray(trip.members) ? trip.members : [];
-  const people = ids
+  return ids
     .map((id) => db.findUserById(id))
     .filter(Boolean)
-    .map((u) => ({ id: u.id, displayName: u.displayName }));
-  // plus any display-only names (people without an account, e.g. the seed crew)
-  const extras = (Array.isArray(trip.crew) ? trip.crew : []).map((name) => ({ id: null, displayName: name }));
-  return [...people, ...extras];
+    .map((u) => ({
+      id: u.id,
+      displayName: u.displayName,
+      avatarEmoji: u.avatarEmoji || "",
+      avatarColor: u.avatarColor || "",
+    }));
 }
 
 // What the board/detail needs to draw a trip, plus per-user permission flags.

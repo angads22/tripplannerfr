@@ -15,7 +15,13 @@ const router = express.Router();
 // invite to their own trips. Only id / username / display name is exposed.
 router.get("/directory", requireAuth, (req, res) => {
   res.json({
-    users: db.getUsers().map((u) => ({ id: u.id, username: u.username, displayName: u.displayName })),
+    users: db.getUsers().map((u) => ({
+      id: u.id,
+      username: u.username,
+      displayName: u.displayName,
+      avatarEmoji: u.avatarEmoji || "",
+      avatarColor: u.avatarColor || "",
+    })),
   });
 });
 
