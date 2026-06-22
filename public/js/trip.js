@@ -83,12 +83,15 @@ function renderCrew() {
   const canRemove = TRIP.canRemoveMembers;
   $("#crewList").innerHTML = (TRIP.members || []).map((m) => {
     const removable = canRemove && m.id && m.id !== TRIP.creatorId;
+    const isCreator = m.id && m.id === TRIP.creatorId;
+    const face = m.avatarEmoji || esc(initials(m.displayName));
+    const color = m.avatarColor || avatarColor(m.displayName);
     return `
       <div class="crew-item">
-        <span class="crew-item__face" style="background:${avatarColor(m.displayName)}">${esc(initials(m.displayName))}</span>
+        <span class="crew-item__face" style="background:${color}">${face}</span>
         <span class="crew-item__name">${esc(m.displayName)}</span>
-        ${m.id ? "" : '<span class="crew-item__tag">no account</span>'}
-        ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove">✕</button>` : ""}
+        ${isCreator ? '<span class="crew-item__tag">host</span>' : ""}
+        ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove from trip">✕</button>` : ""}
       </div>`;
   }).join("") || '<p class="row__meta">No one yet.</p>';
 
@@ -111,7 +114,15 @@ async function renderFriendAdd() {
   const addable = FRIENDS.filter((f) => !onTrip.has(f.id));
   if (!addable.length) { box.style.display = "none"; return; }
   box.style.display = "block";
-  $("#friendChips").innerHTML = addable.map((f) => `<button class="btn small" data-addfriend="${esc(f.id)}">＋ ${esc(f.displayName)}</button>`).join("");
+  $("#friendChips").innerHTML = addable.map((f) => {
+    const face = f.avatarEmoji || esc(initials(f.displayName));
+    const color = f.avatarColor || avatarColor(f.displayName);
+    return `<button class="friend-chip" data-addfriend="${esc(f.id)}" title="Add ${esc(f.displayName)} to the trip">
+      <span class="friend-chip__face" style="background:${color}">${face}</span>
+      <span>${esc(f.displayName)}</span>
+      <span class="friend-chip__plus">＋</span>
+    </button>`;
+  }).join("");
 }
 
 function relTime(iso) {
@@ -318,16 +329,25 @@ function initCollapsible() {
 }
 
 (async function init() {
+  // Auth gate first — if this fails the page can't work, so bail/redirect.
   try {
     ME = (await api("/api/auth/me")).user;
     if (!ME) return (location.href = "/login.html?next=" + encodeURIComponent(location.pathname));
+  } catch (e) {
+    toast(e.message, true);
+    return;
+  }
+
+  // Load the trip + supporting data. A failure here is surfaced but must NOT
+  // skip the event-listener wiring below — otherwise the add/remove/share
+  // buttons silently stop working after one flaky fetch.
+  try {
     await reload();
     await loadChat();
     await loadDirectory();
     initCollapsible();
   } catch (e) {
     toast(e.message, true);
-    return;
   }
 
   // Add member
