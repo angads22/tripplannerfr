@@ -265,15 +265,16 @@ async function reload() {
   renderMap();
   renderProposals();
   renderLog();
-  // Any member can edit details/theme; only the creator/admin sees the
-  // destructive actions (reset invite link, delete trip).
-  $("#manageBar").style.display = trip.canEditPlan ? "block" : "none";
+  // Any member can edit (the Edit trip button reveals the panel); only the
+  // creator/admin sees the destructive actions (reset invite link, delete).
+  $("#editTripBtn").style.display = trip.canEditPlan ? "" : "none";
   $("#rowInviteLink").style.display = trip.canManage ? "" : "none";
   $("#rowDelete").style.display = trip.canManage ? "" : "none";
   if (trip.canEditPlan) {
-    // Populate the edit-details form (only when not actively editing it).
+    // Populate the edit form (only when the panel isn't being typed into).
     const ae = document.activeElement;
     if (!ae || !/^ed-/.test(ae.id || "")) {
+      $("#ed-emoji").value = trip.emoji || "";
       $("#ed-title").value = trip.title || "";
       $("#ed-date").value = trip.date || "";
       $("#ed-sub").value = trip.subtitle || "";
@@ -282,7 +283,7 @@ async function reload() {
       $("#ed-tags").value = (trip.tags || []).join(", ");
     }
   }
-  if (trip.canManage) {
+  if (trip.canEditPlan) {
     $("#editThemes").querySelectorAll(".theme-dot").forEach((d) => d.classList.toggle("sel", d.dataset.theme === (trip.theme || "red")));
   }
 }
@@ -591,10 +592,34 @@ function initCollapsible() {
     }
   });
 
-  // Save edited trip details (creator/admin)
+  // Edit trip: reveal / hide the editor panel
+  $("#editTripBtn").addEventListener("click", () => {
+    const mb = $("#manageBar");
+    const open = mb.style.display !== "block";
+    mb.style.display = open ? "block" : "none";
+    if (open) mb.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("#ed-close").addEventListener("click", () => {
+    $("#manageBar").style.display = "none";
+    document.querySelector(".wrap-board").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  // Changelog drawer open/close
+  function openLog(open) {
+    $("#logDrawer").classList.toggle("open", open);
+    $("#logDrawer").setAttribute("aria-hidden", open ? "false" : "true");
+    $("#logScrim").hidden = !open;
+  }
+  $("#logToggle").addEventListener("click", () => openLog(true));
+  $("#logClose").addEventListener("click", () => openLog(false));
+  $("#logScrim").addEventListener("click", () => openLog(false));
+
+  // Save edited trip details (any member)
   $("#ed-save").addEventListener("click", async () => {
+    if (!$("#ed-title").value.trim()) return toast("Give the trip a title.", true);
     try {
       await api("/api/trips/" + encodeURIComponent(TRIP.id), "PUT", {
+        emoji: $("#ed-emoji").value.trim() || "🚗",
         title: $("#ed-title").value.trim(),
         date: $("#ed-date").value,
         subtitle: $("#ed-sub").value.trim(),
@@ -603,7 +628,7 @@ function initCollapsible() {
         tags: $("#ed-tags").value.split(",").map((s) => s.trim()).filter(Boolean),
       });
       await reload();
-      toast("Details saved.");
+      toast("Saved ✓");
     } catch (e) {
       toast(e.message, true);
     }
