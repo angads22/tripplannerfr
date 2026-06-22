@@ -7,6 +7,25 @@ const JOIN_CODE = new URLSearchParams(location.search).get("j") || new URLSearch
 
 let ME = null;
 let TRIP = null;
+// Signature of the last-rendered trip, so the 5s poll can skip the (heavy)
+// full re-render when nothing actually changed — no flicker, far less work.
+let LAST_TRIP_SIG = "";
+
+// One-tap starter stops so adding the plan isn't a blank form every time.
+const STOP_TEMPLATES = [
+  { label: "🤝 Meet up", title: "Meet up & depart" },
+  { label: "☕ Coffee", title: "Coffee break" },
+  { label: "🍴 Lunch", title: "Lunch" },
+  { label: "🍽️ Dinner", title: "Dinner" },
+  { label: "🍻 Drinks", title: "Drinks" },
+  { label: "⛽ Gas + snacks", title: "Gas + snacks" },
+  { label: "🏨 Check in", title: "Check in" },
+  { label: "📸 Photo stop", title: "Photo stop" },
+  { label: "🧭 Explore", title: "Explore" },
+  { label: "🎟️ Main event", title: "Main event" },
+  { label: "🛍️ Shopping", title: "Shopping" },
+  { label: "🏡 Head home", title: "Head home" },
+];
 
 function toast(msg, isErr) {
   const t = $("#toast");
@@ -181,6 +200,16 @@ function renderStops() {
           <button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
       </div>`)).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
   $("#addStopRow").style.display = canEdit ? "flex" : "none";
+  const tw = $("#stopTemplatesWrap");
+  if (tw) tw.style.display = canEdit ? "block" : "none";
+}
+
+// Render the one-tap stop-template chips (built once).
+function renderStopTemplates() {
+  const box = $("#stopTemplates");
+  if (!box || box.dataset.built) return;
+  box.innerHTML = STOP_TEMPLATES.map((t, i) => `<button type="button" class="vibe-chip" data-stoptpl="${i}">${esc(t.label)}</button>`).join("");
+  box.dataset.built = "1";
 }
 
 function renderMap() {
@@ -295,6 +324,17 @@ async function reload() {
     document.body.style.removeProperty("--accent");
     document.body.setAttribute("data-theme", theme);
   }
+  // vibe: drives the whole-page background mood (always cheap to apply)
+  document.body.setAttribute("data-vibe", trip.vibe || "classic");
+  renderStopTemplates();
+
+  // Skip the heavy DOM rebuild when nothing changed since the last render
+  // (the 5s poll calls reload() constantly). Theme/vibe above are already
+  // applied, so the page still tracks live colour changes.
+  const sig = JSON.stringify(trip);
+  if (sig === LAST_TRIP_SIG) return;
+  LAST_TRIP_SIG = sig;
+
   // join banner for people who arrived via a shared link but aren't on it yet
   const onTrip = trip.isMember || trip.isCreator;
   $("#joinBanner").style.display = onTrip ? "none" : "block";
@@ -327,6 +367,7 @@ async function reload() {
       $("#ed-tags").value = (trip.tags || []).join(", ");
     }
     $("#editThemes").querySelectorAll(".theme-dot").forEach((d) => d.classList.toggle("sel", d.dataset.theme === (trip.theme || "red")));
+    $("#editVibes").querySelectorAll(".vibe-chip").forEach((c) => c.classList.toggle("sel", c.dataset.vibe === (trip.vibe || "classic")));
   }
 }
 
@@ -627,6 +668,33 @@ function initCollapsible() {
     } catch (err) {
       toast(err.message, true);
     }
+  });
+
+  // Vibe change (creator/admin) — sets the whole-page background mood
+  $("#editVibes").addEventListener("click", async (e) => {
+    const c = e.target.closest(".vibe-chip[data-vibe]");
+    if (!c) return;
+    // Preview instantly, then persist.
+    document.body.setAttribute("data-vibe", c.dataset.vibe);
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id), "PUT", { vibe: c.dataset.vibe });
+      await reload();
+      toast("Vibe updated.");
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+
+  // Quick-add a common stop from a template (prefills the add-stop form)
+  $("#stopTemplates").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-stoptpl]");
+    if (!b) return;
+    const t = STOP_TEMPLATES[Number(b.dataset.stoptpl)];
+    if (!t) return;
+    $("#st-title").value = t.title;
+    if (t.time) $("#st-time").value = t.time;
+    $("#st-title").focus();
+    toast("Filled in — set a time and hit Add.");
   });
 
   // Reset the private invite link (creator/admin) — revokes old links

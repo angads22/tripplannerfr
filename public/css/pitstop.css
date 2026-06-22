@@ -61,6 +61,76 @@ input:focus, textarea:focus { outline: none; }
 .blob.b3 { width: 480px; height: 480px; left: 20%; bottom: -200px; background: radial-gradient(circle, rgba(120,178,118,.5), transparent 68%); filter: blur(40px); animation: floaty 25s ease-in-out infinite; }
 .blob.b4 { width: 300px; height: 300px; right: 18%; bottom: 8%; background: radial-gradient(circle, rgba(226,59,38,.4), transparent 70%); filter: blur(36px); animation: floaty 19s ease-in-out infinite reverse; }
 
+/* --------------------------------------------------------------------------
+   Per-trip "vibe": the whole page (background + glow), not just the accent,
+   reflects the trip's colour. Any page that opts in sets data-vibe on <body>
+   (the trip detail page) — the board and auth screens stay on the neutral look
+   above. Every vibe tints from var(--accent), so presets AND custom hex carry
+   through to the background.
+   -------------------------------------------------------------------------- */
+body[data-vibe] .bg {
+  background: linear-gradient(165deg,
+    color-mix(in srgb, var(--accent) 10%, #F3EBD9),
+    color-mix(in srgb, var(--accent) 16%, #E9DDC6));
+}
+body[data-vibe] .blob.b1 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 50%, transparent), transparent 68%); }
+body[data-vibe] .blob.b2 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 36%, transparent), transparent 68%); }
+body[data-vibe] .blob.b3 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 30%, transparent), transparent 68%); }
+body[data-vibe] .blob.b4 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 42%, transparent), transparent 70%); }
+
+/* Vivid — a bolder, more saturated wash */
+body[data-vibe="vivid"] .bg {
+  background: linear-gradient(165deg,
+    color-mix(in srgb, var(--accent) 24%, #F3EBD9),
+    color-mix(in srgb, var(--accent) 36%, #E7D9BF));
+}
+body[data-vibe="vivid"] .blob { filter: blur(30px); }
+body[data-vibe="vivid"] .blob.b1 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 72%, transparent), transparent 66%); }
+body[data-vibe="vivid"] .blob.b4 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 64%, transparent), transparent 68%); }
+
+/* Pastel — soft, airy, low-contrast */
+body[data-vibe="pastel"] .bg {
+  background: linear-gradient(165deg,
+    color-mix(in srgb, var(--accent) 7%, #FBF6EC),
+    color-mix(in srgb, var(--accent) 11%, #F2E9D8));
+}
+body[data-vibe="pastel"] .blob { filter: blur(52px); opacity: .82; }
+body[data-vibe="pastel"] .blob.b1 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%); }
+
+/* Night — deep, moody; the accent glows on a dark base */
+body[data-vibe="night"] .bg {
+  background: linear-gradient(165deg, #17120D, color-mix(in srgb, var(--accent) 26%, #17120D));
+}
+body[data-vibe="night"] .blob { mix-blend-mode: screen; filter: blur(46px); }
+body[data-vibe="night"] .blob.b1 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 60%, transparent), transparent 66%); }
+body[data-vibe="night"] .blob.b2 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, transparent), transparent 68%); }
+body[data-vibe="night"] .blob.b3 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 38%, transparent), transparent 68%); }
+body[data-vibe="night"] .blob.b4 { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 50%, transparent), transparent 70%); }
+/* Keep the bits that sit directly on the dark page bg legible (panels are
+   already light frosted cards with dark text, so they stay readable). */
+body[data-vibe="night"] .panel { background: rgba(245,239,228,.9); border-color: rgba(255,255,255,.5); }
+body[data-vibe="night"] .sec-row__label { color: var(--on-dark); }
+body[data-vibe="night"] .sec-row__count { color: color-mix(in srgb, var(--accent) 55%, #F4ECDD); }
+body[data-vibe="night"] .sec-row__rule { background: rgba(244,236,221,.16); }
+body[data-vibe="night"] .btn-pill { background: rgba(244,236,221,.1); color: var(--on-dark); border-color: rgba(255,255,255,.2); }
+body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
+
+/* Small swatches used by the vibe picker (create modal + trip settings) */
+.vibes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.vibe-chip {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  border: 1px solid rgba(28,23,18,.16); background: rgba(255,255,255,.5);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--ink);
+  transition: border-color .12s, background .12s, transform .1s;
+}
+.vibe-chip:hover { transform: translateY(-1px); }
+.vibe-chip.sel { border-color: var(--accent); background: rgba(226,59,38,.08); color: var(--accent); }
+.vibe-chip__dot { width: 16px; height: 16px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,.12); }
+.vibe-chip__dot.classic { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, #F3EBD9), var(--accent)); }
+.vibe-chip__dot.vivid { background: var(--accent); }
+.vibe-chip__dot.pastel { background: color-mix(in srgb, var(--accent) 35%, #fff); }
+.vibe-chip__dot.night { background: linear-gradient(135deg, #17120D, var(--accent)); }
+
 .stage { position: relative; z-index: 1; min-height: 100vh; }
 
 /* Logo lockup */

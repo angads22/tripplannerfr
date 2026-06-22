@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const db = require("../lib/db");
 const config = require("../lib/config");
 const { requireAdmin, requireAuth, inviteCode } = require("../lib/auth-middleware");
+const { ah } = require("../lib/async-handler");
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ router.put("/invite-code", (req, res) => {
 });
 
 // Update a user: toggle admin/early bird, or reset their password.
-router.put("/:id", async (req, res) => {
+router.put("/:id", ah(async (req, res) => {
   const target = db.findUserById(req.params.id);
   if (!target) return res.status(404).json({ error: "User not found." });
 
@@ -92,10 +93,10 @@ router.put("/:id", async (req, res) => {
 
   const updated = db.updateUser(target.id, patch);
   res.json({ user: publicUser(updated) });
-});
+}));
 
 // Create an account directly (handy for pre-making a friend's login).
-router.post("/", async (req, res) => {
+router.post("/", ah(async (req, res) => {
   const { username, displayName, password, isAdmin } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required." });
@@ -119,7 +120,7 @@ router.post("/", async (req, res) => {
   };
   db.addUser(user);
   res.status(201).json({ user: publicUser(user) });
-});
+}));
 
 router.delete("/:id", (req, res) => {
   const target = db.findUserById(req.params.id);

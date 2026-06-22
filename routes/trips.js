@@ -46,6 +46,13 @@ const cleanTheme = (v) => {
   return "red";
 };
 
+// A "vibe" is the overall mood of a trip page — it drives the whole-page
+// background (not just the accent), so picking a theme colour + a vibe lets the
+// trip look and feel distinct. All vibes tint from the trip's accent so any
+// colour (preset or custom hex) carries through. See pitstop.css.
+const VIBES = ["classic", "vivid", "pastel", "night"];
+const cleanVibe = (v) => (VIBES.includes(String(v || "").trim()) ? String(v).trim() : "classic");
+
 // Turn a list of member user-ids into display objects. Only real accounts are
 // members now — the old display-only "crew" name strings (people without an
 // account) are no longer shown. Each member carries their chosen avatar so the
@@ -76,6 +83,7 @@ function publicTrip(t, user) {
     emoji: t.emoji || "🚗",
     tags: t.tags || [],
     theme: cleanTheme(t.theme),
+    vibe: cleanVibe(t.vibe),
     description: t.description || "",
     coverUrl: t.coverUrl || "",
     members,
@@ -116,6 +124,7 @@ function normalizeTripInput(body) {
     date: str(body.date, 20),
     emoji: str(body.emoji, 8) || "🚗",
     theme: cleanTheme(body.theme),
+    vibe: cleanVibe(body.vibe),
     tags: (Array.isArray(body.tags) ? body.tags : [])
       .map((x) => str(x, 40))
       .filter(Boolean)
