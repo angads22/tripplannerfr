@@ -199,6 +199,92 @@ router.delete("/trips/:id/activity/:activityId", (req, res) => {
   res.json({ ok: true });
 });
 
+// The Yonge Street itinerary, ported from the rich custom toronto.html page
+// into the editable modular stop format ({time, title, place, note}). These
+// are the 8 "active" stops from that page's plan, in order, with sensible
+// clock times built around Gyukatsu's hard noon open. The add-on shelf
+// (Wahoo / karaoke / Eaton round-two) is left off so the migrated plan
+// mirrors what the custom page showed by default.
+const TORONTO_STOPS = [
+  { time: "10:00", title: "HTO Park", place: "339 Queens Quay W, Toronto",
+    note: "A waterfront park to open the day — nothing else is open before ~10–11a, so you burn the early hour by the lake. CN Tower right behind you for photos." },
+  { time: "10:45", title: "CF Toronto Eaton Centre", place: "220 Yonge St, Toronto",
+    note: "Your big shopping block while everyone's fresh. Uniqlo, H&M, and the large MINISO at 220 Yonge. Take the PATH up from the lake so you arrive indoors." },
+  { time: "12:00", title: "Gyukatsu Kyoto Katsugyu", place: "134 Dundas St E, Toronto",
+    note: "Grill-your-own Japanese beef katsu at your seat — a fun group lunch. Small room, fills fast. Hit the noon open to skip the line; lunch service ends 3p sharp." },
+  { time: "13:15", title: "OHYO Spree Claw Machines", place: "340 Yonge St, Toronto",
+    note: "Bright claw-machine arcade right on Yonge (4.9★). Cheap, fast, very on-theme — a quick win on the way north before IKEA." },
+  { time: "13:45", title: "IKEA Toronto Downtown", place: "382 Yonge St, Toronto",
+    note: "The downtown walk-through IKEA (not the full warehouse). Quick loop for the novelty; Swedish snacks if you want them. Two doors from 401 Games." },
+  { time: "14:30", title: "401 Games", place: "431 Yonge St, Toronto",
+    note: "Steps from IKEA. TCG, Pokémon, board games — deep selection and staff who actually know it. Easy to lose 45 min here." },
+  { time: "15:15", title: "Souper Hot Pot", place: "476 Yonge St, Toronto",
+    note: "The hot pot. Individual pots with a self-serve ingredient bar, so everyone builds their own broth. Budget-friendly, rarely a long wait. Near College station for the ride back." },
+  { time: "16:45", title: "Snowday Bingsu", place: "449 Church St, Toronto",
+    note: "Korean shaved-ice dessert, one block east on Church. A cool-down before the heavy dinner. Opens 1p, so it lands mid-afternoon." },
+];
+
+// Migrate the old seeded Toronto trip into the editable modular system.
+// Ports the itinerary into real stops, drops the custom pageFile (so it
+// renders the generic trip page with all the new features), keeps members
+// and the join code, then deletes the old trip. Idempotent-ish: if Toronto
+// is already modular (no pageFile), it's a no-op.
+router.post("/migrate-toronto", (req, res) => {
+  const crypto = require("crypto");
+  const old = db.getTrips().find((t) => t.slug === "toronto");
+  if (!old) return res.status(404).json({ error: "Toronto trip not found." });
+  if (!old.pageFile) {
+    return res.json({ ok: true, alreadyModular: true, message: "Toronto is already on the modular system.", trip: adminTrip(old) });
+  }
+
+  const now = new Date().toISOString();
+  const members = Array.isArray(old.members) ? [...old.members] : [];
+  // Keep any stops the crew already added on top of the seeded plan.
+  const portedStops = TORONTO_STOPS.map((s, i) => ({
+    id: crypto.randomUUID(), time: s.time, title: s.title, place: s.place, note: s.note,
+    done: false, order: i,
+  }));
+  const existingStops = (Array.isArray(old.stops) ? old.stops : []).map((s, i) => ({
+    ...s, order: (typeof s.order === "number" ? s.order : portedStops.length + i),
+  }));
+
+  const newTrip = {
+    id: crypto.randomUUID(),
+    slug: "toronto",
+    title: old.title || "Toronto",
+    subtitle: old.subtitle || "the Yonge Street run",
+    date: old.date || "2026-06-24",
+    emoji: old.emoji || "🏙️",
+    theme: old.theme || "red",
+    tags: Array.isArray(old.tags) ? [...old.tags] : ["Day trip", "Yonge St run", "Hot pot", "GO train"],
+    crew: Array.isArray(old.crew) ? [...old.crew] : [],
+    members,
+    stops: [...portedStops, ...existingStops],
+    activity: [
+      ...(Array.isArray(old.activity) ? old.activity : []),
+      { id: crypto.randomUUID(), ts: now, userId: null, userName: "system", text: "migrated to the editable trip system" },
+    ],
+    proposals: Array.isArray(old.proposals) ? [...old.proposals] : [],
+    mapUrl: old.mapUrl || "",
+    // No pageFile → served by the generic, fully-editable trip page.
+    joinCode: old.joinCode || crypto.randomBytes(5).toString("hex"),
+    shareWithEveryone: !!old.shareWithEveryone,
+    createdBy: old.createdBy || null,
+    createdByName: old.createdByName || "seed",
+    createdAt: old.createdAt || now,
+    updatedAt: now,
+  };
+
+  db.addTrip(newTrip);
+  db.deleteTrip(old.id);
+
+  res.json({
+    ok: true,
+    message: `Migrated Toronto to the editable system with ${portedStops.length} stops. ${members.length} member(s) kept access.`,
+    trip: adminTrip(newTrip),
+  });
+});
+
 router.post("/shutdown", (req, res) => {
   res.json({ ok: true, message: "Shutting down. Run Start Trip Planner.bat (or the exe) to turn it back on." });
   setTimeout(() => process.kill(process.pid, "SIGTERM"), 250);

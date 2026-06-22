@@ -345,6 +345,22 @@ $("#autoUpdateToggle").addEventListener("change", (e) => {
   if (e.target.checked) checkUpdate(true);
 });
 
+// --- Maintenance -----------------------------------------------------------
+$("#migrateTorontoBtn").addEventListener("click", async () => {
+  if (!confirm("Migrate the Toronto trip to the editable system? The crew keeps access and the itinerary is preserved, but the old static page is replaced.")) return;
+  const btn = $("#migrateTorontoBtn");
+  btn.disabled = true;
+  try {
+    const r = await api("POST", "/api/admin/migrate-toronto");
+    toast(r.message || "Migrated.");
+    loadTrips().catch(() => {});
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // --- Server power ----------------------------------------------------------
 $("#shutdownBtn").addEventListener("click", async () => {
   if (!confirm("Shut down the server for everyone? You'll need to run Start Trip Planner.bat to turn it back on.")) return;
