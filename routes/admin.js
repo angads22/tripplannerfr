@@ -106,11 +106,16 @@ async function getLatestRelease() {
 
 // Activity log: every trip's changelog merged with account sign-ups, newest
 // first. Gives the admin one place to see who did what across the whole app.
+// Trip-activity rows carry tripId + activityId so the admin can prune them.
 router.get("/logs", (req, res) => {
   const events = [];
   for (const t of db.getTrips()) {
     for (const a of Array.isArray(t.activity) ? t.activity : []) {
-      events.push({ ts: a.ts, who: a.userName || "someone", text: a.text || "", trip: t.title || "", slug: t.slug || "" });
+      events.push({
+        ts: a.ts, who: a.userName || "someone", text: a.text || "",
+        trip: t.title || "", slug: t.slug || "",
+        tripId: t.id, activityId: a.id, // present only for deletable trip events
+      });
     }
   }
   for (const u of db.getUsers()) {
@@ -120,6 +125,78 @@ router.get("/logs", (req, res) => {
   }
   events.sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
   res.json({ logs: events.slice(0, 200) });
+});
+
+// --- Trip overrides (admin-only; the ONE place permissions are overridable) -
+//
+// The regular trip page is strictly creator-based. These endpoints are the
+// admin's escape hatch: list every trip, delete any of them, flip sharing,
+// remove anyone, or prune a stray activity entry — regardless of who owns it.
+
+// A compact view of a trip for the admin console's trip table.
+function adminTrip(t) {
+  const members = (Array.isArray(t.members) ? t.members : [])
+    .map((id) => db.findUserById(id))
+    .filter(Boolean)
+    .map((u) => ({ id: u.id, displayName: u.displayName }));
+  return {
+    id: t.id,
+    slug: t.slug,
+    title: t.title,
+    emoji: t.emoji || "🚗",
+    theme: t.theme || "red",
+    date: t.date || "",
+    creatorName: t.createdByName || "",
+    creatorId: t.createdBy || null,
+    shareWithEveryone: !!t.shareWithEveryone,
+    members,
+    memberCount: members.length,
+  };
+}
+
+// Every trip in the app (override view — bypasses board membership).
+router.get("/trips", (req, res) => {
+  const trips = db
+    .getTrips()
+    .slice()
+    .sort((a, b) => (a.date || a.createdAt || "").localeCompare(b.date || b.createdAt || ""))
+    .map(adminTrip);
+  res.json({ trips });
+});
+
+// Delete any trip.
+router.delete("/trips/:id", (req, res) => {
+  const t = db.findTripById(req.params.id);
+  if (!t) return res.status(404).json({ error: "Trip not found." });
+  db.deleteTrip(t.id);
+  res.json({ ok: true });
+});
+
+// Flip a trip's public/private sharing.
+router.put("/trips/:id/access", (req, res) => {
+  const t = db.findTripById(req.params.id);
+  if (!t) return res.status(404).json({ error: "Trip not found." });
+  db.updateTrip(t.id, { shareWithEveryone: !!(req.body || {}).shareWithEveryone });
+  res.json({ trip: adminTrip(db.findTripById(t.id)) });
+});
+
+// Remove anyone from any trip (the creator included — handy if an account is
+// being cleaned up). Returns the refreshed trip row.
+router.delete("/trips/:id/members/:userId", (req, res) => {
+  const t = db.findTripById(req.params.id);
+  if (!t) return res.status(404).json({ error: "Trip not found." });
+  const members = (Array.isArray(t.members) ? t.members : []).filter((id) => id !== req.params.userId);
+  db.updateTrip(t.id, { members });
+  res.json({ trip: adminTrip(db.findTripById(t.id)) });
+});
+
+// Prune a single activity entry from a trip's changelog.
+router.delete("/trips/:id/activity/:activityId", (req, res) => {
+  const t = db.findTripById(req.params.id);
+  if (!t) return res.status(404).json({ error: "Trip not found." });
+  const activity = (Array.isArray(t.activity) ? t.activity : []).filter((a) => a.id !== req.params.activityId);
+  db.updateTrip(t.id, { activity });
+  res.json({ ok: true });
 });
 
 router.post("/shutdown", (req, res) => {

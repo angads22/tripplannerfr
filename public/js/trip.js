@@ -225,7 +225,7 @@ function renderProposals() {
 
 function renderLog() {
   const log = TRIP.activity || [];
-  const canDeleteActivity = TRIP.canManage; // Only creator/admin can delete activity
+  const canDeleteActivity = TRIP.canManage; // creator only (admin prunes via the admin panel)
   $("#logList").innerHTML = log.map((a) => `
       <div class="crew-item">
         <span class="crew-item__face" style="background:${avatarColor(a.userName)}">${esc(initials(a.userName))}</span>
@@ -267,12 +267,15 @@ async function reload() {
   renderMap();
   renderProposals();
   renderLog();
-  // Any member can edit details/theme; only the creator/admin sees the
-  // destructive actions (reset invite link, delete trip).
+  // Any member can edit details/theme; only the creator sees the destructive
+  // actions (reset invite link, delete trip). Admin overrides live in the
+  // admin panel, not here.
   $("#manageBar").style.display = trip.canEditPlan ? "block" : "none";
   $("#rowInviteLink").style.display = trip.canManage ? "" : "none";
   $("#rowDelete").style.display = trip.canManage ? "" : "none";
   $("#quickEditBtn").style.display = trip.canEditPlan ? "" : "none";
+  // A member who didn't create the trip can leave it.
+  $("#leaveBtn").style.display = trip.canLeave ? "" : "none";
   if (trip.canEditPlan) {
     // Populate the edit-details form (only when not actively editing it).
     const ae = document.activeElement;
@@ -284,8 +287,6 @@ async function reload() {
       $("#ed-cover").value = trip.coverUrl || "";
       $("#ed-tags").value = (trip.tags || []).join(", ");
     }
-  }
-  if (trip.canManage) {
     $("#editThemes").querySelectorAll(".theme-dot").forEach((d) => d.classList.toggle("sel", d.dataset.theme === (trip.theme || "red")));
   }
 }
@@ -612,11 +613,22 @@ function initCollapsible() {
     }
   });
 
-  // Delete trip (creator/admin)
+  // Delete trip (creator only)
   $("#deleteBtn").addEventListener("click", async () => {
     if (!confirm(`Delete "${TRIP.title}"? This can't be undone.`)) return;
     try {
       await api("/api/trips/" + encodeURIComponent(TRIP.id), "DELETE");
+      location.href = "/";
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Leave trip (members who didn't create it)
+  $("#leaveBtn").addEventListener("click", async () => {
+    if (!confirm(`Leave "${TRIP.title}"? You'll need the invite link to rejoin.`)) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/leave", "POST");
       location.href = "/";
     } catch (e) {
       toast(e.message, true);

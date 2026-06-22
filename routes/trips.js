@@ -2,9 +2,13 @@
 
 // Trips are shared plans with their own crew and access control.
 // - Any logged-in user can create a trip (they become its creator).
-// - Anyone on a trip (creator or member) can invite more people.
-// - Only the creator (or an admin) can remove people, edit, or delete it.
-// - Admins can see and manage every trip.
+// - Anyone on a trip (creator or member) can invite more people / share the link.
+// - Any member can leave the trip; the creator deletes it instead.
+// - Only the creator can remove people, change details/theme-locked settings,
+//   reset the invite link, or delete the trip.
+// - The admin gets NO special powers on the trip page itself. Every override
+//   (see all trips, delete any trip, remove anyone, prune activity) lives in
+//   the admin console under /api/admin/* — nowhere else.
 
 const express = require("express");
 const crypto = require("crypto");
@@ -12,6 +16,7 @@ const db = require("../lib/db");
 const {
   requireAuth,
   canView,
+  onBoard,
   isCreator,
   isMember,
   canAddMembers,
@@ -80,6 +85,8 @@ function publicTrip(t, user) {
     canEditPlan: canEditPlan(t, user),
     canRemoveMembers: canRemoveMembers(t, user),
     canManage: canManageTrip(t, user),
+    // a member who didn't create the trip can leave it (the creator deletes instead)
+    canLeave: isMember(t, user) && !isCreator(t, user),
   };
   // The crew can see the join code so they can share the invite link.
   if (user && (user.isAdmin || isCreator(t, user) || isMember(t, user))) {
@@ -142,11 +149,13 @@ function canSee(trip, user, code) {
 
 // --- Member-facing -------------------------------------------------------
 
-// List the trips this user can see (soonest first).
+// List the trips on this user's board (soonest first). This uses board
+// membership, NOT canView — so even an admin only sees their own / invited /
+// public trips here. The admin console lists every trip via its own endpoint.
 router.get("/", requireAuth, (req, res) => {
   const trips = db
     .getTrips()
-    .filter((t) => canView(t, req.user))
+    .filter((t) => onBoard(t, req.user))
     .sort((a, b) => (a.date || a.createdAt || "").localeCompare(b.date || b.createdAt || ""))
     .map((t) => publicTrip(t, req.user));
   res.json({ trips });
@@ -183,7 +192,23 @@ router.post("/:id/join", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
-// Rotate the join code (revokes any previously shared links). Creator/admin.
+// Leave a trip you're on. The creator can't leave their own trip (they delete
+// it instead); everyone else just gets taken off the member list.
+router.post("/:id/leave", requireAuth, (req, res) => {
+  const trip = db.findTripBySlug(req.params.id) || db.findTripById(req.params.id);
+  if (!trip) return res.status(404).json({ error: "Trip not found." });
+  if (isCreator(trip, req.user)) {
+    return res.status(400).json({ error: "You created this trip — delete it instead of leaving." });
+  }
+  if (!isMember(trip, req.user)) {
+    return res.status(400).json({ error: "You're not on this trip." });
+  }
+  const members = (Array.isArray(trip.members) ? trip.members : []).filter((id) => id !== req.user.id);
+  db.updateTrip(trip.id, withActivity(trip, req.user, "left the trip", { members }));
+  res.json({ ok: true });
+});
+
+// Rotate the join code (revokes any previously shared links). Creator only.
 router.post("/:id/rotate-code", requireAuth, (req, res) => {
   const trip = db.findTripById(req.params.id);
   if (!trip) return res.status(404).json({ error: "Trip not found." });
@@ -278,10 +303,10 @@ router.post("/", requireAuth, (req, res) => {
   res.status(201).json({ trip: publicTrip(trip, req.user) });
 });
 
-// --- Edit details (any member) / delete (creator or admin) ---------------
+// --- Edit details (any member) / delete (creator only) -------------------
 
 // Anyone on the trip can edit its details (title, date, theme, description,
-// cover, tags). Two settings stay creator/admin-only: making the trip public
+// cover, tags). Two settings stay creator-only: making the trip public
 // (shareWithEveryone) and the custom page file.
 router.put("/:id", requireAuth, (req, res) => {
   const existing = db.findTripById(req.params.id);
@@ -331,7 +356,7 @@ router.post("/:id/members", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
-// Remove a person. Only the creator (or an admin) can.
+// Remove a person. Only the creator can (admin override is in the admin panel).
 router.delete("/:id/members/:userId", requireAuth, (req, res) => {
   const trip = db.findTripById(req.params.id);
   if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
@@ -359,7 +384,7 @@ router.put("/:id/access", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
-// Delete an activity entry (creator/admin only)
+// Delete an activity entry (creator only; admin override is in the admin panel)
 router.delete("/:id/activity/:activityId", requireAuth, (req, res) => {
   const existing = db.findTripById(req.params.id);
   if (!existing) return res.status(404).json({ error: "Trip not found." });
