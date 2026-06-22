@@ -330,32 +330,52 @@ router.post("/apply-update", async (req, res) => {
     console.log(`  ⏬ Update: downloaded ${(bytes / 1048576).toFixed(1)} MB → swapping & relaunching`);
 
     // Self-healing updater: back up the current exe, swap in the new one, start
-    // it, and if it doesn't come up in a few seconds, roll back to the backup so
-    // the site never gets stuck on a bad build (the Bad Gateway problem). Every
-    // step is logged to update-log.txt next to the exe.
+    // it, then VERIFY the web server actually answers on /api/health before
+    // declaring success. A process merely existing isn't enough — the new build
+    // can launch but fail to serve (e.g. the port hasn't been released yet),
+    // which is the Bad Gateway problem. If it isn't healthy within the window,
+    // we kill it and roll back to the backup. Every step is logged to
+    // update-log.txt next to the exe.
+    const HEALTH = "http://localhost:4040/api/health";
+    // PowerShell one-liner: exit 0 only on HTTP 200 from /api/health.
+    const psCheck =
+      `powershell -NoProfile -ExecutionPolicy Bypass -Command ` +
+      `"try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 '${HEALTH}'; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"`;
     const bat = [
       "@echo off",
       'cd /d "%~dp0"',
       "set LOG=update-log.txt",
       `echo [%date% %time%] update to build ${latest.build} starting > "%LOG%"`,
+      // 1) wait for the current app to fully exit
       ":waitexit",
       `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul && (timeout /t 1 /nobreak >nul & goto waitexit)`,
       'echo [%time%] old process exited >> "%LOG%"',
       "timeout /t 2 /nobreak >nul",
+      // 2) swap in the new build (backing up the old one)
       `if not exist "TripPlanner-new.exe" ( echo [%time%] ERROR: no new exe, aborting >> "%LOG%" & start "" "${exeName}" & goto done )`,
       `if exist "${exeName}" copy /y "${exeName}" "TripPlanner-old.exe" >nul`,
       `move /y "TripPlanner-new.exe" "${exeName}" >nul`,
-      'echo [%time%] swapped in new build >> "%LOG%"',
+      'echo [%time%] swapped in new build, starting it >> "%LOG%"',
       `start "" "${exeName}"`,
-      "timeout /t 7 /nobreak >nul",
-      `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul`,
-      "if errorlevel 1 (",
-      '  echo [%time%] new build did NOT start - rolling back >> "%LOG%"',
-      `  if exist "TripPlanner-old.exe" ( move /y "TripPlanner-old.exe" "${exeName}" >nul & start "" "${exeName}" )`,
-      ") else (",
-      '  echo [%time%] new build is running >> "%LOG%"',
-      '  del "TripPlanner-old.exe" >nul 2>&1',
-      ")",
+      // 3) poll the health endpoint for up to ~40s (20 tries x 2s)
+      "set /a tries=0",
+      ":health",
+      "timeout /t 2 /nobreak >nul",
+      psCheck,
+      "if not errorlevel 1 goto healthy",
+      "set /a tries+=1",
+      'echo [%time%] not healthy yet (try %tries%) >> "%LOG%"',
+      "if %tries% lss 20 goto health",
+      // 4a) never came up -> kill it and roll back to the backup
+      'echo [%time%] new build did NOT serve - rolling back >> "%LOG%"',
+      `taskkill /f /im "${exeName}" >nul 2>&1`,
+      "timeout /t 2 /nobreak >nul",
+      `if exist "TripPlanner-old.exe" ( move /y "TripPlanner-old.exe" "${exeName}" >nul & start "" "${exeName}" & echo [%time%] rolled back to previous build >> "%LOG%" )`,
+      "goto done",
+      // 4b) healthy -> keep it, drop the backup
+      ":healthy",
+      'echo [%time%] new build is serving OK >> "%LOG%"',
+      'del "TripPlanner-old.exe" >nul 2>&1',
       ":done",
       'start "" http://localhost:4040',
       'del "%~f0"',
