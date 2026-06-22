@@ -18,6 +18,7 @@ function publicUser(u) {
     isAdmin: u.isAdmin,
     avatarEmoji: u.avatarEmoji || "",
     avatarColor: u.avatarColor || "",
+    avatarImage: u.avatarImage || "",
     bio: u.bio || "",
   };
 }
@@ -120,6 +121,22 @@ router.put("/me", requireSelf, async (req, res) => {
   if (avatarEmoji != null) patch.avatarEmoji = String(avatarEmoji).trim().slice(0, 8);
   if (avatarColor != null) patch.avatarColor = String(avatarColor).trim().slice(0, 16);
   if (req.body.bio != null) patch.bio = String(req.body.bio).trim().slice(0, 280);
+
+  // Profile photo: a small client-resized image stored as a data URL (this app
+  // is file-backed with no upload server, so the thumbnail lives in db.json).
+  // "" clears it back to the emoji/initials avatar.
+  if (req.body.avatarImage != null) {
+    const img = String(req.body.avatarImage).trim();
+    if (img === "") {
+      patch.avatarImage = "";
+    } else if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(img)) {
+      return res.status(400).json({ error: "That doesn't look like an image." });
+    } else if (img.length > 800000) {
+      return res.status(400).json({ error: "That image is too large — try a smaller one." });
+    } else {
+      patch.avatarImage = img;
+    }
+  }
 
   if (password != null && String(password) !== "") {
     // Changing the password requires confirming the current one.

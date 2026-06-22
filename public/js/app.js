@@ -69,7 +69,10 @@ const TILTS = ["-1.4deg", "1deg", "-0.7deg", "1.3deg", "-1.1deg", "0.8deg"];
 function crewStack(members) {
   if (!members || !members.length) return "";
   const faces = members.slice(0, 5).map((c) => {
-    const name = c.displayName || c.name || c || "?";
+    const name = (c && (c.displayName || c.name)) || c || "?";
+    if (c && c.avatarImage) {
+      return `<span class="crew__face" style="background:url('${c.avatarImage}') center/cover no-repeat" title="${esc(name)}"></span>`;
+    }
     const color = (c && c.avatarColor) || avatarColor(name);
     const face = (c && c.avatarEmoji) || esc(initials(name));
     return `<span class="crew__face" style="background:${color}" title="${esc(name)}">${face}</span>`;
@@ -256,8 +259,16 @@ async function createTrip() {
     return;
   }
   $("#whoName").textContent = me.displayName;
-  $("#avatar").textContent = me.avatarEmoji || initials(me.displayName);
-  $("#avatar").style.background = me.avatarColor || avatarColor(me.displayName);
+  const avEl = $("#avatar");
+  avEl.style.backgroundSize = "cover";
+  avEl.style.backgroundPosition = "center";
+  if (me.avatarImage) {
+    avEl.textContent = "";
+    avEl.style.background = `url('${me.avatarImage}') center/cover no-repeat`;
+  } else {
+    avEl.textContent = me.avatarEmoji || initials(me.displayName);
+    avEl.style.background = me.avatarColor || avatarColor(me.displayName);
+  }
   $("#greeting").textContent = `Hey ${me.displayName.split(" ")[0]}, where to next?`;
   if (me.isAdmin) $("#adminLink").style.display = "";
 

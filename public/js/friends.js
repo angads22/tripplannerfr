@@ -35,9 +35,13 @@ async function api(path, method, body) {
 }
 
 function personRow(u, actions) {
+  const faceStyle = u.avatarImage
+    ? `background:url('${u.avatarImage}') center/cover no-repeat`
+    : `background:${u.avatarColor || avatarColor(u.displayName)}`;
+  const face = u.avatarImage ? "" : (u.avatarEmoji || esc(initials(u.displayName)));
   return `
     <div class="crew-item">
-      <span class="crew-item__face" style="background:${u.avatarColor || avatarColor(u.displayName)}">${u.avatarEmoji || esc(initials(u.displayName))}</span>
+      <span class="crew-item__face" style="${faceStyle}">${face}</span>
       <div style="flex:1">
         <div class="crew-item__name">${esc(u.displayName)}</div>
         <div class="crew-item__tag">@${esc(u.username)}</div>
