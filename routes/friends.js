@@ -65,11 +65,12 @@ function makeFriends(aId, bId) {
   });
 }
 
-// Send a friend request by username. If they already requested me, we just
-// become friends (mutual).
+// Send a friend request by username or userId. If they already requested me,
+// we just become friends (mutual).
 router.post("/request", (req, res) => {
   const me = db.findUserById(req.user.id);
-  const target = db.findUserByUsername((req.body || {}).username);
+  const body = req.body || {};
+  const target = body.userId ? db.findUserById(body.userId) : db.findUserByUsername(body.username);
   if (!target) return res.status(404).json({ error: "No account with that username." });
   if (target.id === me.id) return res.status(400).json({ error: "You can't add yourself." });
   if (arr(me.friends).includes(target.id)) return res.status(409).json({ error: `You're already friends with ${target.displayName}.` });

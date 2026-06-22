@@ -20,6 +20,7 @@ const { spawn } = require("child_process");
 const { requireAdmin } = require("../lib/auth-middleware");
 const { isPackaged, EXE_DIR } = require("../lib/paths");
 const { ah } = require("../lib/async-handler");
+const { TORONTO_BUDGET } = require("../lib/seed");
 const db = require("../lib/db");
 
 const REPO = "angads22/tripplannerfr";
@@ -257,6 +258,8 @@ router.post("/migrate-toronto", (req, res) => {
     date: old.date || "2026-06-24",
     emoji: old.emoji || "🏙️",
     theme: old.theme || "red",
+    vibe: old.vibe || "classic",
+    budget: old.budget && Array.isArray(old.budget.items) && old.budget.items.length ? old.budget : TORONTO_BUDGET,
     tags: Array.isArray(old.tags) ? [...old.tags] : ["Day trip", "Yonge St run", "Hot pot", "GO train"],
     crew: [], // legacy display-only names are dropped; only real accounts are members
     members,

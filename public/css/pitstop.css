@@ -206,6 +206,37 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 .btn-pill { transition: background .15s, transform .12s; }
 .btn-pill:active { transform: translateY(0) scale(.97); }
 
+/* Notification badge (e.g. pending friend requests on the Friends tab) */
+.pill-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px;
+  border-radius: 999px; background: var(--accent); color: #fff;
+  font-family: "Archivo", sans-serif; font-size: 11px; font-weight: 800; line-height: 1;
+  box-shadow: 0 2px 6px -1px rgba(226,59,38,.5);
+}
+.pill-badge[hidden] { display: none; }
+
+/* Compact "add friend" button used in a trip's crew list */
+.mini-btn {
+  border: 1px solid rgba(28,23,18,.16); background: rgba(255,255,255,.6);
+  color: var(--ink); border-radius: 999px; padding: 4px 10px;
+  font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  transition: background .12s, border-color .12s, color .12s, transform .1s;
+}
+.mini-btn:hover { background: rgba(255,255,255,.9); transform: translateY(-1px); }
+.mini-btn.accent { border-color: var(--accent); background: rgba(226,59,38,.08); color: var(--accent); }
+.mini-btn:disabled { opacity: .55; cursor: default; transform: none; }
+
+/* Budget section */
+.budget-summary { display: flex; flex-wrap: wrap; gap: 10px; }
+.budget-stat { flex: 1; min-width: 110px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); border-radius: 14px; padding: 12px 14px; }
+.budget-stat__label { font-family: "Space Mono", monospace; font-size: 11px; color: var(--muted-light); text-transform: uppercase; letter-spacing: .05em; }
+.budget-stat__value { font-family: "Anton", sans-serif; font-size: 24px; line-height: 1.1; margin-top: 4px; }
+.budget-stat.accent { border-color: var(--accent); background: rgba(226,59,38,.08); }
+.budget-stat.accent .budget-stat__value { color: var(--accent); }
+.budget-kind { font-family: "Space Mono", monospace; font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(28,23,18,.16); color: var(--muted-light); margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.budget-kind.group { color: var(--accent); border-color: var(--accent); background: rgba(226,59,38,.08); }
+
 /* Error / hint */
 .err-msg { color: #ffb3a8; font-size: 13px; min-height: 0; margin: 0; display: none; }
 .err-msg.show { display: block; margin-top: 12px; }
