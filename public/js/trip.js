@@ -221,6 +221,29 @@ async function loadChat() {
   box.scrollTop = box.scrollHeight;
 }
 
+async function loadFiles() {
+  if (!TRIP || !ME || !ME.isEarlyBird) {
+    $("#sharedDriveSection").style.display = "none";
+    return;
+  }
+  $("#sharedDriveSection").style.display = (TRIP.isMember || TRIP.isCreator) ? "block" : "none";
+  $("#uploadRow").style.display = (TRIP.isMember || TRIP.isCreator) ? "flex" : "none";
+  let files = [];
+  try {
+    files = (await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/files")).files || [];
+  } catch { return; }
+  $("#fileList").innerHTML = files.length
+    ? files.map((f) => `<div class="crew-item">
+        <div style="flex:1">
+          <div class="crew-item__name"><a href="/trip-files/${TRIP.id}/${encodeURIComponent(f.name)}" target="_blank">${esc(f.name)}</a></div>
+        </div>
+        <div class="row__actions">
+          <button class="crew-item__x" data-delfile="${esc(f.name)}" title="Delete">×</button>
+        </div>
+      </div>`).join("")
+    : '<p class="row__meta">No files shared yet.</p>';
+}
+
 function renderProposals() {
   const props = TRIP.proposals || [];
   $("#propCount").textContent = props.length ? `${props.length} open` : "";
@@ -282,6 +305,7 @@ async function reload() {
   renderMap();
   renderProposals();
   renderLog();
+  await loadFiles();
   // Any member can edit details/theme; only the creator sees the destructive
   // actions (reset invite link, delete trip). Admin overrides live in the
   // admin panel, not here.
@@ -730,6 +754,38 @@ function initCollapsible() {
       await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/messages/" + encodeURIComponent(del.dataset.delmsg), "DELETE");
       CHAT_SIG = "";
       await loadChat();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // Upload a file to shared drive
+  $("#uploadBtn").addEventListener("click", async () => {
+    const file = $("#fileInput").files[0];
+    if (!file) return;
+    if (!ME.isEarlyBird) {
+      toast("Shared drive is for early birds only.", true);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64 = reader.result.split(",")[1];
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/files", "POST", { filename: file.name, data: base64 });
+        $("#fileInput").value = "";
+        await loadFiles();
+        toast("File uploaded.");
+      } catch (err) { toast(err.message, true); }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Delete a file from shared drive
+  document.addEventListener("click", async (e) => {
+    const del = e.target.closest("[data-delfile]");
+    if (!del || !TRIP) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/files/" + encodeURIComponent(del.dataset.delfile), "DELETE");
+      await loadFiles();
+      toast("File deleted.");
     } catch (err) { toast(err.message, true); }
   });
 

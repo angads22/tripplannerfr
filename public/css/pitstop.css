@@ -544,10 +544,30 @@ html { -webkit-text-size-adjust: 100%; }
   /* Toast spans the width, pinned bottom */
   .toast { left: 12px; right: 12px; bottom: 14px; transform: translateY(24px); text-align: center; }
   .toast.show { transform: translateY(0); }
+
+  /* Larger touch targets for buttons and inputs */
+  .btn, .toggle { min-height: 44px; }
+  .input { min-height: 44px; padding: 10px 12px; }
+
+  /* Better spacing for crew items on small screens */
+  .crew-item { padding: 11px 0; gap: 10px; }
+  .crew-item__face { width: 36px; height: 36px; font-size: 14px; }
+
+  /* File upload button visibility */
+  #fileInput { display: block; }
+  #uploadBtn { min-width: 100px; }
+
+  /* Reduce padding in forms */
+  .modal__row { gap: 8px; }
+  .field { margin-bottom: 12px; }
 }
 
 @media (max-width: 380px) {
   .logo__name { font-size: 18px; }
   .hero { padding: 18px 15px; }
   .who span:not(.who__avatar) { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Even larger inputs/buttons on tiny screens */
+  .input { font-size: 18px; padding: 12px 14px; }
+  .btn { font-size: 14px; padding: 10px 14px; }
 }

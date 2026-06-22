@@ -23,7 +23,7 @@ app.disable("x-powered-by");
 // Behind the Cloudflare tunnel the app is proxied; trust it so sessions and
 // protocol detection work correctly.
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 // Never let the browser (or Cloudflare) cache the API or the app pages. This
 // avoids stale UI after an update — the #1 cause of "I clicked and nothing
@@ -125,7 +125,7 @@ app.get("/trip/:slug", requirePage, (req, res) => {
   res.sendFile(file);
 });
 
-// --- Static frontend (login, board, css, js) -------------------------------
+// --- Static frontend (login, board, css, js) + trip file uploads -----------
 app.use(
   express.static(PUBLIC_DIR, {
     setHeaders: (res, p) => {
@@ -134,6 +134,18 @@ app.use(
     },
   })
 );
+
+// Serve trip file uploads.
+app.get("/trip-files/:tripId/:filename", (req, res) => {
+  const file = path.join(DATA_DIR, `trip-${req.params.tripId}`, "files", path.basename(req.params.filename));
+  if (!file.startsWith(path.join(DATA_DIR, `trip-${req.params.tripId}`, "files"))) {
+    return res.status(403).send("Forbidden");
+  }
+  if (!fs.existsSync(file)) {
+    return res.status(404).send("Not found");
+  }
+  res.sendFile(file);
+});
 
 // Fallback: send the board shell for any other non-API route.
 app.get("*", (req, res) => {

@@ -66,6 +66,7 @@ router.post("/register", async (req, res) => {
     displayName: String(displayName || username).trim(),
     passwordHash: hash,
     isAdmin: isFirstUser,
+    isEarlyBird: isFirstUser,
     createdAt: new Date().toISOString(),
   };
   db.addUser(user);
