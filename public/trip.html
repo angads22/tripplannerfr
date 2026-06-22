@@ -16,10 +16,10 @@
   </div>
 
   <div class="stage">
-    <!-- Activity sidebar -->
+    <!-- Changelog drawer -->
     <div id="activitySidebar" class="activity-sidebar" style="display:none">
       <div class="activity-header">
-        <h3>Activity</h3>
+        <h3>Changelog</h3>
         <button class="btn-close" id="closeActivityBtn" type="button">✕</button>
       </div>
       <div class="activity-list" id="activityList"></div>
@@ -31,7 +31,7 @@
         <button class="btn-pill" id="shareBtn" type="button">Copy invite link</button>
         <button class="btn-pill" id="codeBtn" type="button">Copy code</button>
         <button class="btn-pill" id="dupBtn" type="button">Duplicate</button>
-        <button class="btn-pill" id="activityToggleBtn" type="button" title="Show activity log">Activity</button>
+        <button class="btn-pill" id="activityToggleBtn" type="button" title="Show the changelog">Changelog</button>
         <button class="btn-pill" id="leaveBtn" type="button" style="display:none">Leave trip</button>
       </div>
 
@@ -219,24 +219,20 @@
         </div>
       </div>
 
-      <div class="sec-row">
-        <span class="sec-row__label">Changelog</span>
-        <span class="sec-row__rule"></span>
-      </div>
-      <div class="panel">
-        <div class="panel__body"><div id="logList" class="crew-list"></div></div>
-      </div>
-
       <div id="manageBar" style="display:none;margin-top:18px">
         <div class="sec-row">
-          <span class="sec-row__label">Trip settings</span>
+          <span class="sec-row__label">Edit trip</span>
           <span class="sec-row__rule"></span>
+          <button class="btn small" id="ed-close" type="button">Done</button>
         </div>
         <div class="panel">
           <div class="panel__body">
             <div class="row" style="border:none;display:block">
               <div class="row__title" style="margin-bottom:10px">Edit details</div>
-              <div class="field"><label>Title</label><input class="input" id="ed-title" /></div>
+              <div class="modal__row" style="margin-top:0;align-items:flex-end">
+                <div style="width:84px"><div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Emoji</div><input class="input" id="ed-emoji" maxlength="4" placeholder="🚗" style="text-align:center" /></div>
+                <div style="flex:1;min-width:160px"><div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Title</div><input class="input" id="ed-title" /></div>
+              </div>
               <div class="modal__row" style="margin-top:0">
                 <div style="flex:1;min-width:140px"><div class="flabel" style="color:var(--muted-light);margin-bottom:6px">When</div><input class="input" id="ed-date" type="date" /></div>
                 <div style="flex:1;min-width:140px"><div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Subtitle</div><input class="input" id="ed-sub" /></div>

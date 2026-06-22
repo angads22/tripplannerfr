@@ -359,20 +359,6 @@ function renderProposals() {
   $("#propAddRow").style.display = TRIP.canAddMembers ? "flex" : "none";
 }
 
-function renderLog() {
-  const log = TRIP.activity || [];
-  const canDeleteActivity = TRIP.canManage; // creator only (admin prunes via the admin panel)
-  $("#logList").innerHTML = log.map((a) => `
-      <div class="crew-item">
-        <span class="crew-item__face" style="background:${avatarColor(a.userName)}">${esc(initials(a.userName))}</span>
-        <div style="flex:1">
-          <div class="crew-item__name" style="font-weight:600;font-size:13.5px"><b>${esc(a.userName)}</b> ${esc(a.text)}</div>
-          <div class="crew-item__tag">${esc(relTime(a.ts))}</div>
-        </div>
-        ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete activity">✕</button>` : ""}
-      </div>`).join("") || '<p class="row__meta">Nothing yet.</p>';
-}
-
 async function loadDirectory() {
   try {
     const { users } = await api("/api/users/directory");
@@ -416,21 +402,21 @@ async function reload() {
   renderMap();
   renderBudget();
   renderProposals();
-  renderLog();
   await loadFiles();
   // Any member can edit details/theme; only the creator sees the destructive
   // actions (reset invite link, delete trip). Admin overrides live in the
-  // admin panel, not here.
-  $("#manageBar").style.display = trip.canEditPlan ? "block" : "none";
+  // admin panel, not here. The edit panel stays hidden until the Edit button
+  // is clicked — so we don't force it open on every refresh here.
   $("#rowInviteLink").style.display = trip.canManage ? "" : "none";
   $("#rowDelete").style.display = trip.canManage ? "" : "none";
   $("#quickEditBtn").style.display = trip.canEditPlan ? "" : "none";
   // A member who didn't create the trip can leave it.
   $("#leaveBtn").style.display = trip.canLeave ? "" : "none";
   if (trip.canEditPlan) {
-    // Populate the edit-details form (only when not actively editing it).
+    // Populate the edit form (only when the panel isn't being typed into).
     const ae = document.activeElement;
     if (!ae || !/^ed-/.test(ae.id || "")) {
+      $("#ed-emoji").value = trip.emoji || "";
       $("#ed-title").value = trip.title || "";
       $("#ed-date").value = trip.date || "";
       $("#ed-sub").value = trip.subtitle || "";
@@ -850,8 +836,10 @@ function initCollapsible() {
 
   // Save edited trip details (creator/admin)
   $("#ed-save").addEventListener("click", async () => {
+    if (!$("#ed-title").value.trim()) return toast("Give the trip a title.", true);
     try {
       await api("/api/trips/" + encodeURIComponent(TRIP.id), "PUT", {
+        emoji: $("#ed-emoji").value.trim() || "🚗",
         title: $("#ed-title").value.trim(),
         date: $("#ed-date").value,
         subtitle: $("#ed-sub").value.trim(),
@@ -860,7 +848,7 @@ function initCollapsible() {
         tags: $("#ed-tags").value.split(",").map((s) => s.trim()).filter(Boolean),
       });
       await reload();
-      toast("Details saved.");
+      toast("Saved ✓");
     } catch (e) {
       toast(e.message, true);
     }
@@ -914,12 +902,19 @@ function initCollapsible() {
   });
 
   // Quick-edit button: scroll to edit section
+  // Edit trip: toggle the on-demand editor panel open/closed.
   $("#quickEditBtn").addEventListener("click", () => {
-    const manageBar = $("#manageBar");
-    if (manageBar && manageBar.style.display !== "none") {
-      manageBar.scrollIntoView({ behavior: "smooth", block: "start" });
+    const mb = $("#manageBar");
+    const open = mb.style.display !== "block";
+    mb.style.display = open ? "block" : "none";
+    if (open) {
+      mb.scrollIntoView({ behavior: "smooth", block: "start" });
       setTimeout(() => $("#ed-title").focus(), 300);
     }
+  });
+  $("#ed-close").addEventListener("click", () => {
+    $("#manageBar").style.display = "none";
+    document.querySelector(".wrap-board").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   // Quick-add a friend to the trip
