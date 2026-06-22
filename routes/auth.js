@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const db = require("../lib/db");
 const { codeAccepted } = require("../lib/auth-middleware");
 const { claimOwnerlessTrips } = require("../lib/seed");
+const { ah } = require("../lib/async-handler");
 
 const router = express.Router();
 
@@ -35,7 +36,7 @@ router.get("/needs-setup", (req, res) => {
   res.json({ needsSetup: db.userCount() === 0 });
 });
 
-router.post("/register", async (req, res) => {
+router.post("/register", ah(async (req, res) => {
   const { username, displayName, password, inviteCode: code } = req.body || {};
 
   if (!username || !password) {
@@ -76,9 +77,9 @@ router.post("/register", async (req, res) => {
 
   req.session.userId = user.id;
   res.json({ user: publicUser(user) });
-});
+}));
 
-router.post("/login", async (req, res) => {
+router.post("/login", ah(async (req, res) => {
   const { username, password } = req.body || {};
   const user = db.findUserByUsername(username);
   if (!user) {
@@ -90,7 +91,7 @@ router.post("/login", async (req, res) => {
   }
   req.session.userId = user.id;
   res.json({ user: publicUser(user) });
-});
+}));
 
 router.post("/logout", (req, res) => {
   req.session.destroy(() => {
@@ -110,7 +111,7 @@ function requireSelf(req, res, next) {
 }
 
 // Update your own display name, avatar, and (optionally) password.
-router.put("/me", requireSelf, async (req, res) => {
+router.put("/me", requireSelf, ah(async (req, res) => {
   const { displayName, avatarEmoji, avatarColor, password, currentPassword } = req.body || {};
   const patch = {};
 
@@ -150,23 +151,25 @@ router.put("/me", requireSelf, async (req, res) => {
   if (!Object.keys(patch).length) return res.status(400).json({ error: "Nothing to update." });
   const updated = db.updateUser(req.me.id, patch);
   res.json({ user: publicUser(updated) });
-});
+}));
 
 // Delete your own account (after confirming your password). The last admin
 // can only be blocked when there are OTHER users who'd be locked out — if
 // you're the only account, deleting is fine (it resets the app).
-router.delete("/me", requireSelf, async (req, res) => {
+router.delete("/me", requireSelf, ah(async (req, res) => {
   const { password } = req.body || {};
   const ok = await bcrypt.compare(String(password || ""), req.me.passwordHash);
   if (!ok) return res.status(403).json({ error: "Wrong password." });
   if (req.me.isAdmin && db.adminCount() <= 1 && db.userCount() > 1) {
     return res.status(400).json({ error: "You're the only admin — make someone else an admin first, then you can delete your account." });
   }
+  // Persist the deletion FIRST so it's saved to db.json even if tearing the
+  // session down hiccups; then end the session so they're logged out at once.
   db.deleteUser(req.me.id);
   req.session.destroy(() => {
     res.clearCookie("connect.sid");
     res.json({ ok: true });
   });
-});
+}));
 
 module.exports = router;

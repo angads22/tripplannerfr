@@ -80,6 +80,10 @@
       <div class="panel">
         <div class="panel__body">
           <div id="stopList" class="crew-list"></div>
+          <div id="stopTemplatesWrap" style="display:none;margin-top:14px">
+            <div class="flabel" style="color:var(--muted-light);margin-bottom:8px">Quick add a common stop</div>
+            <div class="vibes" id="stopTemplates"></div>
+          </div>
           <div id="addStopRow" class="modal__row" style="display:none;margin-top:14px;align-items:flex-end">
             <div style="width:96px">
               <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Time</div>
@@ -212,6 +216,18 @@
                 <span class="theme-dot plum" data-theme="plum" title="Plum"></span>
                 <span class="theme-dot charcoal" data-theme="charcoal" title="Charcoal"></span>
                 <input type="color" id="editCustom" class="theme-dot" value="#1C8FA8" title="Custom color" style="padding:0" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="row__main">
+                <div class="row__title">Vibe</div>
+                <div class="row__meta">Sets the whole-page background mood — not just the accent.</div>
+              </div>
+              <div class="vibes" id="editVibes">
+                <button type="button" class="vibe-chip" data-vibe="classic"><span class="vibe-chip__dot classic"></span>Classic</button>
+                <button type="button" class="vibe-chip" data-vibe="vivid"><span class="vibe-chip__dot vivid"></span>Vivid</button>
+                <button type="button" class="vibe-chip" data-vibe="pastel"><span class="vibe-chip__dot pastel"></span>Pastel</button>
+                <button type="button" class="vibe-chip" data-vibe="night"><span class="vibe-chip__dot night"></span>Night</button>
               </div>
             </div>
             <div class="row" id="rowInviteLink">

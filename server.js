@@ -18,6 +18,18 @@ const userRoutes = require("./routes/users");
 const adminRoutes = require("./routes/admin");
 const friendRoutes = require("./routes/friends");
 
+// Last line of defense: never let a stray async error take the whole site
+// down. Node 18 exits the process on an unhandled rejection, and Express 4
+// doesn't catch errors thrown inside async route handlers — so without this a
+// single transient file lock (e.g. while deleting an account) crashed the
+// server for everyone. Log it and keep serving instead.
+process.on("unhandledRejection", (reason) => {
+  console.error("  ✖ Unhandled promise rejection (server kept running):", reason && reason.stack ? reason.stack : reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("  ✖ Uncaught exception (server kept running):", err && err.stack ? err.stack : err);
+});
+
 const app = express();
 app.disable("x-powered-by");
 // Behind the Cloudflare tunnel the app is proxied; trust it so sessions and
@@ -151,6 +163,18 @@ app.get("/trip-files/:tripId/:filename", (req, res) => {
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found." });
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
+
+// Error handler (must be last): turns any thrown/rejected route error into a
+// clean response instead of a crash. Async routes are wrapped with `ah(...)`
+// so their rejections land here too.
+app.use((err, req, res, next) => {
+  console.error("  ✖ Request error:", err && err.stack ? err.stack : err);
+  if (res.headersSent) return next(err);
+  if ((req.path || "").startsWith("/api/")) {
+    return res.status(500).json({ error: "Something went wrong on the server — it stayed up, give it another try." });
+  }
+  res.status(500).send("Something went wrong. The app is still running — try again.");
 });
 
 // --- Lifecycle: PID file + graceful shutdown (the on/off buttons) ----------

@@ -19,6 +19,7 @@ const https = require("https");
 const { spawn } = require("child_process");
 const { requireAdmin } = require("../lib/auth-middleware");
 const { isPackaged, EXE_DIR } = require("../lib/paths");
+const { ah } = require("../lib/async-handler");
 const db = require("../lib/db");
 
 const REPO = "angads22/tripplannerfr";
@@ -290,7 +291,7 @@ router.post("/shutdown", (req, res) => {
   setTimeout(() => process.kill(process.pid, "SIGTERM"), 250);
 });
 
-router.get("/check-update", async (req, res) => {
+router.get("/check-update", ah(async (req, res) => {
   try {
     const latest = await getLatestRelease();
     res.json({
@@ -306,10 +307,10 @@ router.get("/check-update", async (req, res) => {
   } catch (err) {
     res.json({ hasUpdate: false, currentVersion: APP_VERSION, currentBuild: APP_BUILD, error: err.message });
   }
-});
+}));
 
 // Download the latest release exe and swap-and-restart. Packaged only.
-router.post("/apply-update", async (req, res) => {
+router.post("/apply-update", ah(async (req, res) => {
   if (!isPackaged) {
     return res.status(400).json({ error: "Running from source — update with: git pull, then restart." });
   }
@@ -392,6 +393,6 @@ router.post("/apply-update", async (req, res) => {
     console.log("  ✖ Update failed (site left running): " + err.message);
     res.status(500).json({ error: "Update failed (site left running): " + err.message });
   }
-});
+}));
 
 module.exports = router;
