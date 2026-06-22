@@ -297,13 +297,27 @@ router.post("/shutdown", (req, res) => {
 router.get("/check-update", ah(async (req, res) => {
   try {
     const latest = await getLatestRelease();
+
+    // If the latest release already failed on this machine, don't keep
+    // offering it as an update — show a warning instead.
+    let failedBuild = 0;
+    if (isPackaged) {
+      try {
+        const failedPath = path.join(EXE_DIR, "update-failed.json");
+        if (fs.existsSync(failedPath)) {
+          failedBuild = parseInt(fs.readFileSync(failedPath, "utf8").trim(), 10) || 0;
+        }
+      } catch { /* ignore */ }
+    }
+
     res.json({
       currentVersion: APP_VERSION,
       currentBuild: APP_BUILD,
       latestBuild: latest.build,
       releaseName: latest.name,
       releaseUrl: latest.htmlUrl,
-      hasUpdate: latest.build > APP_BUILD,
+      hasUpdate: latest.build > APP_BUILD && latest.build !== failedBuild,
+      failedBuild: failedBuild || undefined,
       isPackaged,
       canSelfUpdate: isPackaged && !!latest.exeUrl,
     });
@@ -329,6 +343,10 @@ router.post("/apply-update", ah(async (req, res) => {
     const newPath = path.join(EXE_DIR, "TripPlanner-new.exe");
     const batPath = path.join(EXE_DIR, "apply-update.bat");
 
+    // Clear any previous failed-update marker — the user explicitly requested
+    // this update, so give the new build a clean shot.
+    try { fs.unlinkSync(path.join(EXE_DIR, "update-failed.json")); } catch { /* ok if absent */ }
+
     console.log(`\n  ⏬ Update: downloading build ${latest.build} …`);
     const bytes = await download(latest.exeUrl, newPath);
     console.log(`  ⏬ Update: downloaded ${(bytes / 1048576).toFixed(1)} MB → swapping & relaunching`);
@@ -341,10 +359,13 @@ router.post("/apply-update", ah(async (req, res) => {
     // we kill it and roll back to the backup. Every step is logged to
     // update-log.txt next to the exe.
     const HEALTH = "http://localhost:4040/api/health";
-    // PowerShell one-liner: exit 0 only on HTTP 200 from /api/health.
+    // curl.exe (built into Windows 10+) has reliable hard timeouts.
+    // Invoke-WebRequest -TimeoutSec can hang indefinitely (a known Windows
+    // PowerShell bug), which blocks the entire BAT and prevents rollback
+    // from ever firing — the real cause of the "Bad Gateway" stuck loop.
+    // --fail exits non-zero on HTTP error codes; --max-time is a hard wall.
     const psCheck =
-      `powershell -NoProfile -ExecutionPolicy Bypass -Command ` +
-      `"try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 '${HEALTH}'; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"`;
+      `%SystemRoot%\\System32\\curl.exe -s -f -o nul --connect-timeout 3 --max-time 4 "${HEALTH}"`;
     const bat = [
       "@echo off",
       'cd /d "%~dp0"',
@@ -361,7 +382,12 @@ router.post("/apply-update", ah(async (req, res) => {
       `move /y "TripPlanner-new.exe" "${exeName}" >nul`,
       'echo [%time%] swapped in new build, starting it >> "%LOG%"',
       `start "" "${exeName}"`,
-      // 3) poll the health endpoint for up to ~40s (20 tries x 2s)
+      // 3a) quick crash check: if the new build dies within 3 s (e.g. access
+      //     violation), skip the full 40-second poll and roll back immediately.
+      "timeout /t 3 /nobreak >nul",
+      `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul`,
+      `if errorlevel 1 ( echo [%time%] new build crashed immediately - rolling back >> "%LOG%" & goto rollback )`,
+      // 3b) poll the health endpoint for up to ~40s (20 tries x 2s)
       "set /a tries=0",
       ":health",
       "timeout /t 2 /nobreak >nul",
@@ -371,15 +397,18 @@ router.post("/apply-update", ah(async (req, res) => {
       'echo [%time%] not healthy yet (try %tries%) >> "%LOG%"',
       "if %tries% lss 20 goto health",
       // 4a) never came up -> kill it and roll back to the backup
+      ":rollback",
       'echo [%time%] new build did NOT serve - rolling back >> "%LOG%"',
+      `echo ${latest.build}> "update-failed.json"`,
       `taskkill /f /im "${exeName}" >nul 2>&1`,
       "timeout /t 2 /nobreak >nul",
       `if exist "TripPlanner-old.exe" ( move /y "TripPlanner-old.exe" "${exeName}" >nul & start "" "${exeName}" & echo [%time%] rolled back to previous build >> "%LOG%" )`,
       "goto done",
-      // 4b) healthy -> keep it, drop the backup
+      // 4b) healthy -> keep it, drop the backup and any stale failed-build marker
       ":healthy",
       'echo [%time%] new build is serving OK >> "%LOG%"',
       'del "TripPlanner-old.exe" >nul 2>&1',
+      'del "update-failed.json" >nul 2>&1',
       ":done",
       'start "" http://localhost:4040',
       'del "%~f0"',

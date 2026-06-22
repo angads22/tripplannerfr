@@ -299,6 +299,17 @@ async function checkUpdate(silent) {
       } else {
         meta.innerHTML = `New build available. <a href="${r.releaseUrl}" target="_blank" rel="noopener">Download it here</a>.`;
       }
+    } else if (r.failedBuild && r.failedBuild === r.latestBuild) {
+      status.textContent = `Build ${r.failedBuild} failed to start`;
+      status.style.color = "var(--red, #c44)";
+      if (r.canSelfUpdate) {
+        meta.innerHTML = `Build ${r.failedBuild} crashed on this machine and was automatically rolled back. You can <b>force retry</b> if you think it's been fixed.`;
+        applyBtn.style.display = "";
+        applyBtn.textContent = "Force retry";
+        applyBtn.disabled = false;
+      } else {
+        meta.innerHTML = `Build ${r.failedBuild} failed to start and was rolled back. Try <a href="${r.releaseUrl}" target="_blank" rel="noopener">downloading it again</a>.`;
+      }
     } else {
       status.textContent = "You're up to date";
       status.style.color = "";
