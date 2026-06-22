@@ -12,7 +12,10 @@
 
 const express = require("express");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 const db = require("../lib/db");
+const { DATA_DIR } = require("../lib/paths");
 const {
   requireAuth,
   canView,
@@ -580,6 +583,80 @@ router.delete("/:id/messages/:msgId", requireAuth, (req, res) => {
   const messages = trip.messages.filter((m) => m.id !== req.params.msgId);
   const updated = db.updateTrip(trip.id, { messages });
   res.json({ messages: updated.messages.slice(-100) });
+});
+
+// --- Shared drive (early birds only) -----------------------------------------------
+
+function getTripsFileDir(tripId) {
+  return path.join(DATA_DIR, `trip-${tripId}`, "files");
+}
+
+// List files in the trip's shared drive (early birds only).
+router.get("/:id/files", requireAuth, (req, res) => {
+  if (!req.user.isEarlyBird) {
+    return res.status(403).json({ error: "Shared drive is for early birds only." });
+  }
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !isMember(trip, req.user)) {
+    return res.status(404).json({ error: "Trip not found." });
+  }
+  const dir = getTripsFileDir(trip.id);
+  try {
+    const files = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
+    res.json({ files: files.map((f) => ({ name: f })) });
+  } catch {
+    res.json({ files: [] });
+  }
+});
+
+// Upload a file to the trip's shared drive (early birds only, members can upload).
+router.post("/:id/files", requireAuth, (req, res) => {
+  if (!req.user.isEarlyBird) {
+    return res.status(403).json({ error: "Shared drive is for early birds only." });
+  }
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !isMember(trip, req.user)) {
+    return res.status(404).json({ error: "Trip not found." });
+  }
+  const { filename, data } = req.body || {};
+  if (!filename || !data) {
+    return res.status(400).json({ error: "Filename and file data required." });
+  }
+  const safe = path.basename(String(filename));
+  const dir = getTripsFileDir(trip.id);
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // Data is base64-encoded; decode and write.
+    const buffer = Buffer.from(String(data), "base64");
+    fs.writeFileSync(path.join(dir, safe), buffer);
+    res.json({ ok: true, url: `/trip-files/${trip.id}/${encodeURIComponent(safe)}` });
+  } catch (err) {
+    res.status(500).json({ error: "Upload failed: " + err.message });
+  }
+});
+
+// Delete a file from the trip's shared drive (early birds only, members can delete their own).
+router.delete("/:id/files/:filename", requireAuth, (req, res) => {
+  if (!req.user.isEarlyBird) {
+    return res.status(403).json({ error: "Shared drive is for early birds only." });
+  }
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !isMember(trip, req.user)) {
+    return res.status(404).json({ error: "Trip not found." });
+  }
+  const safe = path.basename(String(req.params.filename));
+  const dir = getTripsFileDir(trip.id);
+  const file = path.join(dir, safe);
+  try {
+    if (fs.existsSync(file)) {
+      fs.unlinkSync(file);
+      res.json({ ok: true });
+    } else {
+      res.status(404).json({ error: "File not found." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Delete failed: " + err.message });
+  }
 });
 
 module.exports = router;

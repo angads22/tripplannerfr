@@ -108,6 +108,7 @@ function userRow(u) {
       </div>
       <div class="row__actions">
         <label class="toggle"><input type="checkbox" data-act="admin" ${u.isAdmin ? "checked" : ""} ${you ? "disabled" : ""}/><span class="track"></span>Admin</label>
+        <label class="toggle"><input type="checkbox" data-act="early" ${u.isEarlyBird ? "checked" : ""}/><span class="track"></span>Early bird</label>
         <button class="btn small" data-act="pw">Reset password</button>
         <button class="btn danger small" data-act="del" ${you ? "disabled" : ""}>Delete</button>
       </div>
@@ -128,6 +129,10 @@ $("#userList").addEventListener("click", async (e) => {
   try {
     if (act === "admin") {
       await api("PUT", `/api/users/${uid}`, { isAdmin: btn.checked });
+      toast("Updated.");
+      await loadUsers();
+    } else if (act === "early") {
+      await api("PUT", `/api/users/${uid}`, { isEarlyBird: btn.checked });
       toast("Updated.");
       await loadUsers();
     } else if (act === "pw") {

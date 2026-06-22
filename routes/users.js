@@ -35,6 +35,7 @@ function publicUser(u) {
     username: u.username,
     displayName: u.displayName,
     isAdmin: !!u.isAdmin,
+    isEarlyBird: !!u.isEarlyBird,
     createdAt: u.createdAt,
   };
 }
@@ -58,13 +59,13 @@ router.put("/invite-code", (req, res) => {
   res.json({ inviteCode: code, isDefault: false });
 });
 
-// Update a user: toggle admin, or reset their password.
+// Update a user: toggle admin/early bird, or reset their password.
 router.put("/:id", async (req, res) => {
   const target = db.findUserById(req.params.id);
   if (!target) return res.status(404).json({ error: "User not found." });
 
   const patch = {};
-  const { isAdmin, password } = req.body || {};
+  const { isAdmin, isEarlyBird, password } = req.body || {};
 
   if (typeof isAdmin === "boolean") {
     // Don't let the last admin demote themselves into a locked-out app.
@@ -72,6 +73,10 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "You can't remove the last admin." });
     }
     patch.isAdmin = isAdmin;
+  }
+
+  if (typeof isEarlyBird === "boolean") {
+    patch.isEarlyBird = isEarlyBird;
   }
 
   if (password != null) {
