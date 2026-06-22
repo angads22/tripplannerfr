@@ -745,7 +745,7 @@ function initCollapsible() {
     } catch (err) { toast(err.message, true); }
   });
 
-  // Live updates: refresh the trip + chat every ~8s so others' changes appear
+  // Live updates: refresh the trip + chat every ~5s so others' changes appear
   // without a manual reload. Skip while the user is typing or a dialog is open.
   setInterval(() => {
     const ae = document.activeElement;
@@ -753,5 +753,5 @@ function initCollapsible() {
     if (EDIT_STOP) { loadChat().catch(() => {}); return; } // don't wipe an open editor
     reload().catch(() => {});
     loadChat().catch(() => {});
-  }, 8000);
+  }, 5000);
 })();
