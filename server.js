@@ -167,6 +167,22 @@ const server = app.listen(config.PORT, config.HOST, () => {
   console.log("");
 });
 
+// Right after an in-app update the old process may not have released the port
+// yet. Instead of crashing on EADDRINUSE (which leaves the site dead — the Bad
+// Gateway problem), retry binding for a short window so the new build can take
+// over the moment the port frees.
+let bindRetries = 0;
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE" && bindRetries < 20) {
+    bindRetries++;
+    if (bindRetries === 1) console.log(`  Port ${config.PORT} is still in use — waiting for it to free up…`);
+    setTimeout(() => server.listen(config.PORT, config.HOST), 1000);
+  } else {
+    console.error(`  Could not start: ${err.message}`);
+    process.exit(1);
+  }
+});
+
 function shutdown() {
   console.log("\n  Shutting down Trip Planner...");
   try {
