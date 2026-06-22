@@ -291,6 +291,14 @@ async function createTrip() {
     $("#empty").style.display = "none";
     grid.style.display = "";
 
+    // First-time / empty board: explain how it works. You only see trips you
+    // created or were invited to — there's nothing here until you make one or
+    // paste an invite code.
+    if (n === 0) {
+      $("#heroBody").textContent =
+        "Nothing here yet — and that's expected. You only see trips you start or get invited to. Hit New trip to plan one, or paste an invite code above to join a friend's.";
+    }
+
     grid.innerHTML = trips.map(tripCard).join("") + addCard();
     const add = $("#addCard");
     if (add) add.addEventListener("click", (e) => { e.preventDefault(); openCreate(); });

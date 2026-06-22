@@ -45,16 +45,35 @@ function relTime(iso) {
 async function loadLogs() {
   const { logs } = await api("GET", "/api/admin/logs");
   $("#logFeed").innerHTML = logs.length
-    ? logs.map((e) => `
-        <div class="row" style="padding:9px 0">
+    ? logs.map((e) => {
+        // Only trip-activity rows carry ids, so only those can be pruned.
+        const deletable = e.tripId && e.activityId;
+        return `
+        <div class="row" style="padding:9px 0" ${deletable ? `data-log-trip="${esc(e.tripId)}" data-log-act="${esc(e.activityId)}"` : ""}>
           <div class="row__main">
             <div class="row__title" style="font-size:14px"><b>${esc(e.who)}</b> ${esc(e.text)}</div>
             <div class="row__meta">${e.trip ? esc(e.trip) + " · " : ""}${esc(relTime(e.ts))}</div>
           </div>
-        </div>`).join("")
+          ${deletable ? '<div class="row__actions"><button class="btn danger small" data-act="dellog">Delete</button></div>' : ""}
+        </div>`;
+      }).join("")
     : '<p class="row__meta">No activity yet.</p>';
 }
 $("#logRefresh").addEventListener("click", () => loadLogs().catch((e) => toast(e.message, true)));
+$("#logFeed").addEventListener("click", async (e) => {
+  const btn = e.target.closest('[data-act="dellog"]');
+  if (!btn) return;
+  const row = e.target.closest("[data-log-trip]");
+  if (!row) return;
+  if (!confirm("Delete this activity entry? This can't be undone.")) return;
+  try {
+    await api("DELETE", `/api/admin/trips/${row.dataset.logTrip}/activity/${row.dataset.logAct}`);
+    toast("Activity entry deleted.");
+    await loadLogs();
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
 
 // --- Invite code -----------------------------------------------------------
 async function loadInvite() {
@@ -149,7 +168,10 @@ $("#na-add").addEventListener("click", async () => {
 // --- Trips & access --------------------------------------------------------
 function tripRow(t) {
   const everyone = !!t.shareWithEveryone;
-  const crew = (t.members || []).map((m) => esc(m.displayName)).join(", ") || "no one yet";
+  // Members as removable chips (admin override — can remove anyone, creator included).
+  const crew = (t.members || []).length
+    ? (t.members || []).map((m) => `<span class="mono" style="display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.06);border-radius:8px;padding:1px 4px 1px 7px;margin:2px 3px 0 0">${esc(m.displayName)}<button class="crew-item__x" style="font-size:13px;padding:0 4px" data-act="rmmember" data-uid="${esc(m.id)}" title="Remove from trip">×</button></span>`).join("")
+    : '<span class="mono">no one yet</span>';
   return `
     <div class="row" data-tid="${t.id}" data-theme="${esc(t.theme || "red")}">
       <span class="theme-dot ${esc(t.theme || "red")}" style="width:14px;height:14px;cursor:default" title="${esc(t.theme || "red")} theme"></span>
@@ -168,7 +190,8 @@ function tripRow(t) {
     </div>`;
 }
 async function loadTrips() {
-  const { trips } = await api("GET", "/api/trips");
+  // Admin override endpoint: lists EVERY trip, not just the admin's board.
+  const { trips } = await api("GET", "/api/admin/trips");
   TRIPS = trips;
   $("#tripList").innerHTML = trips.length ? trips.map(tripRow).join("") : '<div class="row__meta" style="padding:8px 0">No trips yet — add one below.</div>';
 }
@@ -176,7 +199,7 @@ $("#tripList").addEventListener("change", async (e) => {
   const row = e.target.closest("[data-tid]");
   if (!row || !e.target.matches('[data-act="everyone"]')) return;
   try {
-    await api("PUT", `/api/trips/${row.dataset.tid}/access`, { shareWithEveryone: e.target.checked });
+    await api("PUT", `/api/admin/trips/${row.dataset.tid}/access`, { shareWithEveryone: e.target.checked });
     toast("Sharing updated.");
   } catch (err) {
     toast(err.message, true);
@@ -184,14 +207,31 @@ $("#tripList").addEventListener("change", async (e) => {
   }
 });
 $("#tripList").addEventListener("click", async (e) => {
+  const row = e.target.closest("[data-tid]");
+  if (!row) return;
+
+  // Remove a single member from the trip (admin override).
+  const rm = e.target.closest('[data-act="rmmember"]');
+  if (rm) {
+    if (!confirm("Remove this person from the trip?")) return;
+    try {
+      await api("DELETE", `/api/admin/trips/${row.dataset.tid}/members/${rm.dataset.uid}`);
+      toast("Removed from trip.");
+      await loadTrips();
+    } catch (err) {
+      toast(err.message, true);
+    }
+    return;
+  }
+
+  // Delete the whole trip.
   const btn = e.target.closest('[data-act="del"]');
   if (!btn) return;
-  const row = e.target.closest("[data-tid]");
   const t = TRIPS.find((x) => x.id === row.dataset.tid);
-  if (!confirm(`Remove "${t ? t.title : "this trip"}" from the board? (The page file stays on disk.)`)) return;
+  if (!confirm(`Delete "${t ? t.title : "this trip"}" for everyone? This can't be undone.`)) return;
   try {
-    await api("DELETE", `/api/trips/${row.dataset.tid}`);
-    toast("Trip removed.");
+    await api("DELETE", `/api/admin/trips/${row.dataset.tid}`);
+    toast("Trip deleted.");
     await loadTrips();
   } catch (err) {
     toast(err.message, true);

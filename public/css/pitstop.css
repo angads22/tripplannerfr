@@ -391,12 +391,13 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 
 /* Crew management list (trip detail) */
 .crew-list { display: flex; flex-direction: column; gap: 8px; }
-.crew-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); }
+.crew-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); transition: all .15s; }
+.crew-item:hover { background: rgba(255,255,255,.65); border-color: rgba(255,255,255,.8); }
 .crew-item__face { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; }
 .crew-item__name { font-weight: 700; font-size: 14px; flex: 1; }
 .crew-item__tag { font-family: "Space Mono", monospace; font-size: 11px; color: var(--muted-light-2); }
-.crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; }
-.crew-item__x:hover { background: rgba(226,59,38,.1); color: var(--red); }
+.crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; transition: all .15s; }
+.crew-item__x:hover { background: rgba(226,59,38,.15); color: var(--red); transform: scale(1.1); }
 .crew-item__x:disabled { opacity: .3; cursor: default; }
 
 /* Check a stop off as you go through the day */
@@ -440,6 +441,45 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 /* Auth-style centered card (404) */
 .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 18px; position: relative; z-index: 1; }
 .auth-card { width: 100%; max-width: 420px; padding: 32px 28px; text-align: center; }
+
+/* Activity sidebar */
+.activity-sidebar {
+  position: fixed; right: 0; top: 0; bottom: 0; z-index: 999;
+  width: 320px; max-width: 85vw;
+  background: rgba(28,23,18,.95);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255,255,255,.14);
+  color: var(--on-dark);
+  overflow-y: auto;
+  animation: slideIn .25s ease-out;
+  box-shadow: -10px 0 40px rgba(0,0,0,.3);
+}
+@keyframes slideIn { from { transform: translateX(100%); } }
+.activity-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.1);
+  position: sticky; top: 0; background: rgba(28,23,18,.98);
+}
+.activity-header h3 {
+  margin: 0; font-size: 16px; font-weight: 700;
+}
+.btn-close {
+  width: 28px; height: 28px; border: none; background: transparent;
+  color: var(--muted-dark); cursor: pointer; font-size: 18px;
+  border-radius: 6px; transition: all .15s;
+}
+.btn-close:hover { background: rgba(255,255,255,.1); color: var(--on-dark); }
+.activity-list {
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.activity-item {
+  padding: 12px; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
+  font-size: 13px; line-height: 1.5;
+}
+.activity-item__name { font-weight: 600; color: var(--amber); }
+.activity-item__text { margin-top: 4px; }
+.activity-item__time { margin-top: 4px; color: var(--muted-dark); font-size: 11px; }
 
 /* =========================================================================
    Mobile / small screens

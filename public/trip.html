@@ -16,15 +16,29 @@
   </div>
 
   <div class="stage">
+    <!-- Activity sidebar -->
+    <div id="activitySidebar" class="activity-sidebar" style="display:none">
+      <div class="activity-header">
+        <h3>Activity</h3>
+        <button class="btn-close" id="closeActivityBtn" type="button">✕</button>
+      </div>
+      <div class="activity-list" id="activityList"></div>
+    </div>
+
     <div class="wrap-board" style="padding-top:24px">
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
         <a class="btn-pill" href="/">← all trips</a>
         <button class="btn-pill" id="shareBtn" type="button">Copy invite link</button>
         <button class="btn-pill" id="codeBtn" type="button">Copy code</button>
         <button class="btn-pill" id="dupBtn" type="button">Duplicate</button>
+        <button class="btn-pill" id="activityToggleBtn" type="button" title="Show activity log">Activity</button>
+        <button class="btn-pill" id="leaveBtn" type="button" style="display:none">Leave trip</button>
       </div>
 
-      <div id="tripHead" class="card-dark hero" style="animation:rise .5s both"></div>
+      <div style="position:relative">
+        <div id="tripHead" class="card-dark hero" style="animation:rise .5s both"></div>
+        <button class="btn-pill" id="quickEditBtn" type="button" style="position:absolute;top:16px;right:16px;display:none" title="Edit trip details">Edit</button>
+      </div>
 
       <div id="joinBanner" class="panel" style="display:none;margin-top:14px">
         <div class="panel__body"><div class="row" style="border:none">
@@ -46,13 +60,13 @@
         <div class="panel__body">
           <div class="crew-list" id="crewList"></div>
           <div id="friendAdd" style="display:none;margin-top:14px">
-            <div class="flabel" style="color:var(--muted-light);margin-bottom:8px">Add a friend</div>
+            <div class="flabel" style="color:var(--muted-light);margin-bottom:8px">Quick add friends</div>
             <div id="friendChips" class="access"></div>
           </div>
           <div id="addRow" class="modal__row" style="display:none;margin-top:14px">
-            <input class="input" id="addUser" style="flex:1;min-width:160px" placeholder="or add by username" list="userList" />
+            <input class="input" id="addUser" style="flex:1;min-width:160px" placeholder="Search by username" list="userList" />
             <datalist id="userList"></datalist>
-            <button class="btn primary" id="addBtn" type="button">Add</button>
+            <button class="btn primary" id="addBtn" type="button">Add person</button>
           </div>
           <p class="row__meta" id="addHint" style="margin-top:10px"></p>
         </div>

@@ -225,6 +225,7 @@ function renderProposals() {
 
 function renderLog() {
   const log = TRIP.activity || [];
+  const canDeleteActivity = TRIP.canManage; // creator only (admin prunes via the admin panel)
   $("#logList").innerHTML = log.map((a) => `
       <div class="crew-item">
         <span class="crew-item__face" style="background:${avatarColor(a.userName)}">${esc(initials(a.userName))}</span>
@@ -232,6 +233,7 @@ function renderLog() {
           <div class="crew-item__name" style="font-weight:600;font-size:13.5px"><b>${esc(a.userName)}</b> ${esc(a.text)}</div>
           <div class="crew-item__tag">${esc(relTime(a.ts))}</div>
         </div>
+        ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete activity">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta">Nothing yet.</p>';
 }
 
@@ -265,11 +267,15 @@ async function reload() {
   renderMap();
   renderProposals();
   renderLog();
-  // Any member can edit details/theme; only the creator/admin sees the
-  // destructive actions (reset invite link, delete trip).
+  // Any member can edit details/theme; only the creator sees the destructive
+  // actions (reset invite link, delete trip). Admin overrides live in the
+  // admin panel, not here.
   $("#manageBar").style.display = trip.canEditPlan ? "block" : "none";
   $("#rowInviteLink").style.display = trip.canManage ? "" : "none";
   $("#rowDelete").style.display = trip.canManage ? "" : "none";
+  $("#quickEditBtn").style.display = trip.canEditPlan ? "" : "none";
+  // A member who didn't create the trip can leave it.
+  $("#leaveBtn").style.display = trip.canLeave ? "" : "none";
   if (trip.canEditPlan) {
     // Populate the edit-details form (only when not actively editing it).
     const ae = document.activeElement;
@@ -281,8 +287,6 @@ async function reload() {
       $("#ed-cover").value = trip.coverUrl || "";
       $("#ed-tags").value = (trip.tags || []).join(", ");
     }
-  }
-  if (trip.canManage) {
     $("#editThemes").querySelectorAll(".theme-dot").forEach((d) => d.classList.toggle("sel", d.dataset.theme === (trip.theme || "red")));
   }
 }
@@ -609,7 +613,7 @@ function initCollapsible() {
     }
   });
 
-  // Delete trip (creator/admin)
+  // Delete trip (creator only)
   $("#deleteBtn").addEventListener("click", async () => {
     if (!confirm(`Delete "${TRIP.title}"? This can't be undone.`)) return;
     try {
@@ -617,6 +621,51 @@ function initCollapsible() {
       location.href = "/";
     } catch (e) {
       toast(e.message, true);
+    }
+  });
+
+  // Leave trip (members who didn't create it)
+  $("#leaveBtn").addEventListener("click", async () => {
+    if (!confirm(`Leave "${TRIP.title}"? You'll need the invite link to rejoin.`)) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/leave", "POST");
+      location.href = "/";
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+
+  // Activity sidebar toggle
+  function updateActivitySidebar() {
+    const log = TRIP.activity || [];
+    const sidebar = $("#activitySidebar");
+    sidebar.style.display = sidebar.style.display === "none" ? "block" : "none";
+    const list = $("#activityList");
+    const canDeleteActivity = TRIP.canManage;
+    list.innerHTML = log.slice().reverse().map((a) => `
+      <div class="activity-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div class="activity-item__name">${esc(a.userName)}</div>
+          <div class="activity-item__text">${esc(a.text)}</div>
+          <div class="activity-item__time">${esc(relTime(a.ts))}</div>
+        </div>
+        ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete">✕</button>` : ""}
+      </div>`).join("") || '<p class="row__meta" style="padding:12px">Nothing yet.</p>';
+  }
+
+  $("#activityToggleBtn").addEventListener("click", () => {
+    updateActivitySidebar();
+  });
+  $("#closeActivityBtn").addEventListener("click", () => {
+    $("#activitySidebar").style.display = "none";
+  });
+
+  // Quick-edit button: scroll to edit section
+  $("#quickEditBtn").addEventListener("click", () => {
+    const manageBar = $("#manageBar");
+    if (manageBar && manageBar.style.display !== "none") {
+      manageBar.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => $("#ed-title").focus(), 300);
     }
   });
 
@@ -657,6 +706,18 @@ function initCollapsible() {
       await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/messages/" + encodeURIComponent(del.dataset.delmsg), "DELETE");
       CHAT_SIG = "";
       await loadChat();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // Delete an activity entry (creator/admin)
+  document.addEventListener("click", async (e) => {
+    const del = e.target.closest("[data-delactivity]");
+    if (!del || !TRIP) return;
+    if (!confirm("Remove this activity entry from the changelog?")) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/activity/" + encodeURIComponent(del.dataset.delactivity), "DELETE");
+      await reload();
+      toast("Activity removed.");
     } catch (err) { toast(err.message, true); }
   });
 
