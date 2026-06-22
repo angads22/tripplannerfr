@@ -17,10 +17,13 @@ function publicUser(u) {
     username: u.username,
     displayName: u.displayName,
     isAdmin: u.isAdmin,
+    isEarlyBird: !!u.isEarlyBird,
     avatarEmoji: u.avatarEmoji || "",
     avatarColor: u.avatarColor || "",
     avatarImage: u.avatarImage || "",
     bio: u.bio || "",
+    // Pending incoming friend requests — drives the "Friends" tab badge.
+    friendReqCount: Array.isArray(u.friendReqIn) ? u.friendReqIn.length : 0,
   };
 }
 

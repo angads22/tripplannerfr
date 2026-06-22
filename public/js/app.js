@@ -123,66 +123,241 @@ function addCard() {
 // --- Create-trip modal -----------------------------------------------------
 const STICKERS = ["🚗", "✈️", "🏙️", "🏔️", "🏖️", "🏕️", "🎡", "🛶", "🌮", "🍕", "🎸", "📸", "🗺️", "🐻", "🌵", "🛹", "⛷️", "🎿", "🏂", "🍻", "🎢", "🎤", "🛳️", "🚆", "🏟️", "🎄", "🎃", "🌊", "🔥", "⛺", "🥾", "🍷"];
 
-// Starter templates for different kinds of trips / hangouts. Picking one
-// pre-fills the sticker, theme, vibe, tags, and a starter itinerary so you're
-// never staring at an empty form.
+// Fully-fledged starter templates. Picking one fills the sticker, theme, vibe,
+// tagline, tags, description, AND a complete itinerary with a note on every
+// stop — so a new trip starts as a real plan you can tweak, not a blank form.
 const TEMPLATES = {
-  blank:    { label: "Blank", emoji: "🚗", theme: "red", vibe: "classic", tags: [], desc: "", stops: [] },
-  daytrip:  { label: "Day trip", emoji: "🏙️", theme: "sky", vibe: "classic", tags: ["Day trip"], desc: "Out and back in a day.", stops: [
-                { time: "09:00", title: "Meet up & depart" }, { time: "10:30", title: "First stop" },
-                { time: "12:30", title: "Lunch", note: "somewhere central" }, { time: "14:30", title: "Explore" },
-                { time: "18:00", title: "Head home" } ] },
-  weekend:  { label: "Weekend away", emoji: "🏔️", theme: "indigo", vibe: "classic", tags: ["Weekend"], desc: "Two days, one night.", stops: [
-                { time: "10:00", title: "Hit the road" }, { time: "13:00", title: "Lunch on arrival" },
-                { time: "15:00", title: "Check in" }, { time: "19:30", title: "Dinner" },
-                { time: "09:00", title: "Day 2 — breakfast" }, { time: "11:00", title: "Main activity" }, { time: "16:00", title: "Head back" } ] },
-  roadtrip: { label: "Road trip", emoji: "🛣️", theme: "orange", vibe: "vivid", tags: ["Road trip"], desc: "Long haul — plan the pit stops.", stops: [
-                { time: "07:00", title: "Depart early" }, { time: "09:30", title: "Gas + snacks" },
-                { time: "12:00", title: "Lunch town" }, { time: "15:00", title: "Scenic stop" }, { time: "18:00", title: "Arrive" } ] },
-  nightout: { label: "Night out", emoji: "🍸", theme: "plum", vibe: "night", tags: ["Night out"], desc: "", stops: [
-                { time: "19:00", title: "Pre-game" }, { time: "20:30", title: "Dinner" },
-                { time: "22:00", title: "Main event" }, { time: "00:30", title: "After-hours" } ] },
-  hangout:  { label: "Hangout", emoji: "🎮", theme: "green", vibe: "classic", tags: ["Hangout"], desc: "", stops: [
-                { time: "15:00", title: "Meet up" }, { time: "16:00", title: "Food run" },
-                { time: "17:00", title: "Activity" }, { time: "20:00", title: "Wind down" } ] },
-  concert:  { label: "Concert / show", emoji: "🎤", theme: "pink", vibe: "night", tags: ["Show"], desc: "", stops: [
-                { time: "18:00", title: "Dinner before" }, { time: "20:00", title: "Doors open" },
-                { time: "21:00", title: "Show time" }, { time: "23:30", title: "After" } ] },
-  festival: { label: "Festival", emoji: "🎪", theme: "coral", vibe: "vivid", tags: ["Festival"], desc: "Multi-stage, all day.", stops: [
-                { time: "12:00", title: "Gates open" }, { time: "13:00", title: "First set" },
-                { time: "16:00", title: "Food + rest" }, { time: "19:00", title: "Sunset set" }, { time: "21:30", title: "Headliner" } ] },
-  beach:    { label: "Beach day", emoji: "🏖️", theme: "teal", vibe: "pastel", tags: ["Beach"], desc: "", stops: [
-                { time: "10:00", title: "Pack the car" }, { time: "11:00", title: "Arrive + set up" },
-                { time: "13:00", title: "Lunch" }, { time: "16:00", title: "Ice cream run" }, { time: "18:00", title: "Head home" } ] },
-  camping:  { label: "Camping", emoji: "⛺", theme: "lime", vibe: "classic", tags: ["Camping", "Outdoors"], desc: "", stops: [
-                { time: "11:00", title: "Drive to site" }, { time: "13:00", title: "Pitch tents" },
-                { time: "15:00", title: "Hike" }, { time: "19:00", title: "Campfire dinner" }, { time: "08:00", title: "Day 2 — pack up" } ] },
-  hike:     { label: "Hike", emoji: "🥾", theme: "green", vibe: "classic", tags: ["Hike", "Outdoors"], desc: "", stops: [
-                { time: "07:30", title: "Trailhead + sign in" }, { time: "08:00", title: "Start the climb" },
-                { time: "11:00", title: "Summit + snacks" }, { time: "13:30", title: "Back down" }, { time: "14:30", title: "Post-hike food" } ] },
-  ski:      { label: "Ski / snow", emoji: "🎿", theme: "sky", vibe: "pastel", tags: ["Ski", "Winter"], desc: "", stops: [
-                { time: "07:30", title: "Drive to the hill" }, { time: "09:00", title: "Lift tickets + gear" },
-                { time: "09:30", title: "First runs" }, { time: "12:30", title: "Lodge lunch" }, { time: "16:00", title: "Last chair" } ] },
-  foodie:   { label: "Foodie tour", emoji: "🍜", theme: "red", vibe: "vivid", tags: ["Food crawl"], desc: "Eat your way across town.", stops: [
-                { time: "11:30", title: "Brunch spot" }, { time: "13:30", title: "Snack stop" },
-                { time: "15:30", title: "Coffee + dessert" }, { time: "18:00", title: "Dinner" }, { time: "20:30", title: "Late-night bite" } ] },
-  citybreak:{ label: "City break", emoji: "🌆", theme: "blue", vibe: "classic", tags: ["City break"], desc: "Sightseeing in a new city.", stops: [
-                { time: "09:00", title: "Breakfast near the hotel" }, { time: "10:00", title: "Landmark #1" },
-                { time: "12:30", title: "Local lunch" }, { time: "14:00", title: "Museum / gallery" }, { time: "17:00", title: "Old town wander" }, { time: "19:30", title: "Dinner out" } ] },
-  themepark:{ label: "Theme park", emoji: "🎢", theme: "purple", vibe: "vivid", tags: ["Theme park"], desc: "", stops: [
-                { time: "08:30", title: "Rope drop" }, { time: "09:00", title: "Headliner coaster first" },
-                { time: "12:00", title: "Lunch (beat the rush)" }, { time: "15:00", title: "Water ride" }, { time: "20:00", title: "Fireworks" } ] },
-  sports:   { label: "Game day", emoji: "🏟️", theme: "slate", vibe: "vivid", tags: ["Sports"], desc: "", stops: [
-                { time: "16:00", title: "Tailgate / pre-drinks" }, { time: "18:00", title: "Head to the gate" },
-                { time: "19:00", title: "Tip-off / kickoff" }, { time: "22:00", title: "Post-game spot" } ] },
-  brewery:  { label: "Brewery / winery", emoji: "🍻", theme: "gold", vibe: "classic", tags: ["Tasting"], desc: "", stops: [
-                { time: "12:00", title: "First stop + flight" }, { time: "14:00", title: "Second stop" },
-                { time: "15:30", title: "Lunch between" }, { time: "17:00", title: "Last tasting" } ] },
-  spa:      { label: "Spa / chill", emoji: "🧖", theme: "teal", vibe: "pastel", tags: ["Wellness"], desc: "Slow it all the way down.", stops: [
-                { time: "10:00", title: "Check in + change" }, { time: "10:30", title: "Sauna + soak" },
-                { time: "12:30", title: "Massage" }, { time: "14:00", title: "Light lunch" }, { time: "15:30", title: "Lounge + tea" } ] },
-  birthday: { label: "Birthday", emoji: "🎂", theme: "pink", vibe: "vivid", tags: ["Birthday"], desc: "", stops: [
-                { time: "18:00", title: "Gather" }, { time: "19:00", title: "Dinner" }, { time: "21:00", title: "Cake + celebrate" } ] },
+  blank: {
+    label: "Blank", emoji: "🚗", theme: "red", vibe: "classic", subtitle: "", tags: [], desc: "", stops: [],
+  },
+  daytrip: {
+    label: "Day trip", emoji: "🏙️", theme: "sky", vibe: "classic",
+    subtitle: "out and back in a day", tags: ["Day trip"],
+    desc: "A full day out and home by night — no overnight bag needed.",
+    stops: [
+      { time: "08:30", title: "Meet up & depart", note: "Pick a single meeting point so no one's left behind. Top up gas and grab coffees for the road." },
+      { time: "10:00", title: "First stop", note: "The main reason for the trip — hit it early while you're fresh and the crowds are thin." },
+      { time: "12:30", title: "Lunch", note: "Somewhere central so you're not backtracking. Book ahead if it's a weekend." },
+      { time: "14:00", title: "Explore / second stop", note: "A walkable area, market, or viewpoint to wander after eating." },
+      { time: "16:30", title: "Coffee or treat break", note: "Recharge before the drive — find the local dessert or specialty spot." },
+      { time: "18:00", title: "Head home", note: "Beat the worst of the traffic. Decide now who's driving back." },
+    ],
+  },
+  weekend: {
+    label: "Weekend away", emoji: "🏔️", theme: "indigo", vibe: "classic",
+    subtitle: "two days, one night", tags: ["Weekend", "Getaway"],
+    desc: "Two days, one night. Pack light, split the driving, share the cost of the stay.",
+    stops: [
+      { time: "09:30", title: "Hit the road", note: "Leave by mid-morning to land in time for lunch. Make a shared playlist before you go." },
+      { time: "12:30", title: "Lunch on arrival", note: "First meal in the new spot — ask a local or check reviews for something memorable." },
+      { time: "15:00", title: "Check in & settle", note: "Drop bags, claim beds, regroup. Confirm checkout time for tomorrow." },
+      { time: "16:30", title: "Afternoon activity", note: "The big thing you came for — hike, beach, town, whatever fits the vibe." },
+      { time: "19:30", title: "Dinner out", note: "The nice meal of the trip. Reserve a table for the group." },
+      { time: "09:00", title: "Day 2 — breakfast", note: "Slow start. Coffee and a proper breakfast before checkout." },
+      { time: "11:00", title: "One more thing", note: "Squeeze in a market, viewpoint, or swim before you pack the car." },
+      { time: "16:00", title: "Drive back", note: "Aim to be home before dark. Split snacks and fuel on the way." },
+    ],
+  },
+  roadtrip: {
+    label: "Road trip", emoji: "🛣️", theme: "orange", vibe: "vivid",
+    subtitle: "the long haul", tags: ["Road trip", "Pit stops"],
+    desc: "Long miles, good company. Plan the pit stops so it's the journey, not just the destination.",
+    stops: [
+      { time: "06:30", title: "Depart early", note: "Beat traffic and bank daylight. Assign a driver and a DJ for the first leg." },
+      { time: "09:00", title: "Breakfast pit stop", note: "First proper stretch and a real breakfast — not just a gas-station snack." },
+      { time: "11:30", title: "Gas + snacks", note: "Top up before you're below a quarter tank. Swap drivers here." },
+      { time: "13:30", title: "Lunch town", note: "Pick a town worth stopping in, not just the nearest exit. Walk it off." },
+      { time: "16:00", title: "Scenic detour", note: "The photo stop — a lookout, landmark, or roadside oddity worth the time." },
+      { time: "18:30", title: "Arrive & check in", note: "Get to the stay, drop bags, find food nearby. You earned it." },
+    ],
+  },
+  nightout: {
+    label: "Night out", emoji: "🍸", theme: "plum", vibe: "night",
+    subtitle: "big night", tags: ["Night out"],
+    desc: "Dinner, drinks, and dancing. Sort the ride home before the first round.",
+    stops: [
+      { time: "18:30", title: "Pre-game", note: "Drinks and snacks at someone's place. Cheaper, and a good warm-up." },
+      { time: "20:00", title: "Dinner", note: "Line your stomach. Book a table — walk-ins are rough at prime time." },
+      { time: "22:00", title: "Main event", note: "The bar, club, or show. Check the dress code and cover charge first." },
+      { time: "00:30", title: "Late-night food", note: "The non-negotiable post-party meal. Everyone knows the spot." },
+      { time: "01:30", title: "Ride home", note: "Pre-book the cab or designate a sober driver. No one drives drunk." },
+    ],
+  },
+  hangout: {
+    label: "Hangout", emoji: "🎮", theme: "green", vibe: "classic",
+    subtitle: "low-key day", tags: ["Hangout", "Chill"],
+    desc: "Nothing fancy — just good people and an easy afternoon.",
+    stops: [
+      { time: "14:00", title: "Meet up", note: "Roll in whenever. Set a loose start so people aren't waiting around." },
+      { time: "15:00", title: "Food run", note: "Grab snacks and drinks together, or settle the takeout order." },
+      { time: "16:00", title: "Main activity", note: "Games, a movie, a walk — whatever the group's feeling." },
+      { time: "19:00", title: "Dinner", note: "Cook together or order in. Split the bill evenly." },
+      { time: "21:00", title: "Wind down", note: "Second wind or a slow fade — no pressure either way." },
+    ],
+  },
+  concert: {
+    label: "Concert / show", emoji: "🎤", theme: "pink", vibe: "night",
+    subtitle: "showtime", tags: ["Show", "Live music"],
+    desc: "See it live. Get there early, hold the group together, plan the exit.",
+    stops: [
+      { time: "18:00", title: "Dinner before", note: "Eat near the venue so you're not hungry through the set. Keep it quick." },
+      { time: "19:30", title: "Doors / will-call", note: "Arrive early for security and merch. Have tickets ready on your phones." },
+      { time: "20:00", title: "Opener", note: "Find your spot and a meet-up point in case anyone gets separated." },
+      { time: "21:15", title: "Headliner", note: "The main act. Phones down, be present — you paid for this." },
+      { time: "23:30", title: "After the show", note: "Beat the rush or grab a drink while it clears. Pre-plan the ride home." },
+    ],
+  },
+  festival: {
+    label: "Festival", emoji: "🎪", theme: "coral", vibe: "vivid",
+    subtitle: "all day, all stages", tags: ["Festival", "Music"],
+    desc: "A full day across stages. Hydrate, sunscreen, and a solid meet-up plan.",
+    stops: [
+      { time: "11:30", title: "Gates open", note: "Get in early to scope the layout, stages, and exits. Set a landmark to regroup at." },
+      { time: "12:30", title: "First set", note: "Ease in with an act everyone likes. Lock in the must-see schedule together." },
+      { time: "15:00", title: "Food + shade break", note: "Eat and rehydrate during the afternoon lull. Reapply sunscreen." },
+      { time: "17:30", title: "Golden-hour set", note: "Best vibes of the day. Charge phones at a locker beforehand." },
+      { time: "20:00", title: "Headliner", note: "Stake out a spot early. Agree on a clear exit/meet point for after." },
+      { time: "23:00", title: "Exit & ride", note: "Surge pricing is brutal — walk a few blocks out before booking a ride." },
+    ],
+  },
+  beach: {
+    label: "Beach day", emoji: "🏖️", theme: "teal", vibe: "pastel",
+    subtitle: "sun and sand", tags: ["Beach", "Summer"],
+    desc: "Sun, water, snacks. Bring more water and shade than you think you need.",
+    stops: [
+      { time: "09:30", title: "Pack & depart", note: "Towels, sunscreen, cooler, speaker, cash for parking. Leave early for a good spot." },
+      { time: "10:30", title: "Set up base", note: "Claim a spot near washrooms but away from the crowd. Umbrella up first." },
+      { time: "12:30", title: "Lunch / picnic", note: "Cooler food or a nearby shack. Reapply sunscreen before going back in." },
+      { time: "15:00", title: "Water + games", note: "Swim, volleyball, frisbee. Buddy-check anyone going far out." },
+      { time: "17:00", title: "Ice cream run", note: "The reward. Find the local spot, not the tourist truck." },
+      { time: "18:30", title: "Pack up & home", note: "Shake out the sand, count your stuff, beat the sunset traffic." },
+    ],
+  },
+  camping: {
+    label: "Camping", emoji: "⛺", theme: "lime", vibe: "classic",
+    subtitle: "a night outdoors", tags: ["Camping", "Outdoors"],
+    desc: "Off-grid for a night. Divide the gear, prep food ahead, leave no trace.",
+    stops: [
+      { time: "10:30", title: "Grocery & ice run", note: "Last stop with cell service — grab firewood, ice, and anything forgotten." },
+      { time: "12:30", title: "Arrive & pitch camp", note: "Tents up before anything else, while it's light. Find the water source." },
+      { time: "14:30", title: "Afternoon hike / swim", note: "Explore nearby trails or the lake while there's sun." },
+      { time: "18:00", title: "Campfire dinner", note: "Get the fire going early. Foil packs and s'mores are foolproof." },
+      { time: "20:30", title: "Stars & stories", note: "No signal, no problem. Stargaze and keep the fire safe." },
+      { time: "08:30", title: "Day 2 — pack out", note: "Breakfast, douse the fire cold, pack everything, leave it cleaner than you found it." },
+    ],
+  },
+  hike: {
+    label: "Hike", emoji: "🥾", theme: "green", vibe: "classic",
+    subtitle: "trail day", tags: ["Hike", "Outdoors"],
+    desc: "Earn the view. Check the forecast, pack water and layers, tell someone the plan.",
+    stops: [
+      { time: "07:00", title: "Trailhead & sign in", note: "Early start beats heat and crowds. Hit the washroom and check the trail map." },
+      { time: "07:30", title: "Start the climb", note: "Steady pace, regular water sips. Keep the group within sight of each other." },
+      { time: "10:30", title: "Summit & snacks", note: "Refuel, take the photos, soak it in. Watch the time for the way down." },
+      { time: "13:00", title: "Descend", note: "Knees take a beating downhill — go slow, watch footing on loose rock." },
+      { time: "14:30", title: "Post-hike feast", note: "Burgers, tacos, anything big. You burned it, you earned it." },
+    ],
+  },
+  ski: {
+    label: "Ski / snow", emoji: "🎿", theme: "sky", vibe: "pastel",
+    subtitle: "on the mountain", tags: ["Ski", "Winter"],
+    desc: "First chair to last. Buy tickets online, dress in layers, meet for lunch.",
+    stops: [
+      { time: "07:00", title: "Drive to the hill", note: "Leave early to park close and beat the lift lines. Check road conditions." },
+      { time: "08:30", title: "Tickets, rentals, gear", note: "Sort passes and rentals first. Agree on a meet-up time and spot." },
+      { time: "09:00", title: "First runs", note: "Warm up on easy groomers before tackling the steeper stuff." },
+      { time: "12:30", title: "Lodge lunch", note: "Refuel and dry off. Pack snacks — lodge food is pricey." },
+      { time: "13:30", title: "Afternoon laps", note: "Hit the runs you've been eyeing while legs are still good." },
+      { time: "16:00", title: "Last chair & après", note: "Final run, then a warm drink before the drive. Don't ski tired." },
+    ],
+  },
+  foodie: {
+    label: "Foodie tour", emoji: "🍜", theme: "red", vibe: "vivid",
+    subtitle: "eat the whole city", tags: ["Food crawl", "Eats"],
+    desc: "A planned crawl through the best bites in town. Come hungry, share everything.",
+    stops: [
+      { time: "11:00", title: "Brunch / first bite", note: "Start strong but don't overdo it — pace yourself, you've got all day." },
+      { time: "13:00", title: "Signature dish stop", note: "The thing this city is known for. Order it and split it around." },
+      { time: "15:00", title: "Coffee & dessert", note: "A sweet, light reset between heavy meals. Find the local roaster or bakery." },
+      { time: "17:00", title: "Market / snack walk", note: "Graze through a food market or street stalls. Small plates, big variety." },
+      { time: "19:30", title: "Dinner finale", note: "The headliner meal. Book it — the best spots fill up fast." },
+      { time: "21:30", title: "Nightcap bite", note: "One last small plate or dessert if there's room. There's always room." },
+    ],
+  },
+  citybreak: {
+    label: "City break", emoji: "🌆", theme: "blue", vibe: "classic",
+    subtitle: "see the city", tags: ["City break", "Sightseeing"],
+    desc: "Hit the highlights without rushing. Buy major tickets ahead, leave room to wander.",
+    stops: [
+      { time: "08:30", title: "Breakfast near the stay", note: "Fuel up local. Grab transit passes or sort rideshares for the day." },
+      { time: "09:30", title: "Top landmark", note: "Do the big one first — earliest slot means smaller lines and better light." },
+      { time: "12:30", title: "Local lunch", note: "Eat where the locals do, a few streets off the tourist drag." },
+      { time: "14:00", title: "Museum or gallery", note: "An indoor anchor for the afternoon. Pre-book to skip the queue." },
+      { time: "16:30", title: "Old town wander", note: "No agenda — side streets, shops, a coffee. The best part of any city." },
+      { time: "19:30", title: "Dinner out", note: "Nicer sit-down meal to cap the day. Reserve for the group." },
+    ],
+  },
+  themepark: {
+    label: "Theme park", emoji: "🎢", theme: "purple", vibe: "vivid",
+    subtitle: "ride everything", tags: ["Theme park", "Rides"],
+    desc: "Max the day. Buy tickets online, rope-drop the big ones, save a meet-up spot.",
+    stops: [
+      { time: "08:30", title: "Rope drop", note: "Be at the gate before opening. The first hour has the shortest lines all day." },
+      { time: "09:00", title: "Headliner coaster", note: "Hit the most popular ride first while everyone's still at breakfast." },
+      { time: "11:30", title: "Early lunch", note: "Eat before noon to skip the rush and free up peak ride time." },
+      { time: "13:30", title: "Mid-park rides + show", note: "Knock out the middle of your list. Catch a show during the heat." },
+      { time: "16:00", title: "Water ride & re-rides", note: "Cool off, then re-ride favorites as afternoon lines drop." },
+      { time: "20:30", title: "Fireworks finale", note: "Stake out a viewing spot early. Plan the exit before the crowd surges." },
+    ],
+  },
+  sports: {
+    label: "Game day", emoji: "🏟️", theme: "slate", vibe: "vivid",
+    subtitle: "go team", tags: ["Sports", "Game day"],
+    desc: "Tailgate to final whistle. Check the bag policy, wear the colors, plan the exit.",
+    stops: [
+      { time: "15:30", title: "Tailgate / pre-drinks", note: "Food, drinks, and hype near the stadium. Check the parking lot rules." },
+      { time: "17:30", title: "Head to the gate", note: "Clear-bag policy at most venues — travel light and arrive before kickoff." },
+      { time: "18:00", title: "Find seats & snacks", note: "Get settled, grab the overpriced stadium food, soak up the atmosphere." },
+      { time: "19:00", title: "Game time", note: "Be loud. Agree on a meet point in case anyone splits off." },
+      { time: "22:00", title: "Post-game spot", note: "Celebrate or commiserate at a nearby bar while traffic clears." },
+    ],
+  },
+  brewery: {
+    label: "Brewery / winery", emoji: "🍻", theme: "gold", vibe: "classic",
+    subtitle: "tasting trail", tags: ["Tasting", "Drinks"],
+    desc: "A relaxed tasting trail. Line up a driver or a tour van — never DIY the driving.",
+    stops: [
+      { time: "11:30", title: "First stop + flight", note: "Start with a tasting flight to find what you like. Eat something first." },
+      { time: "13:00", title: "Lunch between", note: "Solid meal to pace the day. Many spots have food trucks on site." },
+      { time: "14:30", title: "Second tasting", note: "A different style or region. Take notes on favorites to buy later." },
+      { time: "16:00", title: "Last stop + bottles", note: "Wind down with the best of the day and grab a few bottles to take home." },
+      { time: "17:30", title: "Ride home", note: "Designated driver or pre-booked van only. Hydrate on the way back." },
+    ],
+  },
+  spa: {
+    label: "Spa / wellness", emoji: "🧖", theme: "teal", vibe: "pastel",
+    subtitle: "reset day", tags: ["Wellness", "Relax"],
+    desc: "Slow it all the way down. Book treatments ahead and silence the group chat.",
+    stops: [
+      { time: "10:00", title: "Check in & change", note: "Arrive early to settle in. Robes on, phones away." },
+      { time: "10:30", title: "Sauna & soak", note: "Warm up slow. Hydrate between rounds of sauna, steam, and cold plunge." },
+      { time: "12:30", title: "Treatments", note: "Massage or facial — book the slots in advance so you're not waiting." },
+      { time: "14:00", title: "Light lunch", note: "Something fresh and easy. Keep the calm going, no rushing." },
+      { time: "15:30", title: "Lounge & tea", note: "Read, nap, or just sit. The whole point is doing nothing well." },
+    ],
+  },
+  birthday: {
+    label: "Birthday", emoji: "🎂", theme: "pink", vibe: "vivid",
+    subtitle: "celebrate them", tags: ["Birthday", "Party"],
+    desc: "Make their day. Keep the surprise tight and pin down dinner numbers early.",
+    stops: [
+      { time: "17:30", title: "Gather & decorate", note: "Arrive before the guest of honor. Sort cake, candles, and any surprise." },
+      { time: "18:30", title: "Group photo", note: "Get everyone together while they look fresh and the light's good." },
+      { time: "19:00", title: "Dinner", note: "Reserve under the right name. Tell the restaurant it's a birthday." },
+      { time: "21:00", title: "Cake & celebrate", note: "Candles, song, the works. Don't forget a lighter." },
+      { time: "22:00", title: "Drinks or dancing", note: "Keep it going if the energy's there. Sort rides home in advance." },
+    ],
+  },
 };
 
 const VIBES = [
@@ -221,6 +396,7 @@ function applyTemplate(key) {
   if (!t) return;
   ctEmoji = t.emoji; ctTheme = t.theme; ctVibe = t.vibe || "classic"; ctTags = [...t.tags]; ctStops = t.stops.map((s) => ({ ...s }));
   if (t.desc != null && $("#ct-desc")) $("#ct-desc").value = t.desc;
+  if (t.subtitle != null && $("#ct-sub")) $("#ct-sub").value = t.subtitle;
   applyModalTheme(ctTheme);
   markVibe();
   $("#ct-stickers").querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x.dataset.emoji === ctEmoji));
@@ -327,6 +503,19 @@ async function createTrip() {
   }
   $("#greeting").textContent = `Hey ${me.displayName.split(" ")[0]}, where to next?`;
   if (me.isAdmin) $("#adminLink").style.display = "";
+
+  // Friends tab notification badge: show how many friend requests are waiting,
+  // and keep it fresh so new requests appear without a manual reload.
+  function setFriendBadge(n) {
+    const b = $("#friendReqBadge");
+    if (!b) return;
+    if (n > 0) { b.textContent = n > 99 ? "99+" : String(n); b.hidden = false; }
+    else b.hidden = true;
+  }
+  setFriendBadge(me.friendReqCount || 0);
+  setInterval(async () => {
+    try { const u = (await api("/api/auth/me")).user; if (u) setFriendBadge(u.friendReqCount || 0); } catch { /* ignore */ }
+  }, 30000);
 
   $("#logoutBtn").addEventListener("click", async () => {
     await fetch("/api/auth/logout", { method: "POST" });

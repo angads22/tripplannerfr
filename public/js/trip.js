@@ -7,6 +7,23 @@ const JOIN_CODE = new URLSearchParams(location.search).get("j") || new URLSearch
 
 let ME = null;
 let TRIP = null;
+// My friend relationships, so the crew list can offer "Add friend" on the spot.
+let REL = null; // { friends:Set, incoming:Set, outgoing:Set, friendsList:[] }
+async function loadRel(force) {
+  if (REL && !force) return REL;
+  try {
+    const d = await api("/api/friends");
+    REL = {
+      friends: new Set((d.friends || []).map((u) => u.id)),
+      incoming: new Set((d.incoming || []).map((u) => u.id)),
+      outgoing: new Set((d.outgoing || []).map((u) => u.id)),
+      friendsList: d.friends || [],
+    };
+  } catch {
+    REL = { friends: new Set(), incoming: new Set(), outgoing: new Set(), friendsList: [] };
+  }
+  return REL;
+}
 // Signature of the last-rendered trip, so the 5s poll can skip the (heavy)
 // full re-render when nothing actually changed — no flicker, far less work.
 let LAST_TRIP_SIG = "";
@@ -103,15 +120,25 @@ function renderCrew() {
   $("#crewList").innerHTML = (TRIP.members || []).map((m) => {
     const removable = canRemove && m.id && m.id !== TRIP.creatorId;
     const isCreator = m.id && m.id === TRIP.creatorId;
+    const isMe = ME && m.id === ME.id;
     const faceStyle = m.avatarImage
       ? `background:url('${m.avatarImage}') center/cover no-repeat`
       : `background:${m.avatarColor || avatarColor(m.displayName)}`;
     const face = m.avatarImage ? "" : (m.avatarEmoji || esc(initials(m.displayName)));
+    // Offer to add this person as a friend right from the crew list.
+    let friendBtn = "";
+    if (m.id && !isMe && REL) {
+      if (REL.friends.has(m.id)) friendBtn = '<span class="crew-item__tag" title="You\'re friends">✓ friend</span>';
+      else if (REL.outgoing.has(m.id)) friendBtn = '<button class="mini-btn" disabled>Requested</button>';
+      else if (REL.incoming.has(m.id)) friendBtn = `<button class="mini-btn accent" data-acceptfriend="${esc(m.id)}">Accept friend</button>`;
+      else friendBtn = `<button class="mini-btn" data-addfriend-req="${esc(m.id)}">+ Add friend</button>`;
+    }
     return `
       <div class="crew-item">
         <span class="crew-item__face" style="${faceStyle}">${face}</span>
         <span class="crew-item__name">${esc(m.displayName)}</span>
         ${isCreator ? '<span class="crew-item__tag">host</span>' : ""}
+        ${friendBtn}
         ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove from trip">✕</button>` : ""}
       </div>`;
   }).join("") || '<p class="row__meta">No one yet.</p>';
@@ -124,15 +151,12 @@ function renderCrew() {
 }
 
 // Quick-add chips for your friends who aren't on the trip yet.
-let FRIENDS = null;
 async function renderFriendAdd() {
   const box = $("#friendAdd");
   if (!TRIP.canAddMembers) { box.style.display = "none"; return; }
-  if (FRIENDS === null) {
-    try { FRIENDS = (await api("/api/friends")).friends || []; } catch { FRIENDS = []; }
-  }
+  await loadRel();
   const onTrip = new Set((TRIP.members || []).map((m) => m.id).filter(Boolean));
-  const addable = FRIENDS.filter((f) => !onTrip.has(f.id));
+  const addable = (REL.friendsList || []).filter((f) => !onTrip.has(f.id));
   if (!addable.length) { box.style.display = "none"; return; }
   box.style.display = "block";
   $("#friendChips").innerHTML = addable.map((f) => {
@@ -181,7 +205,8 @@ function stopEditRow(s) {
 
 function renderStops() {
   const stops = TRIP.stops || [];
-  $("#stopCount").textContent = stops.length ? `${stops.length} ${stops.length === 1 ? "stop" : "stops"}` : "";
+  const doneCount = stops.filter((s) => s.done).length;
+  $("#stopCount").textContent = stops.length ? `${doneCount}/${stops.length} done` : "";
   const canEdit = TRIP.canEditPlan;
   $("#stopList").innerHTML = stops.map((s, i) => (s.id === EDIT_STOP ? stopEditRow(s) : `
       <div class="crew-item stop-row${s.done ? " stop-done" : ""}" data-stop="${esc(s.id)}" ${canEdit ? 'draggable="true"' : ""}>
@@ -251,12 +276,13 @@ async function loadChat() {
 }
 
 async function loadFiles() {
-  if (!TRIP || !ME || !ME.isEarlyBird) {
+  const onTrip = !!(TRIP && (TRIP.isMember || TRIP.isCreator));
+  if (!onTrip) {
     $("#sharedDriveSection").style.display = "none";
     return;
   }
-  $("#sharedDriveSection").style.display = (TRIP.isMember || TRIP.isCreator) ? "block" : "none";
-  $("#uploadRow").style.display = (TRIP.isMember || TRIP.isCreator) ? "flex" : "none";
+  $("#sharedDriveSection").style.display = "block";
+  $("#uploadRow").style.display = "flex";
   let files = [];
   try {
     files = (await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/files")).files || [];
@@ -271,6 +297,49 @@ async function loadFiles() {
         </div>
       </div>`).join("")
     : '<p class="row__meta">No files shared yet.</p>';
+}
+
+const BUDGET_CAT_EMOJI = { transport: "🚆", stay: "🏨", food: "🍴", fun: "🎟️", other: "💸" };
+function renderBudget() {
+  const b = TRIP.budget || { currency: "$", splitCount: 0, items: [] };
+  const cur = b.currency || "$";
+  const heads = b.splitCount && b.splitCount > 0 ? b.splitCount : Math.max(1, TRIP.memberCount || 1);
+  const items = b.items || [];
+  const fmt = (n) => cur + (Math.round(n * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const groupTotal = items.filter((i) => i.kind === "group").reduce((s, i) => s + i.amount, 0);
+  const personTotal = items.filter((i) => i.kind === "person").reduce((s, i) => s + i.amount, 0);
+  const perPerson = personTotal + (heads > 0 ? groupTotal / heads : 0);
+  const tripTotal = groupTotal + personTotal * heads;
+
+  $("#budgetCount").textContent = items.length ? `${fmt(perPerson)}/person` : "";
+  $("#budgetSummary").innerHTML = items.length ? `
+      <div class="budget-stat accent"><div class="budget-stat__label">Per person</div><div class="budget-stat__value">${fmt(perPerson)}</div></div>
+      <div class="budget-stat"><div class="budget-stat__label">Trip total</div><div class="budget-stat__value">${fmt(tripTotal)}</div></div>
+      <div class="budget-stat"><div class="budget-stat__label">Split between</div><div class="budget-stat__value">${heads}</div></div>` : "";
+
+  const canEdit = TRIP.canEditPlan;
+  $("#budgetList").innerHTML = items.length
+    ? items.map((i) => {
+        const share = i.kind === "group" ? (heads > 0 ? i.amount / heads : i.amount) : i.amount;
+        return `
+      <div class="crew-item" data-bgitem="${esc(i.id)}">
+        <span class="crew-item__face" style="background:var(--accent);font-size:15px">${BUDGET_CAT_EMOJI[i.category] || "💸"}</span>
+        <div style="flex:1">
+          <div class="crew-item__name">${esc(i.label)}<span class="budget-kind ${i.kind === "group" ? "group" : ""}">${i.kind === "group" ? "split" : "each"}</span></div>
+          <div class="crew-item__tag">${fmt(i.amount)}${i.kind === "group" ? ` · ${fmt(share)}/person` : " each"}</div>
+        </div>
+        ${canEdit ? `<button class="crew-item__x" data-delbg="${esc(i.id)}" title="Remove">✕</button>` : ""}
+      </div>`;
+      }).join("")
+    : '<p class="row__meta">No costs yet. Add the first one below to estimate what the trip will cost.</p>';
+
+  $("#budgetAddRow").style.display = canEdit ? "flex" : "none";
+  $("#budgetSettings").style.display = canEdit ? "flex" : "none";
+  const ae = document.activeElement;
+  if (canEdit && (!ae || !/^bg-/.test(ae.id || ""))) {
+    $("#bg-currency").value = cur;
+    $("#bg-split").value = b.splitCount ? b.splitCount : "";
+  }
 }
 
 function renderProposals() {
@@ -335,6 +404,8 @@ async function reload() {
   if (sig === LAST_TRIP_SIG) return;
   LAST_TRIP_SIG = sig;
 
+  await loadRel(); // so the crew list can show the right friend buttons
+
   // join banner for people who arrived via a shared link but aren't on it yet
   const onTrip = trip.isMember || trip.isCreator;
   $("#joinBanner").style.display = onTrip ? "none" : "block";
@@ -343,6 +414,7 @@ async function reload() {
   renderFriendAdd();
   renderStops();
   renderMap();
+  renderBudget();
   renderProposals();
   renderLog();
   await loadFiles();
@@ -433,8 +505,31 @@ function initCollapsible() {
     }
   });
 
-  // Remove member (creator only)
+  // Crew list: remove a member (creator only), or add/accept a friend.
   $("#crewList").addEventListener("click", async (e) => {
+    // Send a friend request to someone on the trip.
+    const addFriend = e.target.closest("[data-addfriend-req]");
+    if (addFriend) {
+      try {
+        const r = await api("/api/friends/request", "POST", { userId: addFriend.dataset.addfriendReq });
+        await loadRel(true);
+        renderCrew();
+        toast(r.status === "friends" ? "You're friends now!" : "Friend request sent.");
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
+    // Accept a request from someone who already added you.
+    const acceptFriend = e.target.closest("[data-acceptfriend]");
+    if (acceptFriend) {
+      try {
+        await api("/api/friends/accept", "POST", { userId: acceptFriend.dataset.acceptfriend });
+        await loadRel(true);
+        renderCrew();
+        toast("You're friends now!");
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
+    // Remove a member from the trip.
     const btn = e.target.closest("[data-remove]");
     if (!btn) return;
     if (!confirm("Remove this person from the trip?")) return;
@@ -647,6 +742,48 @@ function initCollapsible() {
     }
   });
 
+  // Budget: add a cost (any member)
+  $("#bg-add").addEventListener("click", async () => {
+    const label = $("#bg-label").value.trim();
+    if (!label) return toast("Name the cost.", true);
+    const amount = parseFloat($("#bg-amount").value);
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/budget", "POST", {
+        label,
+        amount: isNaN(amount) ? 0 : amount,
+        kind: $("#bg-kind").value,
+        category: $("#bg-cat").value,
+      });
+      $("#bg-label").value = "";
+      $("#bg-amount").value = "";
+      await reload();
+      toast("Cost added.");
+    } catch (e) { toast(e.message, true); }
+  });
+
+  // Budget: save currency + split count (any member)
+  $("#bg-save-settings").addEventListener("click", async () => {
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/budget-settings", "PUT", {
+        currency: $("#bg-currency").value.trim() || "$",
+        splitCount: parseInt($("#bg-split").value, 10) || 0,
+      });
+      await reload();
+      toast("Budget settings saved.");
+    } catch (e) { toast(e.message, true); }
+  });
+
+  // Budget: remove a cost (any member)
+  $("#budgetList").addEventListener("click", async (e) => {
+    const del = e.target.closest("[data-delbg]");
+    if (!del) return;
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/budget/" + encodeURIComponent(del.dataset.delbg), "DELETE");
+      await reload();
+      toast("Cost removed.");
+    } catch (err) { toast(err.message, true); }
+  });
+
   // Theme change (creator/admin) — presets
   $("#editThemes").addEventListener("click", async (e) => {
     const d = e.target.closest(".theme-dot[data-theme]");
@@ -829,10 +966,6 @@ function initCollapsible() {
   $("#uploadBtn").addEventListener("click", async () => {
     const file = $("#fileInput").files[0];
     if (!file) return;
-    if (!ME.isEarlyBird) {
-      toast("Shared drive is for early birds only.", true);
-      return;
-    }
     const reader = new FileReader();
     reader.onload = async () => {
       try {

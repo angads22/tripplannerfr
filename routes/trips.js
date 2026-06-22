@@ -53,6 +53,36 @@ const cleanTheme = (v) => {
 const VIBES = ["classic", "vivid", "pastel", "night"];
 const cleanVibe = (v) => (VIBES.includes(String(v || "").trim()) ? String(v).trim() : "classic");
 
+// --- Budget ---------------------------------------------------------------
+// A trip's shared budget so the crew can plan what it'll cost and make sure
+// everyone can afford it. Each line item is either:
+//   kind "group"  — a shared cost split evenly across the crew (e.g. the
+//                   Airbnb, a rental van) — everyone pays amount / heads.
+//   kind "person" — a per-person cost everyone pays themselves (flights,
+//                   food, spending money).
+// The frontend totals these into a per-person estimate and a trip total.
+const BUDGET_CATS = ["transport", "stay", "food", "fun", "other"];
+function cleanBudgetItem(it) {
+  it = it || {};
+  return {
+    id: it.id || crypto.randomUUID(),
+    label: str(it.label, 80) || "Item",
+    amount: Math.max(0, Math.min(1e9, Math.round((Number(it.amount) || 0) * 100) / 100)),
+    kind: it.kind === "group" ? "group" : "person",
+    category: BUDGET_CATS.includes(it.category) ? it.category : "other",
+  };
+}
+function normalizeBudget(b) {
+  b = b || {};
+  return {
+    currency: str(b.currency, 4) || "$",
+    // 0 means "use the live member count"; an explicit number lets you plan for
+    // guests who aren't accounts on the app.
+    splitCount: Math.max(0, Math.min(999, parseInt(b.splitCount, 10) || 0)),
+    items: (Array.isArray(b.items) ? b.items : []).slice(0, 80).map(cleanBudgetItem),
+  };
+}
+
 // Turn a list of member user-ids into display objects. Only real accounts are
 // members now — the old display-only "crew" name strings (people without an
 // account) are no longer shown. Each member carries their chosen avatar so the
@@ -84,6 +114,7 @@ function publicTrip(t, user) {
     tags: t.tags || [],
     theme: cleanTheme(t.theme),
     vibe: cleanVibe(t.vibe),
+    budget: normalizeBudget(t.budget),
     description: t.description || "",
     coverUrl: t.coverUrl || "",
     members,
@@ -521,6 +552,61 @@ router.put("/:id/map", requireAuth, (req, res) => {
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
+// --- Budget (any trip member can edit, like the plan) --------------------
+
+// Update currency / split count for the trip's budget.
+router.put("/:id/budget-settings", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the budget." });
+  const budget = normalizeBudget({ ...normalizeBudget(trip.budget), ...(req.body || {}), items: (trip.budget || {}).items });
+  const updated = db.updateTrip(trip.id, { budget });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// Add a budget line item.
+router.post("/:id/budget", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the budget." });
+  const label = str((req.body || {}).label, 80);
+  if (!label) return res.status(400).json({ error: "Give the cost a name." });
+  const current = normalizeBudget(trip.budget);
+  const item = cleanBudgetItem({ ...(req.body || {}), label });
+  const budget = { ...current, items: [...current.items, item] };
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `added a cost: ${item.label}`, { budget }));
+  res.status(201).json({ trip: publicTrip(updated, req.user) });
+});
+
+// Edit a budget line item.
+router.put("/:id/budget/:itemId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the budget." });
+  const current = normalizeBudget(trip.budget);
+  let found = false;
+  const items = current.items.map((it) => {
+    if (it.id !== req.params.itemId) return it;
+    found = true;
+    return cleanBudgetItem({ ...it, ...(req.body || {}), id: it.id });
+  });
+  if (!found) return res.status(404).json({ error: "Cost not found." });
+  const updated = db.updateTrip(trip.id, { budget: { ...current, items } });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// Remove a budget line item.
+router.delete("/:id/budget/:itemId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the budget." });
+  const current = normalizeBudget(trip.budget);
+  const removed = current.items.find((it) => it.id === req.params.itemId);
+  const items = current.items.filter((it) => it.id !== req.params.itemId);
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `removed a cost${removed ? ": " + removed.label : ""}`, { budget: { ...current, items } }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
 // --- Suggestions / proposals (ask the group) -----------------------------
 
 // Anyone on the trip can suggest a change. It shows up for everyone as a
@@ -594,17 +680,14 @@ router.delete("/:id/messages/:msgId", requireAuth, (req, res) => {
   res.json({ messages: updated.messages.slice(-100) });
 });
 
-// --- Shared drive (early birds only) -----------------------------------------------
+// --- Shared drive (any trip member) -----------------------------------------------
 
 function getTripsFileDir(tripId) {
   return path.join(DATA_DIR, `trip-${tripId}`, "files");
 }
 
-// List files in the trip's shared drive (early birds only).
+// List files in the trip's shared drive (any member).
 router.get("/:id/files", requireAuth, (req, res) => {
-  if (!req.user.isEarlyBird) {
-    return res.status(403).json({ error: "Shared drive is for early birds only." });
-  }
   const trip = db.findTripById(req.params.id);
   if (!trip || !isMember(trip, req.user)) {
     return res.status(404).json({ error: "Trip not found." });
@@ -618,11 +701,8 @@ router.get("/:id/files", requireAuth, (req, res) => {
   }
 });
 
-// Upload a file to the trip's shared drive (early birds only, members can upload).
+// Upload a file to the trip's shared drive (any member).
 router.post("/:id/files", requireAuth, (req, res) => {
-  if (!req.user.isEarlyBird) {
-    return res.status(403).json({ error: "Shared drive is for early birds only." });
-  }
   const trip = db.findTripById(req.params.id);
   if (!trip || !isMember(trip, req.user)) {
     return res.status(404).json({ error: "Trip not found." });
@@ -644,11 +724,8 @@ router.post("/:id/files", requireAuth, (req, res) => {
   }
 });
 
-// Delete a file from the trip's shared drive (early birds only, members can delete their own).
+// Delete a file from the trip's shared drive (any member).
 router.delete("/:id/files/:filename", requireAuth, (req, res) => {
-  if (!req.user.isEarlyBird) {
-    return res.status(403).json({ error: "Shared drive is for early birds only." });
-  }
   const trip = db.findTripById(req.params.id);
   if (!trip || !isMember(trip, req.user)) {
     return res.status(404).json({ error: "Trip not found." });
