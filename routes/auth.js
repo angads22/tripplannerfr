@@ -7,8 +7,34 @@ const db = require("../lib/db");
 const { codeAccepted } = require("../lib/auth-middleware");
 const { claimOwnerlessTrips } = require("../lib/seed");
 const { ah } = require("../lib/async-handler");
+const { rateLimit } = require("../lib/rate-limit");
 
 const router = express.Router();
+
+// --- Auth-specific rate limits --------------------------------------------
+// These are much tighter than the global API limit because these endpoints
+// are the primary brute-force and account-enumeration targets.
+
+// Login: 10 attempts per IP per 15 minutes.
+const loginLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts from this address — wait 15 minutes and try again.",
+});
+
+// Register: 5 new accounts per IP per hour (stops signup spam / invite-code grinding).
+const registerLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Too many sign-up attempts from this address — try again in an hour.",
+});
+
+// Password-change: 5 per IP per 15 minutes (prevents current-password brute-forcing).
+const passwordChangeLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many password-change attempts — wait 15 minutes and try again.",
+});
 
 function publicUser(u) {
   if (!u) return null;
@@ -39,17 +65,29 @@ router.get("/needs-setup", (req, res) => {
   res.json({ needsSetup: db.userCount() === 0 });
 });
 
-router.post("/register", ah(async (req, res) => {
+router.post("/register", registerLimit, ah(async (req, res) => {
   const { username, displayName, password, inviteCode: code } = req.body || {};
 
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required." });
   }
-  if (String(username).trim().length < 3) {
+  const uname = String(username).trim();
+  if (uname.length < 3) {
     return res.status(400).json({ error: "Username must be at least 3 characters." });
+  }
+  if (uname.length > 32) {
+    return res.status(400).json({ error: "Username must be 32 characters or fewer." });
+  }
+  // Allow only alphanumeric + underscore/hyphen in usernames.
+  if (!/^[\w-]+$/.test(uname)) {
+    return res.status(400).json({ error: "Username can only contain letters, numbers, _ and -." });
   }
   if (String(password).length < 6) {
     return res.status(400).json({ error: "Password must be at least 6 characters." });
+  }
+  if (String(password).length > 1024) {
+    // bcrypt silently truncates at 72 bytes; a huge input is likely an attack.
+    return res.status(400).json({ error: "Password is too long." });
   }
 
   // The very first account becomes the admin (that's you) and skips the
@@ -59,15 +97,15 @@ router.post("/register", ah(async (req, res) => {
     return res.status(403).json({ error: "Wrong invite code — ask the trip's owner for it." });
   }
 
-  if (db.findUserByUsername(username)) {
+  if (db.findUserByUsername(uname)) {
     return res.status(409).json({ error: "That username is taken." });
   }
 
   const hash = await bcrypt.hash(String(password), 10);
   const user = {
     id: crypto.randomUUID(),
-    username: String(username).trim(),
-    displayName: String(displayName || username).trim(),
+    username: uname,
+    displayName: String(displayName || uname).trim().slice(0, 60) || uname,
     passwordHash: hash,
     isAdmin: isFirstUser,
     isEarlyBird: isFirstUser,
@@ -82,8 +120,12 @@ router.post("/register", ah(async (req, res) => {
   res.json({ user: publicUser(user) });
 }));
 
-router.post("/login", ah(async (req, res) => {
+router.post("/login", loginLimit, ah(async (req, res) => {
   const { username, password } = req.body || {};
+  // Reject obviously oversized inputs before hitting bcrypt.
+  if (!username || String(username).length > 200 || String(password || "").length > 1024) {
+    return res.status(401).json({ error: "Wrong username or password." });
+  }
   const user = db.findUserByUsername(username);
   if (!user) {
     return res.status(401).json({ error: "Wrong username or password." });
@@ -114,7 +156,8 @@ function requireSelf(req, res, next) {
 }
 
 // Update your own display name, avatar, and (optionally) password.
-router.put("/me", requireSelf, ah(async (req, res) => {
+// The password-change path gets a tighter rate limit to block current-password guessing.
+router.put("/me", requireSelf, passwordChangeLimit, ah(async (req, res) => {
   const { displayName, avatarEmoji, avatarColor, password, currentPassword } = req.body || {};
   const patch = {};
 
@@ -145,6 +188,9 @@ router.put("/me", requireSelf, ah(async (req, res) => {
 
   if (password != null && String(password) !== "") {
     // Changing the password requires confirming the current one.
+    if (String(currentPassword || "").length > 1024 || String(password).length > 1024) {
+      return res.status(400).json({ error: "Password is too long." });
+    }
     const ok = await bcrypt.compare(String(currentPassword || ""), req.me.passwordHash);
     if (!ok) return res.status(403).json({ error: "Current password is wrong." });
     if (String(password).length < 6) return res.status(400).json({ error: "New password must be at least 6 characters." });

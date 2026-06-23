@@ -1,6 +1,13 @@
 "use strict";
 
 // Trips are shared plans with their own crew and access control.
+//
+// Security notes:
+//   - coverUrl is validated to http/https only (no javascript:/data: injection).
+//   - File uploads are restricted to a safe extension whitelist and a 20 MB
+//     decoded-size cap; the serving endpoint forces Content-Disposition so
+//     non-image files can't render in the user's browser (see server.js).
+//   - join-by-code is rate-limited to slow join-code brute-forcing.
 // - Any logged-in user can create a trip (they become its creator).
 // - Anyone on a trip (creator or member) can invite more people / share the link.
 // - Any member can leave the trip; the creator deletes it instead.
@@ -27,10 +34,27 @@ const {
   canRemoveMembers,
   canManageTrip,
 } = require("../lib/auth-middleware");
+const { rateLimit } = require("../lib/rate-limit");
+
+// Rate limit for join-by-code: 20 attempts per IP per 15 minutes.
+// Join codes are 10 hex chars (~10^12 space), but rate limiting is cheap insurance.
+const joinCodeLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many join attempts — wait 15 minutes and try again.",
+});
 
 const router = express.Router();
 
 const str = (v, max = 2000) => String(v == null ? "" : v).slice(0, max).trim();
+
+// Only allow http/https URLs — reject javascript:, data:, and other schemes
+// that could execute code or leak data when used as image/link src attributes.
+const sanitizeUrl = (v, max = 500) => {
+  const s = String(v == null ? "" : v).trim().slice(0, max);
+  if (s && !/^https?:\/\//i.test(s)) return "";
+  return s;
+};
 const slugify = (v) =>
   str(v, 80).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || crypto.randomUUID();
 
@@ -163,7 +187,7 @@ function normalizeTripInput(body) {
     pageFile: str(body.pageFile, 120),
     shareWithEveryone: !!body.shareWithEveryone,
     description: str(body.description, 1000),
-    coverUrl: str(body.coverUrl, 500),
+    coverUrl: sanitizeUrl(body.coverUrl, 500),
   };
 }
 
@@ -310,7 +334,7 @@ router.post("/:id/duplicate", requireAuth, (req, res) => {
 
 // Join a trip just by its code (paste-a-code on the dashboard). Works for any
 // trip whose code matches — including Toronto.
-router.post("/join-by-code", requireAuth, (req, res) => {
+router.post("/join-by-code", requireAuth, joinCodeLimit, (req, res) => {
   const code = String((req.body && req.body.code) || "").trim().toLowerCase();
   if (!code) return res.status(400).json({ error: "Enter a trip code." });
   const trip = db.getTrips().find((t) => t.joinCode && String(t.joinCode).trim().toLowerCase() === code);
@@ -701,6 +725,21 @@ router.get("/:id/files", requireAuth, (req, res) => {
   }
 });
 
+// Allowed file extensions for the shared drive. Intentionally excludes
+// executable and web-renderable types (html, js, svg, php, etc.) that could
+// run code in the browser or on the server if served back.
+const ALLOWED_FILE_EXTS = new Set([
+  ".jpg", ".jpeg", ".png", ".gif", ".webp",          // images
+  ".pdf", ".txt", ".csv",                             // documents
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", // Office
+  ".zip",                                             // archives
+  ".mp3", ".mp4", ".mov",                             // media
+]);
+
+// 20 MB decoded limit (~27 MB as base64). The global body parser allows up to
+// 50 MB so we need an explicit check here to enforce the smaller cap.
+const MAX_FILE_B64_LEN = 27 * 1024 * 1024;
+
 // Upload a file to the trip's shared drive (any member).
 router.post("/:id/files", requireAuth, (req, res) => {
   const trip = db.findTripById(req.params.id);
@@ -711,11 +750,27 @@ router.post("/:id/files", requireAuth, (req, res) => {
   if (!filename || !data) {
     return res.status(400).json({ error: "Filename and file data required." });
   }
-  const safe = path.basename(String(filename));
+
+  // Sanitise the filename: strip any path components and verify it isn't empty.
+  const safe = path.basename(String(filename)).trim();
+  if (!safe || safe === "." || safe === "..") {
+    return res.status(400).json({ error: "Invalid filename." });
+  }
+
+  // Reject disallowed extensions before touching disk.
+  const ext = path.extname(safe).toLowerCase();
+  if (!ALLOWED_FILE_EXTS.has(ext)) {
+    return res.status(400).json({ error: `File type "${ext || "(none)"}" is not allowed. Supported: images, PDF, Office documents, plain text, CSV, ZIP, and common media files.` });
+  }
+
+  // Enforce the size limit on the base64 payload before decoding.
+  if (String(data).length > MAX_FILE_B64_LEN) {
+    return res.status(413).json({ error: "File is too large — 20 MB maximum." });
+  }
+
   const dir = getTripsFileDir(trip.id);
   try {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    // Data is base64-encoded; decode and write.
     const buffer = Buffer.from(String(data), "base64");
     fs.writeFileSync(path.join(dir, safe), buffer);
     res.json({ ok: true, url: `/trip-files/${trip.id}/${encodeURIComponent(safe)}` });

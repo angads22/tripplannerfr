@@ -11,6 +11,7 @@ const db = require("./lib/db");
 const { seedIfEmpty, tidyExistingTrips, ensurePlannedContent } = require("./lib/seed");
 const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
 const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
+const { rateLimit } = require("./lib/rate-limit");
 
 const authRoutes = require("./routes/auth");
 const tripRoutes = require("./routes/trips");
@@ -33,9 +34,31 @@ process.on("uncaughtException", (err) => {
 const app = express();
 app.disable("x-powered-by");
 // Behind the Cloudflare tunnel the app is proxied; trust it so sessions and
-// protocol detection work correctly.
+// protocol detection work correctly (and so req.ip reflects the real client IP
+// from Cloudflare's X-Forwarded-For header, making IP-based rate limits work).
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "50mb" }));
+
+// --- Security headers -------------------------------------------------------
+// Set on every response. No third-party dependency needed for these basics.
+app.use((req, res, next) => {
+  // Prevent browsers from MIME-sniffing responses away from the declared type.
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  // Disallow embedding this app in a frame on another origin (clickjacking guard).
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  // Don't leak the full URL in the Referer header when following external links.
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
+// --- Global API rate limit --------------------------------------------------
+// A generous catch-all (300 req / minute / IP) across every /api/* route.
+// Auth-specific endpoints enforce much tighter limits of their own.
+const globalApiLimit = rateLimit({
+  windowMs: 60_000,
+  max: 300,
+  message: "Too many requests — please wait a moment and try again.",
+});
 
 // Never let the browser (or Cloudflare) cache the API or the app pages. This
 // avoids stale UI after an update — the #1 cause of "I clicked and nothing
@@ -97,11 +120,11 @@ tidyExistingTrips();
 ensurePlannedContent();
 
 // --- API -------------------------------------------------------------------
-app.use("/api/auth", authRoutes);
-app.use("/api/trips", tripRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/friends", friendRoutes);
+app.use("/api/auth", globalApiLimit, authRoutes);
+app.use("/api/trips", globalApiLimit, tripRoutes);
+app.use("/api/users", globalApiLimit, userRoutes);
+app.use("/api/admin", globalApiLimit, adminRoutes);
+app.use("/api/friends", globalApiLimit, friendRoutes);
 app.get("/api/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
 // --- Protected pages -------------------------------------------------------
@@ -151,14 +174,22 @@ app.use(
 );
 
 // Serve trip file uploads.
+// Force Content-Disposition so the browser downloads (not renders) non-image
+// files — prevents a stored-XSS vector where an uploaded HTML/SVG/PDF with
+// embedded scripts would execute in the user's origin.
+const INLINE_IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
 app.get("/trip-files/:tripId/:filename", (req, res) => {
-  const file = path.join(DATA_DIR, `trip-${req.params.tripId}`, "files", path.basename(req.params.filename));
+  const basename = path.basename(req.params.filename);
+  const file = path.join(DATA_DIR, `trip-${req.params.tripId}`, "files", basename);
   if (!file.startsWith(path.join(DATA_DIR, `trip-${req.params.tripId}`, "files"))) {
     return res.status(403).send("Forbidden");
   }
   if (!fs.existsSync(file)) {
     return res.status(404).send("Not found");
   }
+  const ext = path.extname(basename).toLowerCase();
+  const disposition = INLINE_IMAGE_EXTS.has(ext) ? "inline" : "attachment";
+  res.setHeader("Content-Disposition", `${disposition}; filename="${encodeURIComponent(basename)}"`);
   res.sendFile(file);
 });
 
@@ -201,6 +232,12 @@ const server = app.listen(config.PORT, config.HOST, () => {
   console.log("  ----------------------------------------");
   if (db.userCount() === 0) {
     console.log("  First run: open it and create your account — you become the admin.");
+  }
+  // Warn if the invite code is still the public default so the operator knows
+  // to rotate it. (Anyone who has read the source code knows "potato 21".)
+  const { inviteCode } = require("./lib/auth-middleware");
+  if (inviteCode() === config.DEFAULT_INVITE_CODE) {
+    console.log("  ⚠  Sign-up code is still the default (\"potato 21\") — change it in the admin panel.");
   }
   console.log("  Press Ctrl+C here (or run Stop Trip Planner.bat) to turn it off.");
   console.log("");

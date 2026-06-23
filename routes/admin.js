@@ -22,6 +22,7 @@ const { isPackaged, EXE_DIR } = require("../lib/paths");
 const { ah } = require("../lib/async-handler");
 const { TORONTO_BUDGET } = require("../lib/seed");
 const db = require("../lib/db");
+const config = require("../lib/config");
 
 const REPO = "angads22/tripplannerfr";
 const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`;
@@ -42,11 +43,20 @@ router.use(requireAdmin);
 
 // --- helpers ---------------------------------------------------------------
 
+// GitHub API request headers. GITHUB_TOKEN is optional but raises the
+// unauthenticated rate limit from 60 to 5 000 requests/hour. The token is
+// read from .env (GITHUB_TOKEN=...) and never sent to the client.
+function ghHeaders() {
+  const h = { "User-Agent": "TripPlanner" };
+  if (config.GITHUB_TOKEN) h["Authorization"] = `Bearer ${config.GITHUB_TOKEN}`;
+  return h;
+}
+
 function fetchText(url, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error("Too many redirects."));
     https
-      .get(url, { headers: { "User-Agent": "TripPlanner" } }, (resp) => {
+      .get(url, { headers: ghHeaders() }, (resp) => {
         if ([301, 302, 307, 308].includes(resp.statusCode) && resp.headers.location) {
           resp.resume();
           return resolve(fetchText(resp.headers.location, redirects + 1));
@@ -67,7 +77,7 @@ function download(url, dest, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error("Too many redirects."));
     https
-      .get(url, { headers: { "User-Agent": "TripPlanner" } }, (resp) => {
+      .get(url, { headers: ghHeaders() }, (resp) => {
         if ([301, 302, 307, 308].includes(resp.statusCode) && resp.headers.location) {
           resp.resume();
           return resolve(download(resp.headers.location, dest, redirects + 1));

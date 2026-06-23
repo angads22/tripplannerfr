@@ -2,6 +2,7 @@
 
 // A lightweight friend system: send a request, the other person accepts, and
 // you become friends. Friends make it quick to add familiar people to trips.
+// you become friends. Friends make it quick to add familiar people to trips.
 // Stored right on the user record (no extra tables — this app is file-backed):
 //   user.friends      : [userId]  accepted friends
 //   user.friendReqIn  : [userId]  requests waiting for ME to accept
@@ -10,9 +11,17 @@
 const express = require("express");
 const db = require("../lib/db");
 const { requireAuth } = require("../lib/auth-middleware");
+const { rateLimit } = require("../lib/rate-limit");
 
 const router = express.Router();
 router.use(requireAuth);
+
+// Search is cheap but scans all users — cap it to prevent sustained load.
+const searchLimit = rateLimit({
+  windowMs: 60_000,
+  max: 60,
+  message: "Too many search requests — wait a minute and try again.",
+});
 
 const arr = (x) => (Array.isArray(x) ? x : []);
 const uniq = (a) => [...new Set(a)];
@@ -24,9 +33,10 @@ const resolve = (ids) => arr(ids).map((id) => db.findUserById(id)).filter(Boolea
 // Search everyone by username or display name (for finding people to add).
 // Returns each match with your current relationship status so the UI shows the
 // right button.
-router.get("/search", (req, res) => {
+router.get("/search", searchLimit, (req, res) => {
   const me = db.findUserById(req.user.id);
-  const q = String(req.query.q || "").trim().toLowerCase();
+  // Cap the query length — an unbounded scan input is a needless attack surface.
+  const q = String(req.query.q || "").trim().toLowerCase().slice(0, 50);
   if (!q) return res.json({ results: [] });
   const fr = new Set(arr(me.friends));
   const inc = new Set(arr(me.friendReqIn));
