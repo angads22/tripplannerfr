@@ -234,8 +234,38 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 .budget-stat__value { font-family: "Anton", sans-serif; font-size: 24px; line-height: 1.1; margin-top: 4px; }
 .budget-stat.accent { border-color: var(--accent); background: rgba(226,59,38,.08); }
 .budget-stat.accent .budget-stat__value { color: var(--accent); }
+.budget-stat { display: flex; flex-direction: column; }
+.budget-stat__sub { font-family: "Space Mono", monospace; font-size: 10px; color: var(--muted-light); margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
 .budget-kind { font-family: "Space Mono", monospace; font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(28,23,18,.16); color: var(--muted-light); margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .budget-kind.group { color: var(--accent); border-color: var(--accent); background: rgba(226,59,38,.08); }
+
+/* Category breakdown: a single proportional bar + a legend of per-category
+   totals and their share of the trip total. Gives the crew an at-a-glance read
+   on where the money goes (stay vs food vs fun…). */
+.budget-breakdown { margin-top: 14px; }
+.budget-breakdown:empty { display: none; }
+.budget-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: rgba(28,23,18,.08); border: 1px solid rgba(255,255,255,.5); }
+.budget-bar__seg { min-width: 4px; transition: flex .3s ease; }
+.budget-cats { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+.budget-cat { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.budget-cat__dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.budget-cat__emoji { font-size: 14px; }
+.budget-cat__label { font-weight: 600; }
+.budget-cat__amt { font-family: "Space Mono", monospace; font-size: 12px; color: var(--muted-light-2); }
+.budget-cat__pct { color: var(--muted-light); margin-left: 5px; }
+
+/* Subheaders that split the itemized list into "shared" vs "per-person". */
+.budget-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 16px 2px 8px; font-family: "Space Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-light); }
+.budget-group-head:first-child { margin-top: 6px; }
+.budget-group-sub { color: var(--accent); font-weight: 700; }
+
+/* Shared category colour key — used by the bar, the legend dots, and each
+   line-item's avatar tile so a category reads the same everywhere. */
+.cat-transport { background: #2D6CA2; }
+.cat-stay { background: #7A5Bd6; }
+.cat-food { background: #E2853B; }
+.cat-fun { background: #3E8E5A; }
+.cat-other { background: #9a8c7a; }
 
 /* Error / hint */
 .err-msg { color: #ffb3a8; font-size: 13px; min-height: 0; margin: 0; display: none; }
@@ -581,13 +611,24 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
   padding: 12px; display: flex; flex-direction: column; gap: 8px;
 }
 .activity-item {
-  padding: 12px; background: rgba(255,255,255,.08);
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 12px; background: rgba(255,255,255,.08);
   border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
   font-size: 13px; line-height: 1.5;
 }
-.activity-item__name { font-weight: 600; color: var(--amber); }
-.activity-item__text { margin-top: 4px; }
-.activity-item__time { margin-top: 4px; color: var(--muted-dark); font-size: 11px; }
+.activity-item__icon {
+  flex: none; width: 26px; height: 26px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  background: rgba(255,255,255,.1);
+}
+.activity-item__text { word-break: break-word; }
+.activity-item__text strong { color: var(--amber); font-weight: 700; }
+.activity-item__time { margin-top: 3px; color: var(--muted-dark); font-size: 11px; font-family: "Space Mono", monospace; }
+.activity-count {
+  font-family: "Space Mono", monospace; font-size: 12px; font-weight: 400;
+  color: var(--muted-dark); background: rgba(255,255,255,.12);
+  padding: 1px 8px; border-radius: 999px; margin-left: 6px;
+}
 
 /* =========================================================================
    Mobile / small screens

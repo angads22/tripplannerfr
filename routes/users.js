@@ -9,8 +9,25 @@ const db = require("../lib/db");
 const config = require("../lib/config");
 const { requireAdmin, requireAuth, inviteCode } = require("../lib/auth-middleware");
 const { ah } = require("../lib/async-handler");
+const v = require("../lib/validate");
 
 const router = express.Router();
+
+const USERNAME_RE = /^[a-zA-Z0-9_.-]+$/;
+const inviteCodeSchema = {
+  inviteCode: { type: "string", required: true, min: 4, max: 100 },
+};
+const createUserSchema = {
+  username: { type: "string", required: true, min: 3, max: 32, pattern: USERNAME_RE, patternMessage: "Username can only use letters, numbers, and . _ -" },
+  displayName: { type: "string", max: 60 },
+  password: { type: "string", required: true, min: 6, max: 200, trim: false },
+  isAdmin: { type: "boolean" },
+};
+const updateUserSchema = {
+  isAdmin: { type: "boolean" },
+  isEarlyBird: { type: "boolean" },
+  password: { type: "string", min: 6, max: 200, trim: false },
+};
 
 // A light directory any logged-in user can read, so they can pick people to
 // invite to their own trips. Only id / username / display name is exposed.
@@ -51,22 +68,19 @@ router.get("/invite-code", (req, res) => {
   res.json({ inviteCode: inviteCode(), isDefault: !db.getSettings().inviteCode });
 });
 
-router.put("/invite-code", (req, res) => {
-  const code = String((req.body || {}).inviteCode || "").trim();
-  if (code.length < 4) {
-    return res.status(400).json({ error: "Invite code must be at least 4 characters." });
-  }
+router.put("/invite-code", v.body(inviteCodeSchema), (req, res) => {
+  const code = req.valid.inviteCode;
   db.updateSettings({ inviteCode: code });
   res.json({ inviteCode: code, isDefault: false });
 });
 
 // Update a user: toggle admin/early bird, or reset their password.
-router.put("/:id", ah(async (req, res) => {
+router.put("/:id", v.body(updateUserSchema), ah(async (req, res) => {
   const target = db.findUserById(req.params.id);
   if (!target) return res.status(404).json({ error: "User not found." });
 
   const patch = {};
-  const { isAdmin, isEarlyBird, password } = req.body || {};
+  const { isAdmin, isEarlyBird, password } = req.valid;
 
   if (typeof isAdmin === "boolean") {
     // Don't let the last admin demote themselves into a locked-out app.
@@ -81,9 +95,6 @@ router.put("/:id", ah(async (req, res) => {
   }
 
   if (password != null) {
-    if (String(password).length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters." });
-    }
     patch.passwordHash = await bcrypt.hash(String(password), 10);
   }
 
@@ -96,17 +107,8 @@ router.put("/:id", ah(async (req, res) => {
 }));
 
 // Create an account directly (handy for pre-making a friend's login).
-router.post("/", ah(async (req, res) => {
-  const { username, displayName, password, isAdmin } = req.body || {};
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required." });
-  }
-  if (String(username).trim().length < 3) {
-    return res.status(400).json({ error: "Username must be at least 3 characters." });
-  }
-  if (String(password).length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters." });
-  }
+router.post("/", v.body(createUserSchema), ah(async (req, res) => {
+  const { username, displayName, password, isAdmin } = req.valid;
   if (db.findUserByUsername(username)) {
     return res.status(409).json({ error: "That username is taken." });
   }

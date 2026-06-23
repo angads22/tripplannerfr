@@ -300,37 +300,81 @@ async function loadFiles() {
 }
 
 const BUDGET_CAT_EMOJI = { transport: "🚆", stay: "🏨", food: "🍴", fun: "🎟️", other: "💸" };
+const BUDGET_CAT_LABEL = { transport: "Transport", stay: "Stay", food: "Food", fun: "Fun", other: "Other" };
+const BUDGET_CAT_ORDER = ["transport", "stay", "food", "fun", "other"];
+
 function renderBudget() {
   const b = TRIP.budget || { currency: "$", splitCount: 0, items: [] };
   const cur = b.currency || "$";
   const heads = b.splitCount && b.splitCount > 0 ? b.splitCount : Math.max(1, TRIP.memberCount || 1);
   const items = b.items || [];
   const fmt = (n) => cur + (Math.round(n * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
-  const groupTotal = items.filter((i) => i.kind === "group").reduce((s, i) => s + i.amount, 0);
-  const personTotal = items.filter((i) => i.kind === "person").reduce((s, i) => s + i.amount, 0);
+
+  const groupItems = items.filter((i) => i.kind === "group");
+  const personItems = items.filter((i) => i.kind === "person");
+  const groupTotal = groupItems.reduce((s, i) => s + i.amount, 0);
+  const personTotal = personItems.reduce((s, i) => s + i.amount, 0);
+  // What one person pays: all their per-person costs + their slice of the
+  // shared pot. The trip total is the shared pot plus everyone's personal costs.
   const perPerson = personTotal + (heads > 0 ? groupTotal / heads : 0);
   const tripTotal = groupTotal + personTotal * heads;
 
   $("#budgetCount").textContent = items.length ? `${fmt(perPerson)}/person` : "";
-  $("#budgetSummary").innerHTML = items.length ? `
-      <div class="budget-stat accent"><div class="budget-stat__label">Per person</div><div class="budget-stat__value">${fmt(perPerson)}</div></div>
-      <div class="budget-stat"><div class="budget-stat__label">Trip total</div><div class="budget-stat__value">${fmt(tripTotal)}</div></div>
-      <div class="budget-stat"><div class="budget-stat__label">Split between</div><div class="budget-stat__value">${heads}</div></div>` : "";
 
+  // --- Summary stats. "Shared pot" only shows when there are split costs. ---
+  $("#budgetSummary").innerHTML = items.length ? `
+      <div class="budget-stat accent"><div class="budget-stat__label">Each person pays</div><div class="budget-stat__value">${fmt(perPerson)}</div></div>
+      <div class="budget-stat"><div class="budget-stat__label">Trip total</div><div class="budget-stat__value">${fmt(tripTotal)}</div></div>
+      ${groupTotal > 0 ? `<div class="budget-stat"><div class="budget-stat__label">Shared pot</div><div class="budget-stat__value">${fmt(groupTotal)}</div></div>` : ""}
+      <div class="budget-stat"><div class="budget-stat__label">Split between</div><div class="budget-stat__value">${heads}</div><div class="budget-stat__sub">${b.splitCount ? "set manually" : "crew size"}</div></div>` : "";
+
+  // --- Category breakdown (on the trip-total basis, so shares sum to 100%). --
+  // Per-person items count their amount × heads so the proportions reflect the
+  // real money the whole crew spends in each category.
+  const catTotals = {};
+  for (const it of items) {
+    const contrib = it.kind === "group" ? it.amount : it.amount * heads;
+    catTotals[it.category] = (catTotals[it.category] || 0) + contrib;
+  }
+  const cats = BUDGET_CAT_ORDER.filter((c) => catTotals[c] > 0);
+  $("#budgetBreakdown").innerHTML = (items.length && tripTotal > 0 && cats.length)
+    ? `<div class="budget-bar">${cats.map((c) => {
+        const pct = Math.max(2, Math.round((catTotals[c] / tripTotal) * 100));
+        return `<span class="budget-bar__seg cat-${c}" style="flex:${catTotals[c]}" title="${BUDGET_CAT_LABEL[c]}: ${fmt(catTotals[c])} (${pct}%)"></span>`;
+      }).join("")}</div>
+      <div class="budget-cats">${cats.map((c) => {
+        const pct = Math.round((catTotals[c] / tripTotal) * 100);
+        return `<div class="budget-cat">
+          <span class="budget-cat__dot cat-${c}"></span>
+          <span class="budget-cat__emoji">${BUDGET_CAT_EMOJI[c]}</span>
+          <span class="budget-cat__label">${BUDGET_CAT_LABEL[c]}</span>
+          <span class="budget-cat__amt">${fmt(catTotals[c])}<span class="budget-cat__pct">${pct}%</span></span>
+        </div>`;
+      }).join("")}</div>`
+    : "";
+
+  // --- Itemized list, grouped into Shared vs Per-person with subtotals. ------
   const canEdit = TRIP.canEditPlan;
-  $("#budgetList").innerHTML = items.length
-    ? items.map((i) => {
-        const share = i.kind === "group" ? (heads > 0 ? i.amount / heads : i.amount) : i.amount;
-        return `
+  const itemRow = (i) => {
+    const share = i.kind === "group" ? (heads > 0 ? i.amount / heads : i.amount) : i.amount;
+    return `
       <div class="crew-item" data-bgitem="${esc(i.id)}">
-        <span class="crew-item__face" style="background:var(--accent);font-size:15px">${BUDGET_CAT_EMOJI[i.category] || "💸"}</span>
+        <span class="crew-item__face cat-${i.category}" style="font-size:15px">${BUDGET_CAT_EMOJI[i.category] || "💸"}</span>
         <div style="flex:1">
           <div class="crew-item__name">${esc(i.label)}<span class="budget-kind ${i.kind === "group" ? "group" : ""}">${i.kind === "group" ? "split" : "each"}</span></div>
-          <div class="crew-item__tag">${fmt(i.amount)}${i.kind === "group" ? ` · ${fmt(share)}/person` : " each"}</div>
+          <div class="crew-item__tag">${fmt(i.amount)}${i.kind === "group" ? ` · ${fmt(share)}/person` : " per person"}</div>
         </div>
         ${canEdit ? `<button class="crew-item__x" data-delbg="${esc(i.id)}" title="Remove">✕</button>` : ""}
       </div>`;
-      }).join("")
+  };
+  const groupBlock = groupItems.length ? `
+      <div class="budget-group-head"><span>🤝 Shared costs · split ${heads} ways</span><span class="budget-group-sub">${fmt(groupTotal)} · ${fmt(heads > 0 ? groupTotal / heads : groupTotal)}/person</span></div>
+      ${groupItems.map(itemRow).join("")}` : "";
+  const personBlock = personItems.length ? `
+      <div class="budget-group-head"><span>👤 Per-person costs</span><span class="budget-group-sub">${fmt(personTotal)}/person</span></div>
+      ${personItems.map(itemRow).join("")}` : "";
+  $("#budgetList").innerHTML = items.length
+    ? groupBlock + personBlock
     : '<p class="row__meta">No costs yet. Add the first one below to estimate what the trip will cost.</p>';
 
   $("#budgetAddRow").style.display = canEdit ? "flex" : "none";
@@ -876,22 +920,50 @@ function initCollapsible() {
     }
   });
 
-  // Activity sidebar toggle
-  function updateActivitySidebar() {
+  // Pick a small icon for a changelog line from what it describes, so the feed
+  // scans quickly (a stop added vs a person removed vs the theme changing).
+  function activityIcon(text) {
+    const t = String(text || "").toLowerCase();
+    if (t.includes("created")) return "✨";
+    if (t.includes("joined")) return "👋";
+    if (t.includes("left")) return "🚪";
+    if (t.includes("added a stop") || t.includes("added a cost")) return "➕";
+    if (t.includes("added")) return "🧑‍🤝‍🧑";
+    if (t.includes("removed") || t.includes("dismissed")) return "➖";
+    if (t.includes("checked off")) return "✅";
+    if (t.includes("un-checked")) return "↩️";
+    if (t.includes("reordered")) return "🔀";
+    if (t.includes("map")) return "🗺️";
+    if (t.includes("theme") || t.includes("vibe")) return "🎨";
+    if (t.includes("suggest")) return "💡";
+    if (t.includes("budget") || t.includes("cost")) return "💸";
+    if (t.includes("migrated")) return "🛠️";
+    return "•";
+  }
+
+  // Render the changelog drawer (newest first) with per-event icons and a count
+  // in the header. `forceOpen`: true from the toolbar toggle, undefined from a
+  // live refresh (which only repaints if the drawer is already open).
+  function renderActivity() {
     const log = TRIP.activity || [];
-    const sidebar = $("#activitySidebar");
-    sidebar.style.display = sidebar.style.display === "none" ? "block" : "none";
+    $("#activityCount").textContent = log.length ? `${log.length}` : "";
     const list = $("#activityList");
     const canDeleteActivity = TRIP.canManage;
     list.innerHTML = log.slice().reverse().map((a) => `
-      <div class="activity-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="flex:1">
-          <div class="activity-item__name">${esc(a.userName)}</div>
-          <div class="activity-item__text">${esc(a.text)}</div>
+      <div class="activity-item">
+        <span class="activity-item__icon">${activityIcon(a.text)}</span>
+        <div style="flex:1;min-width:0">
+          <div class="activity-item__text"><strong>${esc(a.userName)}</strong> ${esc(a.text)}</div>
           <div class="activity-item__time">${esc(relTime(a.ts))}</div>
         </div>
         ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta" style="padding:12px">Nothing yet.</p>';
+  }
+
+  function updateActivitySidebar() {
+    const sidebar = $("#activitySidebar");
+    sidebar.style.display = sidebar.style.display === "none" ? "block" : "none";
+    if (sidebar.style.display !== "none") renderActivity();
   }
 
   $("#activityToggleBtn").addEventListener("click", () => {

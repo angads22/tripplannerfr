@@ -11,6 +11,8 @@ const db = require("./lib/db");
 const { seedIfEmpty, tidyExistingTrips, ensurePlannedContent } = require("./lib/seed");
 const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
 const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
+const { securityHeaders } = require("./lib/security-headers");
+const { rateLimit } = require("./lib/rate-limit");
 
 const authRoutes = require("./routes/auth");
 const tripRoutes = require("./routes/trips");
@@ -35,7 +37,16 @@ app.disable("x-powered-by");
 // Behind the Cloudflare tunnel the app is proxied; trust it so sessions and
 // protocol detection work correctly.
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "50mb" }));
+
+// OWASP security headers on every response (CSP, anti-clickjacking, nosniff,
+// referrer policy, HSTS over HTTPS). See lib/security-headers.js.
+app.use(securityHeaders);
+
+// Parse JSON bodies up to a bounded size. The shared drive sends files as
+// base64 in the body, so this is the upload ceiling — configurable, and far
+// safer than an unbounded/50 MB limit (a cheap memory-DoS vector). Oversized
+// bodies get a clean 413 from the error handler below instead of crashing.
+app.use(express.json({ limit: `${config.MAX_BODY_MB}mb` }));
 
 // Never let the browser (or Cloudflare) cache the API or the app pages. This
 // avoids stale UI after an update — the #1 cause of "I clicked and nothing
@@ -58,7 +69,15 @@ app.use(
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: { httpOnly: true, sameSite: "lax", maxAge: config.SESSION_MAX_AGE },
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      // "auto" marks the cookie Secure only when the request is HTTPS (behind
+      // the Cloudflare tunnel, via trust proxy + X-Forwarded-Proto). On plain
+      // localhost HTTP it stays unset so dev login keeps working.
+      secure: "auto",
+      maxAge: config.SESSION_MAX_AGE,
+    },
   })
 );
 
@@ -96,13 +115,47 @@ tidyExistingTrips();
 // Toronto budget) even on installs created before they were added.
 ensurePlannedContent();
 
+// --- Rate limiting (OWASP API4: Unrestricted Resource Consumption) ---------
+//
+// Two layers, keyed by IP + (when logged in) user id:
+//  1. A broad limiter on the whole API so no single client can flood writes or
+//     hammer polling endpoints.
+//  2. A strict limiter on the auth endpoints (login/register) to blunt
+//     credential-stuffing / brute-force, plus account-creation abuse.
+// Health checks are exempt so the self-updater's poll never trips it. All trip
+// over the limit gets a graceful JSON 429 with a Retry-After.
+
+// Strict: 20 auth attempts per 15 min per IP. Generous for humans, painful for
+// a brute-forcer. (Keyed by IP only — a logged-out attacker has no user id.)
+const authLimiter = rateLimit({
+  name: "auth",
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many sign-in attempts — wait a few minutes and try again.",
+});
+
+// Broad: 300 API requests/min per IP+user. The frontend polls every 5s and can
+// fan out a handful of calls per render, so this leaves comfortable headroom
+// for normal use while stopping abuse.
+const apiLimiter = rateLimit({
+  name: "api",
+  windowMs: 60 * 1000,
+  max: 300,
+  byUser: true,
+});
+
 // --- API -------------------------------------------------------------------
+// Health first and un-limited so the updater's poll is never throttled.
+app.get("/api/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
+app.use("/api/", apiLimiter);
+// The strict auth limiter applies only to the credential-checking endpoints.
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/friends", friendRoutes);
-app.get("/api/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
 // --- Protected pages -------------------------------------------------------
 
@@ -172,8 +225,15 @@ app.get("*", (req, res) => {
 // clean response instead of a crash. Async routes are wrapped with `ah(...)`
 // so their rejections land here too.
 app.use((err, req, res, next) => {
-  console.error("  ✖ Request error:", err && err.stack ? err.stack : err);
   if (res.headersSent) return next(err);
+  // Oversized or malformed JSON bodies: respond cleanly instead of a 500/crash.
+  if (err && err.type === "entity.too.large") {
+    return res.status(413).json({ error: `That upload is too big (limit ${config.MAX_BODY_MB} MB).` });
+  }
+  if (err && (err.type === "entity.parse.failed" || err instanceof SyntaxError)) {
+    return res.status(400).json({ error: "Malformed request body." });
+  }
+  console.error("  ✖ Request error:", err && err.stack ? err.stack : err);
   if ((req.path || "").startsWith("/api/")) {
     return res.status(500).json({ error: "Something went wrong on the server — it stayed up, give it another try." });
   }
@@ -202,6 +262,8 @@ const server = app.listen(config.PORT, config.HOST, () => {
   if (db.userCount() === 0) {
     console.log("  First run: open it and create your account — you become the admin.");
   }
+  // Flag weak defaults (default sign-up code, etc.) without printing secrets.
+  config.auditSecurity();
   console.log("  Press Ctrl+C here (or run Stop Trip Planner.bat) to turn it off.");
   console.log("");
 });
