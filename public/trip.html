@@ -19,7 +19,7 @@
     <!-- Changelog drawer -->
     <div id="activitySidebar" class="activity-sidebar" style="display:none">
       <div class="activity-header">
-        <h3>Changelog</h3>
+        <h3>Changelog <span class="activity-count" id="activityCount"></span></h3>
         <button class="btn-close" id="closeActivityBtn" type="button">✕</button>
       </div>
       <div class="activity-list" id="activityList"></div>
@@ -130,6 +130,7 @@
       <div class="panel">
         <div class="panel__body">
           <div id="budgetSummary" class="budget-summary"></div>
+          <div id="budgetBreakdown" class="budget-breakdown"></div>
           <div id="budgetList" class="crew-list" style="margin-top:12px"></div>
           <div id="budgetAddRow" class="modal__row" style="display:none;margin-top:14px;align-items:flex-end">
             <div style="flex:2;min-width:130px">

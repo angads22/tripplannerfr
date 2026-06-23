@@ -10,9 +10,20 @@
 const express = require("express");
 const db = require("../lib/db");
 const { requireAuth } = require("../lib/auth-middleware");
+const v = require("../lib/validate");
 
 const router = express.Router();
 router.use(requireAuth);
+
+// A friend request can target someone by userId or username; accept/decline are
+// always by userId. Length-bound both so a junk payload is rejected up front.
+const requestSchema = {
+  userId: { type: "string", max: 64 },
+  username: { type: "string", max: 64 },
+};
+const byUserIdSchema = {
+  userId: { type: "string", required: true, max: 64 },
+};
 
 const arr = (x) => (Array.isArray(x) ? x : []);
 const uniq = (a) => [...new Set(a)];
@@ -67,9 +78,9 @@ function makeFriends(aId, bId) {
 
 // Send a friend request by username or userId. If they already requested me,
 // we just become friends (mutual).
-router.post("/request", (req, res) => {
+router.post("/request", v.body(requestSchema), (req, res) => {
   const me = db.findUserById(req.user.id);
-  const body = req.body || {};
+  const body = req.valid;
   const target = body.userId ? db.findUserById(body.userId) : db.findUserByUsername(body.username);
   if (!target) return res.status(404).json({ error: "No account with that username." });
   if (target.id === me.id) return res.status(400).json({ error: "You can't add yourself." });
@@ -87,9 +98,9 @@ router.post("/request", (req, res) => {
 });
 
 // Accept an incoming request.
-router.post("/accept", (req, res) => {
+router.post("/accept", v.body(byUserIdSchema), (req, res) => {
   const me = db.findUserById(req.user.id);
-  const id = (req.body || {}).userId;
+  const id = req.valid.userId;
   if (!id || !arr(me.friendReqIn).includes(id) || !db.findUserById(id)) {
     return res.status(404).json({ error: "No pending request from that person." });
   }
@@ -98,9 +109,9 @@ router.post("/accept", (req, res) => {
 });
 
 // Decline an incoming request, or cancel one I sent.
-router.post("/decline", (req, res) => {
+router.post("/decline", v.body(byUserIdSchema), (req, res) => {
   const me = db.findUserById(req.user.id);
-  const id = (req.body || {}).userId;
+  const id = req.valid.userId;
   db.updateUser(me.id, {
     friendReqIn: arr(me.friendReqIn).filter((x) => x !== id),
     friendReqOut: arr(me.friendReqOut).filter((x) => x !== id),
