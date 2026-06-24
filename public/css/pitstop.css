@@ -422,6 +422,9 @@ a { color: inherit; text-decoration: none; }
   color: var(--ink); margin: 30px 2px 14px; display: flex; align-items: center; gap: 12px;
 }
 .sec-label::after { content: ""; flex: 1; height: 2px; background: rgba(28,23,18,.14); }
+/* Danger zone heading reads red so destructive controls are clearly set apart. */
+.sec-label.danger-label { color: var(--red); }
+.sec-label.danger-label::after { background: rgba(226,59,38,.3); }
 
 /* Panels */
 .panel {
@@ -526,7 +529,7 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .crew-item:hover { background: rgba(255,255,255,.65); border-color: rgba(255,255,255,.8); }
 .crew-item__face { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; }
 .crew-item__name { font-weight: 700; font-size: 14px; flex: 1; }
-.crew-item__tag { font-family: "Space Mono", monospace; font-size: 11px; color: var(--muted-light-2); }
+.crew-item__tag { font-family: "Space Mono", monospace; font-size: 12px; color: var(--muted-light); line-height: 1.5; }
 .crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; transition: all .15s; }
 .crew-item__x:hover { background: rgba(226,59,38,.15); color: var(--red); transform: scale(1.1); }
 .crew-item__x:disabled { opacity: .3; cursor: default; }
@@ -611,19 +614,36 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
   padding: 12px; display: flex; flex-direction: column; gap: 8px;
 }
 .activity-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 11px 12px; background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
-  font-size: 13px; line-height: 1.5;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 12px 12px 10px; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+  font-size: 14px; line-height: 1.55;
+  transition: background .15s;
 }
+.activity-item:hover { background: rgba(255,255,255,.1); }
 .activity-item__icon {
-  flex: none; width: 26px; height: 26px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center; font-size: 14px;
-  background: rgba(255,255,255,.1);
+  flex: none; width: 32px; height: 32px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.14);
 }
-.activity-item__text { word-break: break-word; }
+/* Colour-coded by event type so the feed reads at a glance. */
+.activity-item__icon.a-new    { background: rgba(244,181,40,.22);  border-color: rgba(244,181,40,.5); }
+.activity-item__icon.a-join   { background: rgba(62,142,90,.26);   border-color: rgba(62,142,90,.55); }
+.activity-item__icon.a-leave  { background: rgba(226,59,38,.22);   border-color: rgba(226,59,38,.5); }
+.activity-item__icon.a-done   { background: rgba(62,142,90,.26);   border-color: rgba(62,142,90,.55); }
+.activity-item__icon.a-add    { background: rgba(45,108,162,.28);  border-color: rgba(45,108,162,.55); }
+.activity-item__icon.a-remove { background: rgba(226,59,38,.2);    border-color: rgba(226,59,38,.45); color: #ffb3a8; }
+.activity-item__icon.a-money  { background: rgba(244,181,40,.2);   border-color: rgba(244,181,40,.45); }
+.activity-item__icon.a-idea   { background: rgba(124,91,214,.26);  border-color: rgba(124,91,214,.55); }
+.activity-item__body { flex: 1; min-width: 0; }
+.activity-item__text { word-break: break-word; color: var(--on-dark); }
 .activity-item__text strong { color: var(--amber); font-weight: 700; }
-.activity-item__time { margin-top: 3px; color: var(--muted-dark); font-size: 11px; font-family: "Space Mono", monospace; }
+.activity-item__time { margin-top: 4px; color: var(--muted-dark-2); font-size: 11px; font-family: "Space Mono", monospace; letter-spacing: .02em; }
+.activity-item__x {
+  flex: none; background: none; border: none; cursor: pointer; color: var(--muted-dark);
+  font-size: 15px; padding: 2px 6px; border-radius: 8px; transition: background .15s, color .15s;
+}
+.activity-item__x:hover { background: rgba(226,59,38,.2); color: #ffb3a8; }
 .activity-count {
   font-family: "Space Mono", monospace; font-size: 12px; font-weight: 400;
   color: var(--muted-dark); background: rgba(255,255,255,.12);
@@ -729,18 +749,18 @@ html { -webkit-text-size-adjust: 100%; }
 .board-nomatch { grid-column: 1 / -1; padding: 16px; text-align: center; color: var(--muted-light); font-size: 14px; }
 
 /* Pin-to-top star on each trip card */
+/* Pin-to-top control, in the card footer next to "Open trip →" */
+.trip__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
 .trip__pin {
-  position: absolute; top: 10px; right: 10px; z-index: 3;
-  width: 30px; height: 30px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,.78); border: 1px solid rgba(28,23,18,.12);
-  color: var(--muted-light); font-size: 15px; cursor: pointer;
-  transition: transform .12s, background .15s, color .15s;
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(28,23,18,.06); border: 1px solid rgba(28,23,18,.12);
+  color: var(--muted-light); font-family: "Space Mono", monospace; font-size: 11px;
+  padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  transition: transform .12s, background .15s, color .15s, border-color .15s;
 }
-.trip__pin:hover { transform: scale(1.12); background: #fff; }
-.trip__pin.on { color: var(--amber); border-color: var(--amber); }
-.trip.is-pinned { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.trip__pin:hover { transform: translateY(-1px); background: rgba(28,23,18,.1); color: var(--ink); }
+.trip__pin.on { color: var(--amber); border-color: var(--amber); background: rgba(244,181,40,.12); }
+.trip.is-pinned { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
 
 /* Skeleton loading cards (match .trip card footprint) */
 .trip-skel {

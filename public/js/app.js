@@ -142,7 +142,6 @@ function tripCard(t, i) {
   const pinned = getPins().has(t.id);
   return `
     <a class="trip card-light${pinned ? " is-pinned" : ""}" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
-      <button class="trip__pin${pinned ? " on" : ""}" data-pin="${esc(t.id)}" type="button" title="${pinned ? "Unpin" : "Pin to top"}" aria-label="${pinned ? "Unpin trip" : "Pin trip to top"}">${pinned ? "★" : "☆"}</button>
       ${cover}
       <div class="trip__head">
         <span class="trip__count ${cd.cls}">${cd.label}</span>
@@ -153,7 +152,10 @@ function tripCard(t, i) {
       <div class="trip__body">
         ${tags ? `<div class="trip__tags">${tags}</div>` : ""}
         ${crewStack(t.members)}
-        <div style="margin-top:14px"><span class="trip__open">Open trip →</span></div>
+        <div class="trip__foot">
+          <span class="trip__open">Open trip →</span>
+          <button class="trip__pin${pinned ? " on" : ""}" data-pin="${esc(t.id)}" type="button" title="${pinned ? "Unpin" : "Pin to top"}" aria-label="${pinned ? "Unpin trip" : "Pin trip to top"}">${pinned ? "★ Pinned" : "☆ Pin"}</button>
+        </div>
       </div>
     </a>`;
 }
