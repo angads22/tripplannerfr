@@ -678,6 +678,9 @@ html { -webkit-text-size-adjust: 100%; }
 
   /* Hero + section spacing */
   .hero { padding: 22px 18px; }
+  /* Keep the cover image flush to the (now smaller) hero padding so it doesn't
+     bleed past the rounded card edge and cause sideways scroll. */
+  .hero__cover { width: calc(100% + 36px); margin: -22px -18px 14px; }
   .hero__title { font-size: clamp(30px, 11vw, 46px); }
   .hero__body { font-size: 13.5px; }
   .sec-row { margin: 20px 2px 12px; }
@@ -727,11 +730,23 @@ html { -webkit-text-size-adjust: 100%; }
 @media (max-width: 380px) {
   .logo__name { font-size: 18px; }
   .hero { padding: 18px 15px; }
+  .hero__cover { width: calc(100% + 30px); margin: -18px -15px 12px; }
   .who span:not(.who__avatar) { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* Even larger inputs/buttons on tiny screens */
   .input { font-size: 18px; padding: 12px 14px; }
   .btn { font-size: 14px; padding: 10px 14px; }
+}
+
+/* Tablets + landscape phones (between the phone breakpoint and desktop).
+   Containers are already width-capped, so this just dials in gutters, gives
+   inputs a 16px size + a finger-friendly height, and lets the modal breathe. */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .wrap-board { padding-left: 22px; padding-right: 22px; }
+  .wrap { padding-left: 22px; padding-right: 22px; }
+  .input, .in-dark { font-size: 16px; min-height: 44px; }
+  .btn, .toggle { min-height: 42px; }
+  .modal { max-width: 520px; }
 }
 
 /* =========================================================================
