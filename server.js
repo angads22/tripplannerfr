@@ -287,12 +287,15 @@ const server = app.listen(config.PORT, config.HOST, () => {
 // yet. Instead of crashing on EADDRINUSE (which leaves the site dead — the Bad
 // Gateway problem), retry binding for a short window so the new build can take
 // over the moment the port frees.
+// Retry quickly (every 400ms for ~24s) so the new build grabs the port the
+// instant the old process releases it — keeping the Bad Gateway window to a
+// second or two instead of crashing or waiting whole seconds between tries.
 let bindRetries = 0;
 server.on("error", (err) => {
-  if (err.code === "EADDRINUSE" && bindRetries < 20) {
+  if (err.code === "EADDRINUSE" && bindRetries < 60) {
     bindRetries++;
     if (bindRetries === 1) console.log(`  Port ${config.PORT} is still in use — waiting for it to free up…`);
-    setTimeout(() => server.listen(config.PORT, config.HOST), 1000);
+    setTimeout(() => server.listen(config.PORT, config.HOST), 400);
   } else {
     console.error(`  Could not start: ${err.message}`);
     process.exit(1);

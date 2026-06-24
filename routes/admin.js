@@ -166,21 +166,35 @@ async function preflightNewBuild(exePath) {
     return { ok: false, reason: "the new build wouldn't launch (" + err.message + ")" };
   }
 
-  // If the process dies immediately, treat it as a failed boot.
+  // If the process dies before serving, fail fast instead of waiting out the
+  // whole health timeout: race the health check against the child's exit.
   let exitedEarly = false;
-  child.once("error", () => { exitedEarly = true; });
-  child.once("exit", () => { exitedEarly = true; });
+  const exited = new Promise((resolve) => {
+    child.once("error", () => { exitedEarly = true; resolve(false); });
+    child.once("exit", () => { exitedEarly = true; resolve(false); });
+  });
+  const healthy = await Promise.race([
+    waitForHealth(`http://127.0.0.1:${port}/api/health`, 25000),
+    exited,
+  ]);
 
-  const healthy = await waitForHealth(`http://127.0.0.1:${port}/api/health`, 25000);
-
-  // Tear down the test instance regardless of outcome.
-  try {
-    if (process.platform === "win32") {
-      spawn("taskkill", ["/pid", String(child.pid), "/f", "/t"], { stdio: "ignore" });
-    } else if (child.pid) {
-      process.kill(child.pid, "SIGKILL");
-    }
-  } catch { /* already gone */ }
+  // Tear the test instance down — and WAIT for it to actually die before we
+  // return. This matters: the validation instance shares the exe's image name
+  // (TripPlanner.exe), so a lingering ghost could confuse the swap step. We
+  // resolve only once the child has exited (or a hard 6s cap elapses).
+  await new Promise((resolve) => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    child.once("exit", finish);
+    try {
+      if (process.platform === "win32") {
+        spawn("taskkill", ["/pid", String(child.pid), "/f", "/t"], { stdio: "ignore" });
+      } else if (child.pid) {
+        process.kill(child.pid, "SIGKILL");
+      }
+    } catch { finish(); /* already gone */ }
+    setTimeout(finish, 6000); // safety cap so we never hang the update
+  });
   // Best-effort cleanup of the throwaway data dir.
   try { fs.rmSync(tmpData, { recursive: true, force: true }); } catch { /* ignore */ }
 
@@ -455,16 +469,23 @@ router.post("/apply-update", ah(async (req, res) => {
     const psCheck =
       `powershell -NoProfile -ExecutionPolicy Bypass -Command ` +
       `"try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 '${HEALTH}'; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"`;
+    // Wait on the EXACT pid of this running process — NOT the image name. The
+    // pre-flight validation instance (and the freshly-started new build) share
+    // the "TripPlanner.exe" name, so an image-name wait could either hang on a
+    // lingering ghost (leaving nothing serving :4040 → Bad Gateway) or race the
+    // new process. Keying on our own pid is unambiguous.
+    const myPid = process.pid;
     const bat = [
       "@echo off",
       'cd /d "%~dp0"',
       "set LOG=update-log.txt",
-      `echo [%date% %time%] update to build ${latest.build} starting > "%LOG%"`,
-      // 1) wait for the current app to fully exit
+      `set OLDPID=${myPid}`,
+      `echo [%date% %time%] update to build ${latest.build} starting (oldpid %OLDPID%) > "%LOG%"`,
+      // 1) wait for THIS specific old process to fully exit (frees port 4040)
       ":waitexit",
-      `tasklist /fi "imagename eq ${exeName}" | find /i "${exeName}" >nul && (timeout /t 1 /nobreak >nul & goto waitexit)`,
+      `tasklist /fi "PID eq %OLDPID%" 2>nul | find "%OLDPID%" >nul && (timeout /t 1 /nobreak >nul & goto waitexit)`,
       'echo [%time%] old process exited >> "%LOG%"',
-      "timeout /t 2 /nobreak >nul",
+      "timeout /t 1 /nobreak >nul",
       // 2) swap in the new build (backing up the old one)
       `if not exist "TripPlanner-new.exe" ( echo [%time%] ERROR: no new exe, aborting >> "%LOG%" & start "" "${exeName}" & goto done )`,
       `if exist "${exeName}" copy /y "${exeName}" "TripPlanner-old.exe" >nul`,
