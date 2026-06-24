@@ -9,6 +9,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/pitstop.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#E23B26" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pitstop" />
+  <link rel="apple-touch-icon" href="/icons/icon.svg" />
 </head>
 <body>
   <div class="bg">
@@ -20,7 +27,7 @@
 
       <header class="topbar">
         <div class="logo">
-          <div class="logo__mark">🚗</div>
+          <div class="logo__mark"><img class="logo__img" src="/icons/logo.svg" alt="Pitstop logo" /></div>
           <div>
             <div class="logo__name">Pitstop</div>
             <div class="logo__tag">plans, shotgun not included</div>
@@ -52,9 +59,18 @@
         <span class="sec-row__count" id="tripCount"></span>
       </div>
 
-      <div style="display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap">
         <input class="in-dark" id="joinCodeInput" placeholder="Got a trip code? Paste it to add the trip" style="flex:1;min-width:220px" />
         <button class="btn-accent" id="joinCodeBtn" type="button">Add trip</button>
+      </div>
+
+      <div class="board-tools">
+        <input class="in-dark board-tools__search" id="boardSearch" type="search" placeholder="🔍 Search your trips…" aria-label="Search trips" />
+        <select class="in-dark board-tools__sort" id="boardSort" aria-label="Sort trips">
+          <option value="soon">Soonest first</option>
+          <option value="late">Latest first</option>
+          <option value="added">Recently added</option>
+        </select>
       </div>
 
       <div id="grid" class="trip-grid"></div>
@@ -164,5 +180,6 @@
 
   <div class="toast" id="toast"></div>
   <script src="/js/app.js"></script>
+  <script src="/js/footer.js"></script>
 </body>
 </html>

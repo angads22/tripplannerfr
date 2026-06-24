@@ -1,6 +1,6 @@
 {
   "name": "trip-planner",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "description": "A cozy, self-hosted trip board with friends-only login, an admin console, and per-trip access control.",
   "main": "server.js",

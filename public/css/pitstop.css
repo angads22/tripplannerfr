@@ -713,3 +713,103 @@ html { -webkit-text-size-adjust: 100%; }
   .input { font-size: 18px; padding: 12px 14px; }
   .btn { font-size: 14px; padding: 10px 14px; }
 }
+
+/* =========================================================================
+   v2.4.0 — logo, footer + FAQ, board tools (search/sort/pin), skeletons,
+   pull-to-refresh, iOS install hint
+   ========================================================================= */
+
+/* Brand logo inside the dark header chip */
+.logo__img { width: 70%; height: 70%; display: block; }
+
+/* Board toolbar: search + sort */
+.board-tools { display: flex; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+.board-tools__search { flex: 1; min-width: 200px; }
+.board-tools__sort { width: auto; min-width: 150px; cursor: pointer; }
+.board-nomatch { grid-column: 1 / -1; padding: 16px; text-align: center; color: var(--muted-light); font-size: 14px; }
+
+/* Pin-to-top star on each trip card */
+.trip__pin {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.78); border: 1px solid rgba(28,23,18,.12);
+  color: var(--muted-light); font-size: 15px; cursor: pointer;
+  transition: transform .12s, background .15s, color .15s;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.trip__pin:hover { transform: scale(1.12); background: #fff; }
+.trip__pin.on { color: var(--amber); border-color: var(--amber); }
+.trip.is-pinned { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* Skeleton loading cards (match .trip card footprint) */
+.trip-skel {
+  height: 210px; border-radius: 20px;
+  background: linear-gradient(100deg, rgba(255,255,255,.30) 30%, rgba(255,255,255,.55) 50%, rgba(255,255,255,.30) 70%);
+  background-size: 220% 100%; animation: skel 1.2s ease-in-out infinite;
+  border: 1px solid rgba(255,255,255,.5);
+}
+@keyframes skel { from { background-position: 220% 0; } to { background-position: -20% 0; } }
+@media (prefers-reduced-motion: reduce) { .trip-skel { animation: none; } }
+
+/* Pull-to-refresh indicator */
+.ptr-indicator {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+  margin-top: -40px; z-index: 1200;
+  background: rgba(28,23,18,.92); color: var(--on-dark);
+  font-family: "Space Mono", monospace; font-size: 12px;
+  padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16);
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.ptr-indicator.show { opacity: 1; }
+
+/* Site footer: developer credit + contact + FAQ */
+.site-foot {
+  position: relative; z-index: 1;
+  max-width: 760px; margin: 8px auto 0; padding: 22px 16px calc(34px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+.site-foot__inner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 6px 10px; font-size: 12.5px; color: var(--muted-light); line-height: 1.6;
+}
+.site-foot a { color: var(--accent); text-decoration: none; }
+.site-foot a:hover { text-decoration: underline; }
+.site-foot__sep { opacity: .5; }
+.site-foot__ver { font-family: "Space Mono", monospace; opacity: .7; }
+.site-foot__link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--accent); font: inherit; text-decoration: underline;
+}
+
+/* FAQ modal (reuses .scrim/.modal) */
+.faq-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.faq-item {
+  background: rgba(28,23,18,.04); border: 1px solid rgba(28,23,18,.10); border-radius: 12px; padding: 4px 14px;
+}
+.faq-item summary {
+  cursor: pointer; padding: 11px 0; font-weight: 700; font-size: 14.5px; list-style: none;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; color: var(--accent); font-size: 18px; font-weight: 700; }
+.faq-item[open] summary::after { content: "–"; }
+.faq-item__a { padding: 0 0 12px; font-size: 13.5px; line-height: 1.6; color: var(--muted-light-2); }
+
+/* iOS "Add to Home Screen" hint bar */
+.ios-install-hint {
+  position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 1300; display: flex; align-items: center; gap: 10px;
+  background: rgba(28,23,18,.96); color: var(--on-dark);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 16px;
+  padding: 12px 14px; box-shadow: 0 18px 40px rgba(0,0,0,.4);
+  font-size: 13px; line-height: 1.45; animation: rise .3s both;
+}
+.ios-install-hint__txt { flex: 1; }
+.ios-install-hint b { color: var(--amber); font-weight: 700; }
+.ios-share-glyph { color: var(--sky, #4aa3df); font-weight: 700; }
+.ios-install-hint__x {
+  flex: none; background: rgba(255,255,255,.12); border: none; color: var(--on-dark);
+  width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 14px;
+}
+.ios-install-hint__x:hover { background: rgba(255,255,255,.22); }

@@ -1,0 +1,19 @@
+{
+  "name": "Pitstop — Trip Planner",
+  "short_name": "Pitstop",
+  "description": "Plan trips with friends. Plans, shotgun not included.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1C1815",
+  "theme_color": "#E23B26",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
