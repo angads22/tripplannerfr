@@ -777,6 +777,23 @@ html { -webkit-text-size-adjust: 100%; }
 .trip__pin.on { color: var(--amber); border-color: var(--amber); background: rgba(244,181,40,.12); }
 .trip.is-pinned { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
 
+/* Past-trip card recap: a glance at the itinerary (times · places · notes)
+   plus the crew's post-trip notes. Sits in the light card body. */
+.trip__recap { margin-top: 14px; border-top: 1px solid rgba(28,23,18,.1); padding-top: 12px; }
+.trip__recap-head { font-family: "Space Mono", monospace; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-light); margin-bottom: 9px; }
+.trip__recap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.trip__recap-list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 9px; align-items: baseline; font-size: 13px; }
+.trip__recap-time { font-family: "Space Mono", monospace; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.trip__recap-what { color: var(--ink); font-weight: 600; line-height: 1.35; }
+.trip__recap-note { grid-column: 2; color: var(--muted-light); font-size: 12px; font-weight: 400; line-height: 1.4; }
+.trip__recap-more { grid-column: 1 / -1; color: var(--muted-light); font-size: 11.5px; font-family: "Space Mono", monospace; }
+.trip__recap-summary { margin-top: 11px; background: rgba(244,181,40,.13); border: 1px solid rgba(244,181,40,.4); border-radius: 11px; padding: 9px 12px; font-size: 12.5px; line-height: 1.5; color: var(--ink); }
+.trip__recap-empty { font-size: 12.5px; color: var(--muted-light); }
+
+/* Post-trip notes on the trip page: free-text recap, preserve line breaks. */
+.trip-recap { font-size: 14.5px; line-height: 1.65; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.trip-recap.empty { color: var(--muted-light); white-space: normal; }
+
 /* Skeleton loading cards (match .trip card footprint) */
 .trip-skel {
   height: 210px; border-radius: 20px;

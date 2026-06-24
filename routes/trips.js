@@ -117,6 +117,9 @@ function publicTrip(t, user) {
     budget: normalizeBudget(t.budget),
     description: t.description || "",
     coverUrl: t.coverUrl || "",
+    // Shared "post-trip notes" the crew writes after the trip wraps — surfaced
+    // on the board's Past trips section and the trip page.
+    recap: t.recap || "",
     members,
     memberCount: members.length,
     stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => ((a.order ?? 1e9) - (b.order ?? 1e9)) || String(a.time || "").localeCompare(String(b.time || ""))),
@@ -549,6 +552,23 @@ router.put("/:id/map", requireAuth, (req, res) => {
   // Accept either a pasted Google Maps URL or a plain place name.
   if (mapUrl && !/^https?:\/\//i.test(mapUrl)) mapUrl = mapsLink(mapUrl);
   const updated = db.updateTrip(trip.id, withActivity(trip, req.user, mapUrl ? "updated the map" : "cleared the map", { mapUrl }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// --- Post-trip notes / recap (any trip member) ---------------------------
+
+// A shared write-up the crew adds after the trip wraps — highlights, what to
+// do differently next time, memories worth keeping. Lives on the trip and
+// shows on past-trip cards + the trip page. Editable by anyone on the trip,
+// just like the plan and budget.
+router.put("/:id/recap", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to add post-trip notes." });
+  const recap = str((req.body || {}).recap, 4000);
+  const had = !!(trip.recap && String(trip.recap).trim());
+  const note = !recap ? "cleared the post-trip notes" : had ? "updated the post-trip notes" : "added post-trip notes";
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, note, { recap }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
