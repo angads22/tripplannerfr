@@ -194,6 +194,21 @@ app.get("/trip/:slug", requirePage, (req, res) => {
 });
 
 // --- Static frontend (login, board, css, js) + trip file uploads -----------
+
+// PWA: the service worker must be served fresh (no-store) and allowed to control
+// the whole origin; the manifest needs its proper content-type. These run before
+// the static handler so we can set the right headers.
+app.get("/service-worker.js", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Service-Worker-Allowed", "/");
+  res.type("application/javascript");
+  res.sendFile(path.join(PUBLIC_DIR, "service-worker.js"));
+});
+app.get("/manifest.webmanifest", (req, res) => {
+  res.type("application/manifest+json");
+  res.sendFile(path.join(PUBLIC_DIR, "manifest.webmanifest"));
+});
+
 app.use(
   express.static(PUBLIC_DIR, {
     setHeaders: (res, p) => {

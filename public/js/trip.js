@@ -51,6 +51,23 @@ function toast(msg, isErr) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2600);
 }
+
+// Subtle haptic tick on supported devices (mobile). No-op everywhere else.
+function haptic(ms) {
+  try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch { /* unsupported */ }
+}
+
+// Share a URL via the phone's native share sheet when available, otherwise
+// copy it to the clipboard. `okMsg` is the toast shown on a clipboard copy.
+async function shareOrCopy(url, title, okMsg) {
+  haptic();
+  if (navigator.share) {
+    try { await navigator.share({ title: title || "Pitstop", url }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; /* fall through to copy */ }
+  }
+  try { await navigator.clipboard.writeText(url); toast(okMsg || "Copied!"); }
+  catch { prompt("Copy this:", url); }
+}
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -576,23 +593,13 @@ function initCollapsible() {
   $("#shareBtn").addEventListener("click", async () => {
     if (!TRIP.joinCode) return toast("Only people on the trip can copy the invite link.", true);
     const url = location.origin + "/trip/" + encodeURIComponent(slug) + "?j=" + encodeURIComponent(TRIP.joinCode);
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("Invite link copied! Only people you send it to can join.");
-    } catch {
-      prompt("Copy this private invite link:", url);
-    }
+    await shareOrCopy(url, "Join my trip on Pitstop", "Invite link copied! Only people you send it to can join.");
   });
 
-  // Copy just the trip code (for people to paste on their dashboard)
+  // Share/copy just the trip code (for people to paste on their dashboard)
   $("#codeBtn").addEventListener("click", async () => {
     if (!TRIP.joinCode) return toast("Only people on the trip can copy the code.", true);
-    try {
-      await navigator.clipboard.writeText(TRIP.joinCode);
-      toast("Code copied: " + TRIP.joinCode);
-    } catch {
-      prompt("Trip code (paste it on the dashboard to join):", TRIP.joinCode);
-    }
+    await shareOrCopy(TRIP.joinCode, "Pitstop trip code", "Code copied: " + TRIP.joinCode);
   });
 
   // Duplicate this trip into a private copy you own
@@ -703,6 +710,7 @@ function initCollapsible() {
   $("#stopList").addEventListener("change", async (e) => {
     const cb = e.target.closest("[data-check]");
     if (!cb) return;
+    haptic();
     try {
       await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/stops/" + encodeURIComponent(cb.dataset.check), "PUT", { done: cb.checked });
       await reload();

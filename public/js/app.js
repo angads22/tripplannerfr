@@ -64,6 +64,51 @@ function fmtDate(dateStr) {
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toUpperCase();
 }
 
+// --- Board state (filter / sort / pin) + small mobile helpers --------------
+let ME = null;
+let ALL_TRIPS = [];
+let QUERY = "";
+let SORT = "soon"; // soon | late | added
+
+// Subtle haptic tick on supported devices (mobile). No-op everywhere else.
+function haptic(ms) {
+  try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch { /* unsupported */ }
+}
+
+// Rotating greeting: time-of-day aware, with general + funny lines for variety.
+// A fresh one is picked on every board load.
+function pickGreeting(name) {
+  const n = name || "there";
+  const h = new Date().getHours();
+  const timed =
+    h >= 5 && h < 12 ? [`Morning, ${n} ☕`, `Rise and road-trip, ${n}.`, `Early start, ${n}? where to?`]
+    : h >= 12 && h < 17 ? [`Afternoon, ${n} — where to next?`, `Hey ${n}, beating the afternoon slump?`, `Midday plotting, ${n}?`]
+    : h >= 17 && h < 22 ? [`Evening, ${n} — plotting an escape?`, `Hey ${n}, where to tonight?`, `Good evening, ${n}. let's go somewhere.`]
+    : [`Can't sleep, ${n}? plan something.`, `Burning the midnight oil, ${n}?`, `Late one, ${n} — dream up a trip.`];
+  const always = [`Hey ${n}, where to next?`, `Where to, ${n}?`, `${n}, the map's wide open.`, `Welcome back, ${n}.`];
+  const funny = [`${n}, gas, snacks, chaos?`, `shotgun's calling, ${n}.`, `${n}, let's get outta here.`, `pack a bag, ${n}.`, `${n}, adventure won't plan itself.`, `wheels up, ${n}?`];
+  const pool = timed.concat(always, funny);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Pinned trips float to the top of the board. Saved per-user, per-device.
+function pinsKey() { return "pitstop:pins:" + (ME && ME.id ? ME.id : "anon"); }
+function getPins() {
+  try { return new Set(JSON.parse(localStorage.getItem(pinsKey()) || "[]")); } catch { return new Set(); }
+}
+function togglePin(id) {
+  const pins = getPins();
+  if (pins.has(id)) pins.delete(id); else pins.add(id);
+  try { localStorage.setItem(pinsKey(), JSON.stringify([...pins])); } catch { /* storage full/blocked */ }
+}
+
+// Placeholder shimmer cards shown while the board loads / refreshes.
+function skeletonCards(n) {
+  let out = "";
+  for (let i = 0; i < n; i++) out += '<div class="trip-skel" aria-hidden="true"></div>';
+  return out;
+}
+
 const TILTS = ["-1.4deg", "1deg", "-0.7deg", "1.3deg", "-1.1deg", "0.8deg"];
 
 function crewStack(members) {
@@ -94,8 +139,10 @@ function tripCard(t, i) {
   const tilt = TILTS[i % TILTS.length];
   const dateRow = [fmtDate(t.date), esc(t.subtitle || "")].filter(Boolean).join(" · ");
   const cover = t.coverUrl ? `<img class="trip__cover" src="${esc(t.coverUrl)}" alt="" loading="lazy" onerror="this.remove()" />` : "";
+  const pinned = getPins().has(t.id);
   return `
-    <a class="trip card-light" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
+    <a class="trip card-light${pinned ? " is-pinned" : ""}" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
+      <button class="trip__pin${pinned ? " on" : ""}" data-pin="${esc(t.id)}" type="button" title="${pinned ? "Unpin" : "Pin to top"}" aria-label="${pinned ? "Unpin trip" : "Pin trip to top"}">${pinned ? "★" : "☆"}</button>
       ${cover}
       <div class="trip__head">
         <span class="trip__count ${cd.cls}">${cd.label}</span>
@@ -118,6 +165,97 @@ function addCard() {
       <span class="add-card__title">New trip</span>
       <span class="add-card__sub">add the next one</span>
     </a>`;
+}
+
+// --- Board: load, filter/sort/pin render, pull-to-refresh ------------------
+
+// Fetch the board (optionally showing skeletons first), then render.
+async function loadTrips(showSkeleton) {
+  const grid = $("#grid");
+  if (showSkeleton && grid) {
+    $("#empty").style.display = "none";
+    grid.style.display = "";
+    grid.innerHTML = skeletonCards(6);
+  }
+  try {
+    const { trips } = await api("/api/trips");
+    ALL_TRIPS = Array.isArray(trips) ? trips : [];
+    renderBoard();
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+// Render the board from ALL_TRIPS applying the current search + sort, with
+// pinned trips floated to the top. Pure client-side — no refetch.
+function renderBoard() {
+  const grid = $("#grid");
+  if (!grid) return;
+  const pins = getPins();
+  const q = QUERY.trim().toLowerCase();
+
+  $("#tripCount").textContent = ALL_TRIPS.length ? `${ALL_TRIPS.length} on the board` : "make the first one";
+  if (!ALL_TRIPS.length) {
+    $("#heroBody").textContent =
+      "Nothing here yet — and that's expected. You only see trips you start or get invited to. Hit New trip to plan one, or paste an invite code above to join a friend's.";
+  }
+
+  let list = ALL_TRIPS.filter((t) => {
+    if (!q) return true;
+    return [t.title, t.subtitle, (t.tags || []).join(" ")].join(" ").toLowerCase().includes(q);
+  });
+
+  const byDate = (a, b) => (a.date || a.createdAt || "").localeCompare(b.date || b.createdAt || "");
+  const byAdded = (a, b) => (b.createdAt || "").localeCompare(a.createdAt || "");
+  list.sort(SORT === "late" ? (a, b) => byDate(b, a) : SORT === "added" ? byAdded : byDate);
+  // Stable second pass: pinned trips first, keeping the sort order within groups.
+  list.sort((a, b) => (pins.has(b.id) ? 1 : 0) - (pins.has(a.id) ? 1 : 0));
+
+  const noMatch = q && list.length === 0
+    ? `<div class="board-nomatch">No trips match “${esc(QUERY)}”.</div>` : "";
+  grid.innerHTML = noMatch + list.map(tripCard).join("") + addCard();
+  const add = $("#addCard");
+  if (add) add.addEventListener("click", (e) => { e.preventDefault(); openCreate(); });
+}
+
+// Pull-to-refresh on touch devices: drag down at the top of the board to reload.
+function initPullToRefresh() {
+  if (!("ontouchstart" in window)) return;
+  const TH = 70; // px to trigger
+  let startY = 0, pulling = false, fired = false;
+  const ind = document.createElement("div");
+  ind.className = "ptr-indicator";
+  ind.textContent = "↓ pull to refresh";
+  document.body.appendChild(ind);
+
+  window.addEventListener("touchstart", (e) => {
+    if (window.scrollY <= 0 && e.touches.length === 1) { startY = e.touches[0].clientY; pulling = true; fired = false; }
+  }, { passive: true });
+
+  window.addEventListener("touchmove", (e) => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 6) {
+      const pull = Math.min(dy, TH + 40);
+      ind.style.transform = `translateX(-50%) translateY(${Math.min(pull, TH)}px)`;
+      ind.classList.add("show");
+      ind.textContent = dy >= TH ? "↑ release to refresh" : "↓ pull to refresh";
+      fired = dy >= TH;
+    }
+  }, { passive: true });
+
+  window.addEventListener("touchend", async () => {
+    if (!pulling) return;
+    pulling = false;
+    ind.style.transform = "";
+    if (fired) {
+      ind.textContent = "refreshing…";
+      ind.classList.add("show");
+      haptic(12);
+      await loadTrips(false);
+    }
+    ind.classList.remove("show");
+  });
 }
 
 // --- Create-trip modal -----------------------------------------------------
@@ -490,6 +628,7 @@ async function createTrip() {
     location.href = "/login.html";
     return;
   }
+  ME = me; // module-scoped so pins/render can read the user id
   $("#whoName").textContent = me.displayName;
   const avEl = $("#avatar");
   avEl.style.backgroundSize = "cover";
@@ -501,7 +640,7 @@ async function createTrip() {
     avEl.textContent = me.avatarEmoji || initials(me.displayName);
     avEl.style.background = me.avatarColor || avatarColor(me.displayName);
   }
-  $("#greeting").textContent = `Hey ${me.displayName.split(" ")[0]}, where to next?`;
+  $("#greeting").textContent = pickGreeting(me.displayName.split(" ")[0]);
   if (me.isAdmin) $("#adminLink").style.display = "";
 
   // Friends tab notification badge: show how many friend requests are waiting,
@@ -541,26 +680,23 @@ async function createTrip() {
   $("#joinCodeBtn").addEventListener("click", addByCode);
   $("#joinCodeInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addByCode(); });
 
-  try {
-    const { trips } = await api("/api/trips");
-    const grid = $("#grid");
-    const n = trips.length;
-    $("#tripCount").textContent = n ? `${n} on the board` : "make the first one";
-    $("#empty").style.display = "none";
-    grid.style.display = "";
+  // Board search + sort controls (added to index.html).
+  const searchEl = $("#boardSearch");
+  if (searchEl) searchEl.addEventListener("input", (e) => { QUERY = e.target.value; renderBoard(); });
+  const sortEl = $("#boardSort");
+  if (sortEl) sortEl.addEventListener("change", (e) => { SORT = e.target.value; renderBoard(); });
 
-    // First-time / empty board: explain how it works. You only see trips you
-    // created or were invited to — there's nothing here until you make one or
-    // paste an invite code.
-    if (n === 0) {
-      $("#heroBody").textContent =
-        "Nothing here yet — and that's expected. You only see trips you start or get invited to. Hit New trip to plan one, or paste an invite code above to join a friend's.";
-    }
+  // Pin/unpin from a card without following the card's link.
+  $("#grid").addEventListener("click", (e) => {
+    const pin = e.target.closest("[data-pin]");
+    if (!pin) return;
+    e.preventDefault();
+    e.stopPropagation();
+    togglePin(pin.dataset.pin);
+    haptic();
+    renderBoard();
+  });
 
-    grid.innerHTML = trips.map(tripCard).join("") + addCard();
-    const add = $("#addCard");
-    if (add) add.addEventListener("click", (e) => { e.preventDefault(); openCreate(); });
-  } catch (err) {
-    toast(err.message, true);
-  }
+  initPullToRefresh();
+  await loadTrips(true);
 })();
