@@ -14,8 +14,11 @@
 
 const express = require("express");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const http = require("http");
 const https = require("https");
+const net = require("net");
 const { spawn } = require("child_process");
 const { requireAdmin } = require("../lib/auth-middleware");
 const { isPackaged, EXE_DIR } = require("../lib/paths");
@@ -93,6 +96,97 @@ function download(url, dest, redirects = 0) {
       })
       .on("error", reject);
   });
+}
+
+// Ask the OS for a free TCP port (bind :0, read it back, release it). Used to
+// run the pre-flight check on a port that can't collide with the live app.
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const port = srv.address().port;
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+// Poll a local /api/health URL until it returns 200 or we run out of time.
+// Resolves true on the first healthy response, false if it never comes up.
+function waitForHealth(url, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve) => {
+    const tick = () => {
+      const req = http.get(url, { timeout: 2000 }, (resp) => {
+        resp.resume();
+        if (resp.statusCode === 200) return resolve(true);
+        retry();
+      });
+      req.on("error", retry);
+      req.on("timeout", () => { req.destroy(); retry(); });
+    };
+    const retry = () => {
+      if (Date.now() >= deadline) return resolve(false);
+      setTimeout(tick, 1000);
+    };
+    tick();
+  });
+}
+
+// THE FIX for "an update takes the whole site down": before we ever touch the
+// live exe, actually RUN the freshly-downloaded build in the background and
+// confirm it boots and serves /api/health. It runs on a throwaway port and an
+// isolated temp data dir (TRIPPLANNER_DATA_DIR), so it can't fight the live app
+// for the port or the database. If it doesn't come up healthy, we abort the
+// update and leave the running app untouched — no swap, no downtime, no crash.
+// Only a build that has proven it works gets swapped in.
+async function preflightNewBuild(exePath) {
+  let port;
+  try {
+    port = await freePort();
+  } catch {
+    return { ok: false, reason: "couldn't allocate a test port" };
+  }
+  const tmpData = path.join(os.tmpdir(), "tripplanner-update-check-" + Date.now());
+  let child;
+  try {
+    child = spawn(exePath, [], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        HOST: "127.0.0.1",
+        TRIPPLANNER_DATA_DIR: tmpData,
+      },
+    });
+  } catch (err) {
+    // e.g. the download was quarantined by antivirus / not executable.
+    return { ok: false, reason: "the new build wouldn't launch (" + err.message + ")" };
+  }
+
+  // If the process dies immediately, treat it as a failed boot.
+  let exitedEarly = false;
+  child.once("error", () => { exitedEarly = true; });
+  child.once("exit", () => { exitedEarly = true; });
+
+  const healthy = await waitForHealth(`http://127.0.0.1:${port}/api/health`, 25000);
+
+  // Tear down the test instance regardless of outcome.
+  try {
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(child.pid), "/f", "/t"], { stdio: "ignore" });
+    } else if (child.pid) {
+      process.kill(child.pid, "SIGKILL");
+    }
+  } catch { /* already gone */ }
+  // Best-effort cleanup of the throwaway data dir.
+  try { fs.rmSync(tmpData, { recursive: true, force: true }); } catch { /* ignore */ }
+
+  if (exitedEarly && !healthy) return { ok: false, reason: "the new build exited on startup" };
+  if (!healthy) return { ok: false, reason: "the new build didn't answer /api/health in time" };
+  return { ok: true };
 }
 
 // Pull the latest release's build number + exe asset URL from GitHub.
@@ -331,7 +425,23 @@ router.post("/apply-update", ah(async (req, res) => {
 
     console.log(`\n  ⏬ Update: downloading build ${latest.build} …`);
     const bytes = await download(latest.exeUrl, newPath);
-    console.log(`  ⏬ Update: downloaded ${(bytes / 1048576).toFixed(1)} MB → swapping & relaunching`);
+    console.log(`  ⏬ Update: downloaded ${(bytes / 1048576).toFixed(1)} MB`);
+
+    // PRE-FLIGHT: prove the new build actually boots and serves BEFORE we touch
+    // the live exe. This is what stops a bad/blocked update from taking the site
+    // down — if the new build can't come up here, we abort and the current
+    // version keeps running untouched.
+    console.log("  ⏳ Update: verifying the new build before swapping …");
+    const check = await preflightNewBuild(newPath);
+    if (!check.ok) {
+      try { fs.unlinkSync(newPath); } catch { /* ignore */ }
+      console.log("  ✖ Update aborted (site left running): " + check.reason);
+      return res.status(500).json({
+        error: `Update aborted — ${check.reason}. The current version is still running, so the site stayed up. ` +
+          "If this keeps happening, the download may be getting blocked by antivirus — add an exclusion for the TripPlanner folder, or download the new .exe manually from GitHub Releases.",
+      });
+    }
+    console.log("  ✓ Update: new build verified — swapping & relaunching");
 
     // Self-healing updater: back up the current exe, swap in the new one, start
     // it, then VERIFY the web server actually answers on /api/health before
@@ -399,3 +509,5 @@ router.post("/apply-update", ah(async (req, res) => {
 }));
 
 module.exports = router;
+// Exported for tests only (the updater pre-flight is pure and worth covering).
+module.exports._preflightNewBuild = preflightNewBuild;
