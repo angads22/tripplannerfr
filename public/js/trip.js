@@ -928,44 +928,45 @@ function initCollapsible() {
     }
   });
 
-  // Pick a small icon for a changelog line from what it describes, so the feed
-  // scans quickly (a stop added vs a person removed vs the theme changing).
-  function activityIcon(text) {
+  // Map a changelog line to an icon + colour class from what it describes, so
+  // the feed scans quickly (a stop added vs a person removed vs a theme change).
+  function activityMeta(text) {
     const t = String(text || "").toLowerCase();
-    if (t.includes("created")) return "✨";
-    if (t.includes("joined")) return "👋";
-    if (t.includes("left")) return "🚪";
-    if (t.includes("added a stop") || t.includes("added a cost")) return "➕";
-    if (t.includes("added")) return "🧑‍🤝‍🧑";
-    if (t.includes("removed") || t.includes("dismissed")) return "➖";
-    if (t.includes("checked off")) return "✅";
-    if (t.includes("un-checked")) return "↩️";
-    if (t.includes("reordered")) return "🔀";
-    if (t.includes("map")) return "🗺️";
-    if (t.includes("theme") || t.includes("vibe")) return "🎨";
-    if (t.includes("suggest")) return "💡";
-    if (t.includes("budget") || t.includes("cost")) return "💸";
-    if (t.includes("migrated")) return "🛠️";
-    return "•";
+    if (t.includes("created")) return { icon: "✨", cls: "a-new" };
+    if (t.includes("joined")) return { icon: "👋", cls: "a-join" };
+    if (t.includes("left")) return { icon: "🚪", cls: "a-leave" };
+    if (t.includes("checked off")) return { icon: "✅", cls: "a-done" };
+    if (t.includes("un-checked")) return { icon: "↩️", cls: "a-undo" };
+    if (t.includes("added a stop") || t.includes("added a cost")) return { icon: "➕", cls: "a-add" };
+    if (t.includes("added")) return { icon: "🧑‍🤝‍🧑", cls: "a-add" };
+    if (t.includes("removed") || t.includes("dismissed")) return { icon: "✕", cls: "a-remove" };
+    if (t.includes("reordered")) return { icon: "🔀", cls: "a-edit" };
+    if (t.includes("map")) return { icon: "🗺️", cls: "a-edit" };
+    if (t.includes("theme") || t.includes("vibe")) return { icon: "🎨", cls: "a-edit" };
+    if (t.includes("suggest")) return { icon: "💡", cls: "a-idea" };
+    if (t.includes("budget") || t.includes("cost")) return { icon: "💸", cls: "a-money" };
+    if (t.includes("migrated")) return { icon: "🛠️", cls: "a-edit" };
+    return { icon: "•", cls: "" };
   }
 
-  // Render the changelog drawer (newest first) with per-event icons and a count
-  // in the header. `forceOpen`: true from the toolbar toggle, undefined from a
-  // live refresh (which only repaints if the drawer is already open).
+  // Render the changelog drawer (newest first) as a colour-coded timeline.
   function renderActivity() {
     const log = TRIP.activity || [];
     $("#activityCount").textContent = log.length ? `${log.length}` : "";
     const list = $("#activityList");
     const canDeleteActivity = TRIP.canManage;
-    list.innerHTML = log.slice().reverse().map((a) => `
+    list.innerHTML = log.slice().reverse().map((a) => {
+      const m = activityMeta(a.text);
+      return `
       <div class="activity-item">
-        <span class="activity-item__icon">${activityIcon(a.text)}</span>
-        <div style="flex:1;min-width:0">
+        <span class="activity-item__icon ${m.cls}">${m.icon}</span>
+        <div class="activity-item__body">
           <div class="activity-item__text"><strong>${esc(a.userName)}</strong> ${esc(a.text)}</div>
           <div class="activity-item__time">${esc(relTime(a.ts))}</div>
         </div>
-        ${canDeleteActivity ? `<button class="crew-item__x" data-delactivity="${esc(a.id)}" title="Delete">✕</button>` : ""}
-      </div>`).join("") || '<p class="row__meta" style="padding:12px">Nothing yet.</p>';
+        ${canDeleteActivity ? `<button class="activity-item__x" data-delactivity="${esc(a.id)}" title="Delete">✕</button>` : ""}
+      </div>`;
+    }).join("") || '<p class="row__meta" style="padding:12px">Nothing yet — changes to the trip show up here.</p>';
   }
 
   function updateActivitySidebar() {

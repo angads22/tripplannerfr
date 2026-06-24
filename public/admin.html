@@ -34,8 +34,29 @@
 
   <main class="wrap">
 
-    <!-- Invite code -->
-    <div class="sec-label">The shared sign-up code</div>
+    <!-- 1 · Updates (operational status first — most-used control) -->
+    <div class="sec-label">Updates</div>
+    <div class="panel reveal">
+      <div class="panel__head"><h2>App version</h2><span class="muted">running <span id="curVer">…</span></span></div>
+      <div class="panel__body">
+        <div class="row">
+          <div class="row__main"><div class="row__title" id="updateStatus">Checking...</div>
+          <div class="row__meta" id="updateMeta">Looking for a newer version.</div></div>
+          <div class="row__actions">
+            <button class="btn small" id="checkUpdateBtn">Check now</button>
+            <button class="btn primary small" id="applyUpdateBtn" style="display:none">Update now</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row__main"><div class="row__title">Auto-install new builds</div>
+          <div class="row__meta">When on, new builds download and install themselves in the background. Each one is verified to boot before it's swapped in, so a bad update won't take the site down.</div></div>
+          <div class="row__actions"><label class="toggle"><input type="checkbox" id="autoUpdateToggle" /><span class="track"></span>Auto</label></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · People & access (sign-up code belongs with accounts) -->
+    <div class="sec-label">People &amp; access</div>
     <div class="panel reveal">
       <div class="panel__head"><h2>Sign-up code</h2><span class="muted">friends type this once to make their account</span></div>
       <div class="panel__body">
@@ -51,9 +72,6 @@
         </div>
       </div>
     </div>
-
-    <!-- People -->
-    <div class="sec-label">People</div>
     <div class="panel reveal">
       <div class="panel__head"><h2>Accounts</h2><span class="muted" id="userCount"></span></div>
       <div class="panel__body" id="userList"></div>
@@ -71,10 +89,10 @@
       </div>
     </div>
 
-    <!-- Trips -->
-    <div class="sec-label">Trips &amp; access</div>
+    <!-- 3 · Trips -->
+    <div class="sec-label">Trips</div>
     <div class="panel reveal">
-      <div class="panel__head"><h2>Trips</h2><span class="muted">every trip · creator · who's on it</span></div>
+      <div class="panel__head"><h2>All trips</h2><span class="muted">every trip · creator · who's on it</span></div>
       <div class="panel__body" id="tripList"></div>
     </div>
     <div class="panel reveal">
@@ -94,7 +112,7 @@
       </div>
     </div>
 
-    <!-- Logs -->
+    <!-- 4 · Activity log -->
     <div class="sec-label">Activity log</div>
     <div class="panel reveal">
       <div class="panel__head"><h2>Recent activity</h2><span class="muted">who did what · across all trips + sign-ups</span>
@@ -104,28 +122,10 @@
       <div class="panel__body" id="logFeed"></div>
     </div>
 
-    <!-- Server -->
-    <div class="sec-label">Server</div>
+    <!-- 5 · Maintenance -->
+    <div class="sec-label">Maintenance</div>
     <div class="panel reveal">
-      <div class="panel__head"><h2>Updates</h2><span class="muted">version <span id="curVer">…</span></span></div>
-      <div class="panel__body">
-        <div class="row">
-          <div class="row__main"><div class="row__title" id="updateStatus">Checking...</div>
-          <div class="row__meta" id="updateMeta">Looking for a newer version.</div></div>
-          <div class="row__actions">
-            <button class="btn small" id="checkUpdateBtn">Check now</button>
-            <button class="btn primary small" id="applyUpdateBtn" style="display:none">Update now</button>
-          </div>
-        </div>
-        <div class="row">
-          <div class="row__main"><div class="row__title">Auto-install new builds</div>
-          <div class="row__meta">When on, new builds download and install themselves in the background.</div></div>
-          <div class="row__actions"><label class="toggle"><input type="checkbox" id="autoUpdateToggle" /><span class="track"></span>Auto</label></div>
-        </div>
-      </div>
-    </div>
-    <div class="panel reveal">
-      <div class="panel__head"><h2>Maintenance</h2><span class="muted">one-off data fixes</span></div>
+      <div class="panel__head"><h2>Data fixes</h2><span class="muted">one-off tools</span></div>
       <div class="panel__body">
         <div class="row">
           <div class="row__main"><div class="row__title">Migrate Toronto to the editable system</div>
@@ -134,11 +134,14 @@
         </div>
       </div>
     </div>
+
+    <!-- 6 · Danger zone (destructive — kept last) -->
+    <div class="sec-label danger-label">Danger zone</div>
     <div class="panel reveal">
-      <div class="panel__head"><h2>Power</h2><span class="muted">turn the site off remotely</span></div>
+      <div class="panel__head"><h2>Turn off the server</h2><span class="muted">stops the site for everyone</span></div>
       <div class="panel__body">
         <div class="row">
-          <div class="row__main"><div class="row__title">Turn off the server</div>
+          <div class="row__main"><div class="row__title">Shut down the app</div>
           <div class="row__meta">Stops the site for everyone. To turn it back on, run <code>Start Trip Planner.bat</code> on the host computer.</div></div>
           <div class="row__actions"><button class="btn danger small" id="shutdownBtn">⏻ Shut down</button></div>
         </div>
