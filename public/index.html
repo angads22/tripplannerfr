@@ -6,7 +6,7 @@
   <title>Pitstop · Trips</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/pitstop.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -60,13 +60,13 @@
       </div>
 
       <div style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap">
-        <input class="in-dark" id="joinCodeInput" placeholder="Got a trip code? Paste it to add the trip" style="flex:1;min-width:220px" />
-        <button class="btn-accent" id="joinCodeBtn" type="button">Add trip</button>
+        <input class="input" id="joinCodeInput" placeholder="Got a trip code? Paste it to add the trip" style="flex:1;min-width:220px" />
+        <button class="btn primary" id="joinCodeBtn" type="button" style="white-space:nowrap">Add trip</button>
       </div>
 
       <div class="board-tools">
-        <input class="in-dark board-tools__search" id="boardSearch" type="search" placeholder="🔍 Search your trips…" aria-label="Search trips" />
-        <select class="in-dark board-tools__sort" id="boardSort" aria-label="Sort trips">
+        <input class="input board-tools__search" id="boardSearch" type="search" placeholder="🔍 Search your trips…" aria-label="Search trips" />
+        <select class="input board-tools__sort" id="boardSort" aria-label="Sort trips">
           <option value="soon">Soonest first</option>
           <option value="late">Latest first</option>
           <option value="added">Recently added</option>
@@ -98,54 +98,35 @@
     </div>
   </div>
 
+  <!-- Mobile floating action: new trip, always within thumb's reach -->
+  <button class="fab" id="fabNew" type="button" aria-label="New trip"><span class="fab__plus">+</span> New trip</button>
+
   <!-- Create trip modal -->
   <div class="scrim" id="createScrim" hidden>
     <div class="modal" id="createModal">
       <div class="modal__kicker">where to next?</div>
       <div class="modal__title">New trip</div>
-      <p class="row__meta" style="margin:6px 0 0">Only the title is required — everything else can be changed later from the trip's <b>Edit</b> button.</p>
+      <p class="row__meta" style="margin:6px 0 0">Just a name gets you rolling — pick a template to start with a full plan, or fill the rest in later from <b>Edit</b>.</p>
 
       <div style="margin-top:16px">
-        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">1 · Start from a template (optional)</div>
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Start from a template</div>
         <div class="modal__row" id="ct-templates" style="margin-top:0;gap:8px"></div>
         <p class="row__meta" style="margin:6px 0 0;font-size:12px">Pre-fills a sticker, theme, vibe, and a starter plan you can tweak.</p>
       </div>
 
       <div style="margin-top:14px">
-        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">2 · Trip name</div>
-        <input class="input" id="ct-title" placeholder="e.g. Montreal weekend, Vegas night out, etc." autofocus />
-        <div class="row__meta" style="margin-top:4px;font-size:12px">Give your trip a name. You can change it later.</div>
-      </div>
-
-      <div class="modal__row">
-        <div style="flex:1;min-width:140px">
-          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">When</div>
-          <input class="input" id="ct-date" type="date" />
-          <div class="row__meta" style="margin-top:4px;font-size:12px">When are you going?</div>
-        </div>
-        <div style="flex:1;min-width:140px">
-          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Tagline (optional)</div>
-          <input class="input" id="ct-sub" placeholder="e.g. 3 days, just us" />
-          <div class="row__meta" style="margin-top:4px;font-size:12px">A short tagline</div>
-        </div>
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Trip name</div>
+        <input class="input" id="ct-title" placeholder="e.g. Montreal weekend, Vegas night out…" autofocus />
       </div>
 
       <div style="margin-top:14px">
-        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Description (optional)</div>
-        <textarea class="input" id="ct-desc" rows="2" placeholder="What's the plan? Any details to share with the crew."></textarea>
-        <div class="row__meta" style="margin-top:4px;font-size:12px">A few lines to set the tone</div>
-      </div>
-
-      <div style="margin-top:14px">
-        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Cover image (optional)</div>
-        <input class="input" id="ct-cover" placeholder="https://example.com/image.jpg" />
-        <div class="row__meta" style="margin-top:4px;font-size:12px">A banner image for your trip card</div>
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">When</div>
+        <input class="input" id="ct-date" type="date" />
       </div>
 
       <div style="margin-top:14px">
         <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Pick a sticker</div>
         <div class="stickers" id="ct-stickers"></div>
-        <div class="row__meta" style="margin-top:8px;font-size:12px">Choose what represents this trip</div>
       </div>
 
       <div style="margin-top:14px">
@@ -170,17 +151,32 @@
         </div>
       </div>
 
-      <div style="margin-top:14px">
-        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Vibe</div>
-        <div class="vibes" id="ct-vibes"></div>
-        <div class="row__meta" style="margin-top:8px;font-size:12px">Sets the whole-page background mood for the trip — not just the accent.</div>
+      <div style="margin-top:14px" id="ct-crewWrap">
+        <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Who's coming <span style="font-weight:400;letter-spacing:0;text-transform:none">(optional)</span></div>
+        <div class="crew-pick" id="ct-crew"></div>
+        <div class="crew-pick__empty" id="ct-crewEmpty" style="display:none">No friends yet — add some from the Friends tab, or invite people to the trip after you make it.</div>
       </div>
 
-      <div style="margin-top:16px;padding:14px;background:rgba(244,236,221,.08);border:1px solid rgba(244,236,221,.2);border-radius:12px">
-        <div class="row__meta" style="font-size:12px;margin:0">
-          <strong>Tip:</strong> You can add stops, upload a map, and invite crew members after creating your trip.
+      <details class="more-options">
+        <summary>More options</summary>
+        <div style="margin-top:4px">
+          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Tagline (optional)</div>
+          <input class="input" id="ct-sub" placeholder="e.g. 3 days, just us" />
         </div>
-      </div>
+        <div style="margin-top:14px">
+          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Description (optional)</div>
+          <textarea class="input" id="ct-desc" rows="2" placeholder="What's the plan? Any details to share with the crew."></textarea>
+        </div>
+        <div style="margin-top:14px">
+          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Cover image (optional)</div>
+          <input class="input" id="ct-cover" placeholder="https://example.com/image.jpg" />
+        </div>
+        <div style="margin-top:14px">
+          <div class="flabel" style="color:var(--muted-light);margin-bottom:6px">Vibe</div>
+          <div class="vibes" id="ct-vibes"></div>
+          <div class="row__meta" style="margin-top:8px;font-size:12px">Sets the whole-page background mood for the trip — not just the accent.</div>
+        </div>
+      </details>
 
       <div class="modal__foot">
         <button class="btn" id="ct-cancel" type="button">Cancel</button>

@@ -8,7 +8,7 @@
   window.__pitstopFooter = true;
 
   // Bump alongside package.json / build-info.json on each release.
-  var APP_VERSION = "2.4.0";
+  var APP_VERSION = "2.5.0";
   var DEV_NAME = "Angad Sandha";
   var DEV_EMAIL = "1angad.sandha22@gmail.com";
 
@@ -81,6 +81,44 @@
     foot.querySelector("#faqOpen").addEventListener("click", function () { modal.hidden = false; });
   }
 
+  // --- Trailing cursor (desktop only) --------------------------------------
+  // A soft ring that eases toward the pointer, tinted (via CSS var(--accent))
+  // to whatever trip's accent is active. Skipped on touch devices and when the
+  // user prefers reduced motion — the CSS hides #pit-cursor there too, but we
+  // also avoid spinning up the animation loop at all.
+  function initCursor() {
+    var fine = window.matchMedia && window.matchMedia("(pointer: fine)").matches;
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!fine || reduce) return;
+
+    var ring = document.createElement("div");
+    ring.id = "pit-cursor";
+    document.body.appendChild(ring);
+
+    var mx = window.innerWidth / 2, my = window.innerHeight * 0.35;
+    var cx = mx, cy = my, raf = 0, seen = false;
+    window.addEventListener("pointermove", function (e) {
+      mx = e.clientX; my = e.clientY;
+      if (!seen) { cx = mx; cy = my; seen = true; }
+    }, { passive: true });
+
+    (function loop() {
+      cx += (mx - cx) * 0.18;
+      cy += (my - cy) * 0.18;
+      ring.style.transform = "translate(" + cx + "px," + cy + "px) translate(-50%,-50%)";
+      raf = requestAnimationFrame(loop);
+    })();
+    // Pause the loop when the tab is hidden so it isn't burning frames offscreen.
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) { cancelAnimationFrame(raf); }
+      else { cancelAnimationFrame(raf); (function loop() {
+        cx += (mx - cx) * 0.18; cy += (my - cy) * 0.18;
+        ring.style.transform = "translate(" + cx + "px," + cy + "px) translate(-50%,-50%)";
+        raf = requestAnimationFrame(loop);
+      })(); }
+    });
+  }
+
   // --- PWA: register the network-first service worker -----------------------
   function registerSW() {
     if (!("serviceWorker" in navigator)) return;
@@ -121,10 +159,11 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () { buildFooter(); maybeShowIosHint(); });
+    document.addEventListener("DOMContentLoaded", function () { buildFooter(); maybeShowIosHint(); initCursor(); });
   } else {
     buildFooter();
     maybeShowIosHint();
+    initCursor();
   }
   registerSW();
 })();

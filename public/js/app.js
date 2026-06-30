@@ -590,6 +590,37 @@ let ctTheme = "red";
 let ctVibe = "classic";
 let ctTags = [];
 let ctStops = [];
+let ctCrew = [];        // friend ids picked in "who's coming"
+let MY_FRIENDS = null;  // cached friends list for the create-modal crew picker
+
+// Build the "who's coming" chips from your friends. Fetched once and cached;
+// if you have no friends yet, show a gentle hint instead.
+async function buildCrewPicker() {
+  const box = $("#ct-crew");
+  const empty = $("#ct-crewEmpty");
+  if (!box) return;
+  if (MY_FRIENDS === null) {
+    try { MY_FRIENDS = (await api("/api/friends")).friends || []; }
+    catch { MY_FRIENDS = []; }
+  }
+  if (!MY_FRIENDS.length) {
+    box.innerHTML = "";
+    box.style.display = "none";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  box.style.display = "flex";
+  if (empty) empty.style.display = "none";
+  box.innerHTML = MY_FRIENDS.map((f) => {
+    const sel = ctCrew.includes(f.id);
+    const faceStyle = f.avatarImage
+      ? `background:url('${f.avatarImage}') center/cover no-repeat`
+      : `background:${f.avatarColor || avatarColor(f.displayName)}`;
+    const face = f.avatarImage ? "" : (f.avatarEmoji || esc(initials(f.displayName)));
+    return `<button type="button" class="crew-pick__chip${sel ? " on" : ""}" data-crew="${esc(f.id)}">
+      <span class="crew-pick__face" style="${faceStyle}">${face}</span>${esc(f.displayName)}</button>`;
+  }).join("");
+}
 
 // Preview a theme on the modal: keyword via data-theme, #hex via inline accent.
 function applyModalTheme(theme) {
@@ -619,6 +650,10 @@ function applyTemplate(key) {
   markVibe();
   $("#ct-stickers").querySelectorAll(".sticker").forEach((x) => x.classList.toggle("sel", x.dataset.emoji === ctEmoji));
   $("#ct-templates").querySelectorAll(".btn").forEach((b) => b.classList.toggle("primary", b.dataset.tpl === key));
+  // A non-blank template fills in tagline/description/vibe — which live inside
+  // the collapsed "More options". Reveal it so the change isn't invisible.
+  const more = document.querySelector(".more-options");
+  if (more && key !== "blank") more.open = true;
 }
 
 function openCreate() {
@@ -666,6 +701,8 @@ function openCreate() {
   }
   applyModalTheme(ctTheme);
   markVibe();
+  ctCrew = [];           // start with no one pre-selected
+  buildCrewPicker();     // async; fills in once friends load
   scrim.hidden = false;
 }
 function closeCreate() { $("#createScrim").hidden = true; }
@@ -688,6 +725,10 @@ async function createTrip() {
     // Seed the template's starter stops, if any.
     for (const s of ctStops) {
       await api("/api/trips/" + encodeURIComponent(trip.id) + "/stops", "POST", s).catch(() => {});
+    }
+    // Invite the friends picked in "who's coming".
+    for (const uid of ctCrew) {
+      await api("/api/trips/" + encodeURIComponent(trip.id) + "/members", "POST", { userId: uid }).catch(() => {});
     }
     location.href = "/trip/" + encodeURIComponent(trip.slug || trip.id);
   } catch (e) {
@@ -745,6 +786,21 @@ async function createTrip() {
   $("#ct-cancel").addEventListener("click", closeCreate);
   $("#ct-create").addEventListener("click", createTrip);
   $("#createScrim").addEventListener("click", (e) => { if (e.target.id === "createScrim") closeCreate(); });
+
+  // Floating "+ New trip" button (mobile).
+  const fab = $("#fabNew");
+  if (fab) fab.addEventListener("click", openCreate);
+
+  // Toggle a friend in the "who's coming" picker.
+  const crewBox = $("#ct-crew");
+  if (crewBox) crewBox.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-crew]");
+    if (!chip) return;
+    const id = chip.dataset.crew;
+    if (ctCrew.includes(id)) ctCrew = ctCrew.filter((x) => x !== id);
+    else ctCrew.push(id);
+    chip.classList.toggle("on");
+  });
 
   // Add a trip by pasting its code.
   async function addByCode() {

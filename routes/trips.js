@@ -83,6 +83,40 @@ function normalizeBudget(b) {
   };
 }
 
+// --- Packing list ---------------------------------------------------------
+// A shared "what to bring" checklist for the trip. Each item is just a label
+// and a done flag — anyone on the trip can add, tick, or remove items, and the
+// crew sees a progress bar so nothing gets forgotten.
+function cleanPackItem(it) {
+  it = it || {};
+  return {
+    id: it.id || crypto.randomUUID(),
+    label: str(it.label, 80) || "Item",
+    done: !!it.done,
+  };
+}
+function normalizePacking(list) {
+  return (Array.isArray(list) ? list : []).slice(0, 120).map(cleanPackItem);
+}
+
+// --- RSVP -----------------------------------------------------------------
+// Each member can mark themselves "in" (yes), "maybe", or "out" (no) for the
+// trip. Stored as a map of userId -> status; only real statuses are kept.
+const RSVP_STATES = ["yes", "maybe", "no"];
+const cleanRsvp = (v) => (RSVP_STATES.includes(String(v || "").trim()) ? String(v).trim() : "");
+function normalizeRsvps(map, memberIds) {
+  const out = {};
+  if (map && typeof map === "object") {
+    const allowed = Array.isArray(memberIds) ? new Set(memberIds) : null;
+    for (const [id, val] of Object.entries(map)) {
+      const s = cleanRsvp(val);
+      // Only keep RSVPs for people who are actually on the trip.
+      if (s && (!allowed || allowed.has(id))) out[id] = s;
+    }
+  }
+  return out;
+}
+
 // Turn a list of member user-ids into display objects. Only real accounts are
 // members now — the old display-only "crew" name strings (people without an
 // account) are no longer shown. Each member carries their chosen avatar so the
@@ -123,6 +157,9 @@ function publicTrip(t, user) {
     members,
     memberCount: members.length,
     stops: (Array.isArray(t.stops) ? t.stops : []).slice().sort((a, b) => ((a.order ?? 1e9) - (b.order ?? 1e9)) || String(a.time || "").localeCompare(String(b.time || ""))),
+    packing: normalizePacking(t.packing),
+    rsvps: normalizeRsvps(t.rsvps, Array.isArray(t.members) ? t.members : []),
+    myRsvp: (user && t.rsvps && cleanRsvp(t.rsvps[user.id])) || "",
     mapUrl: t.mapUrl || "",
     activity: (Array.isArray(t.activity) ? t.activity : []).slice(-30).reverse(),
     proposals: (Array.isArray(t.proposals) ? t.proposals : []).filter((p) => p.status === "open").reverse(),
@@ -256,7 +293,8 @@ router.post("/:id/leave", requireAuth, (req, res) => {
     return res.status(400).json({ error: "You're not on this trip." });
   }
   const members = (Array.isArray(trip.members) ? trip.members : []).filter((id) => id !== req.user.id);
-  db.updateTrip(trip.id, withActivity(trip, req.user, "left the trip", { members }));
+  const rsvps = normalizeRsvps(trip.rsvps, members); // drop the leaver's RSVP
+  db.updateTrip(trip.id, withActivity(trip, req.user, "left the trip", { members, rsvps }));
   res.json({ ok: true });
 });
 
@@ -420,7 +458,9 @@ router.delete("/:id/members/:userId", requireAuth, (req, res) => {
   }
   const removed = db.findUserById(req.params.userId);
   const members = (Array.isArray(trip.members) ? trip.members : []).filter((id) => id !== req.params.userId);
-  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `removed ${removed ? removed.displayName : "someone"} from the trip`, { members }));
+  // Drop their RSVP too, so it doesn't resurrect if they're re-added later.
+  const rsvps = normalizeRsvps(trip.rsvps, members);
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `removed ${removed ? removed.displayName : "someone"} from the trip`, { members, rsvps }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
@@ -538,6 +578,68 @@ router.delete("/:id/stops/:stopId", requireAuth, (req, res) => {
   const removed = (Array.isArray(trip.stops) ? trip.stops : []).find((s) => s.id === req.params.stopId);
   const stops = (Array.isArray(trip.stops) ? trip.stops : []).filter((s) => s.id !== req.params.stopId);
   const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `removed a stop${removed ? ": " + removed.title : ""}`, { stops }));
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// --- Packing list (any trip member can edit, like the plan) --------------
+
+// Add an item to the packing list.
+router.post("/:id/packing", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the packing list." });
+  const label = str((req.body || {}).label, 80);
+  if (!label) return res.status(400).json({ error: "Name what to pack." });
+  const packing = [...normalizePacking(trip.packing), cleanPackItem({ label, done: false })];
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, `added to packing: ${label}`, { packing }));
+  res.status(201).json({ trip: publicTrip(updated, req.user) });
+});
+
+// Toggle/edit a packing item (tick it off, or rename it).
+router.put("/:id/packing/:itemId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the packing list." });
+  let found = false;
+  const packing = normalizePacking(trip.packing).map((it) => {
+    if (it.id !== req.params.itemId) return it;
+    found = true;
+    return cleanPackItem({
+      id: it.id,
+      label: req.body.label != null ? str(req.body.label, 80) || it.label : it.label,
+      done: req.body.done != null ? !!req.body.done : it.done,
+    });
+  });
+  if (!found) return res.status(404).json({ error: "Packing item not found." });
+  // Ticking items off is routine — keep it out of the changelog so it stays clean.
+  const updated = db.updateTrip(trip.id, { packing });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// Remove a packing item.
+router.delete("/:id/packing/:itemId", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!canEditPlan(trip, req.user)) return res.status(403).json({ error: "Join the trip to edit the packing list." });
+  const packing = normalizePacking(trip.packing).filter((it) => it.id !== req.params.itemId);
+  const updated = db.updateTrip(trip.id, { packing });
+  res.json({ trip: publicTrip(updated, req.user) });
+});
+
+// --- RSVP (mark yourself in / maybe / out) -------------------------------
+
+// Set your own RSVP for the trip. You must be on the trip to RSVP — you can
+// only ever set your own status, never someone else's.
+router.put("/:id/rsvp", requireAuth, (req, res) => {
+  const trip = db.findTripById(req.params.id);
+  if (!trip || !canView(trip, req.user)) return res.status(404).json({ error: "Trip not found." });
+  if (!isMember(trip, req.user)) return res.status(403).json({ error: "Join the trip to RSVP." });
+  const status = cleanRsvp((req.body || {}).status);
+  const rsvps = { ...normalizeRsvps(trip.rsvps, trip.members) };
+  if (status) rsvps[req.user.id] = status;
+  else delete rsvps[req.user.id]; // empty status clears your RSVP
+  const verb = status === "yes" ? "is in 🙌" : status === "maybe" ? "might come 🤔" : status === "no" ? "is out 😕" : "cleared their RSVP";
+  const updated = db.updateTrip(trip.id, withActivity(trip, req.user, verb, { rsvps }));
   res.json({ trip: publicTrip(updated, req.user) });
 });
 
