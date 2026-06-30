@@ -64,6 +64,33 @@ function fmtDate(dateStr) {
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toUpperCase();
 }
 
+// True only when the trip has a real date that's already gone by (strictly
+// before today). No date = "someday" = still upcoming, never past.
+function isPastDate(dateStr) {
+  if (!dateStr) return false;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(y, m - 1, d) < today;
+}
+
+// "09:30" -> "9:30a". Leaves anything that isn't HH:MM untouched.
+function fmtTime(t) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "").trim());
+  if (!m) return esc(t || "");
+  let h = +m[1];
+  const ap = h >= 12 ? "p" : "a";
+  h = h % 12 || 12;
+  return h + ":" + m[2] + ap;
+}
+
+// Trim long text to n chars with an ellipsis (so recap rows stay one-liners).
+function clip(s, n) {
+  s = String(s == null ? "" : s);
+  return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
+}
+
 // --- Board state (filter / sort / pin) + small mobile helpers --------------
 let ME = null;
 let ALL_TRIPS = [];
@@ -133,7 +160,32 @@ function themeAttrs(theme) {
   return `data-theme="${esc(t)}" style="`;
 }
 
-function tripCard(t, i) {
+// A recap strip for past-trip cards: the itinerary's times + locations + notes
+// (a glance at what went down) plus the crew's post-trip notes, if any.
+function tripRecap(t) {
+  const stops = Array.isArray(t.stops) ? t.stops : [];
+  const SHOW = 3;
+  let list = "";
+  if (stops.length) {
+    const rows = stops.slice(0, SHOW).map((s) => {
+      const time = `<span class="trip__recap-time">${s.time ? fmtTime(s.time) : "·"}</span>`;
+      const place = s.place ? ` · ${esc(clip(s.place, 40))}` : "";
+      const note = s.note ? `<div class="trip__recap-note">${esc(clip(s.note, 90))}</div>` : "";
+      return `<li>${time}<span class="trip__recap-what">${esc(clip(s.title, 48))}${place}</span>${note}</li>`;
+    }).join("");
+    const extra = stops.length - SHOW;
+    const more = extra > 0 ? `<li class="trip__recap-more">+${extra} more stop${extra > 1 ? "s" : ""}</li>` : "";
+    list = `<ul class="trip__recap-list">${rows}${more}</ul>`;
+  }
+  const recap = t.recap && t.recap.trim()
+    ? `<div class="trip__recap-summary">📝 ${esc(clip(t.recap.trim(), 180))}</div>` : "";
+  if (!list && !recap) {
+    return `<div class="trip__recap"><div class="trip__recap-empty">No itinerary or notes were logged for this trip.</div></div>`;
+  }
+  return `<div class="trip__recap"><div class="trip__recap-head">Trip recap</div>${list}${recap}</div>`;
+}
+
+function tripCard(t, i, past) {
   const cd = countdown(t.date);
   const tags = (t.tags || []).slice(0, 3).map((x) => `<span class="chip">${esc(x)}</span>`).join("");
   const tilt = TILTS[i % TILTS.length];
@@ -141,7 +193,7 @@ function tripCard(t, i) {
   const cover = t.coverUrl ? `<img class="trip__cover" src="${esc(t.coverUrl)}" alt="" loading="lazy" onerror="this.remove()" />` : "";
   const pinned = getPins().has(t.id);
   return `
-    <a class="trip card-light${pinned ? " is-pinned" : ""}" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
+    <a class="trip card-light${pinned ? " is-pinned" : ""}${past ? " is-past" : ""}" ${themeAttrs(t.theme)}transform:rotate(${tilt})" href="/trip/${encodeURIComponent(t.slug || t.id)}">
       ${cover}
       <div class="trip__head">
         <span class="trip__count ${cd.cls}">${cd.label}</span>
@@ -152,8 +204,9 @@ function tripCard(t, i) {
       <div class="trip__body">
         ${tags ? `<div class="trip__tags">${tags}</div>` : ""}
         ${crewStack(t.members)}
+        ${past ? tripRecap(t) : ""}
         <div class="trip__foot">
-          <span class="trip__open">Open trip →</span>
+          <span class="trip__open">${past ? "See the recap →" : "Open trip →"}</span>
           <button class="trip__pin${pinned ? " on" : ""}" data-pin="${esc(t.id)}" type="button" title="${pinned ? "Unpin" : "Pin to top"}" aria-label="${pinned ? "Unpin trip" : "Pin trip to top"}">${pinned ? "★ Pinned" : "☆ Pin"}</button>
         </div>
       </div>
@@ -196,7 +249,6 @@ function renderBoard() {
   const pins = getPins();
   const q = QUERY.trim().toLowerCase();
 
-  $("#tripCount").textContent = ALL_TRIPS.length ? `${ALL_TRIPS.length} on the board` : "make the first one";
   if (!ALL_TRIPS.length) {
     $("#heroBody").textContent =
       "Nothing here yet — and that's expected. You only see trips you start or get invited to. Hit New trip to plan one, or paste an invite code above to join a friend's.";
@@ -213,11 +265,37 @@ function renderBoard() {
   // Stable second pass: pinned trips first, keeping the sort order within groups.
   list.sort((a, b) => (pins.has(b.id) ? 1 : 0) - (pins.has(a.id) ? 1 : 0));
 
+  // Split the (already filtered/sorted/pinned) list into what's coming up and
+  // what's already wrapped. Past trips read best newest-first regardless of the
+  // board's sort, with pinned ones still floated to the top of their group.
+  const upcoming = list.filter((t) => !isPastDate(t.date));
+  const past = list.filter((t) => isPastDate(t.date));
+  past.sort((a, b) => (b.date || b.createdAt || "").localeCompare(a.date || a.createdAt || ""));
+  past.sort((a, b) => (pins.has(b.id) ? 1 : 0) - (pins.has(a.id) ? 1 : 0));
+
+  $("#tripCount").textContent = upcoming.length
+    ? `${upcoming.length} coming up`
+    : (ALL_TRIPS.length ? "all wrapped" : "make the first one");
+
   const noMatch = q && list.length === 0
     ? `<div class="board-nomatch">No trips match “${esc(QUERY)}”.</div>` : "";
-  grid.innerHTML = noMatch + list.map(tripCard).join("") + addCard();
+  grid.innerHTML = noMatch + upcoming.map((t, i) => tripCard(t, i)).join("") + addCard();
   const add = $("#addCard");
   if (add) add.addEventListener("click", (e) => { e.preventDefault(); openCreate(); });
+
+  const pastSection = $("#pastSection");
+  const pastGrid = $("#pastGrid");
+  if (pastSection && pastGrid) {
+    if (past.length) {
+      pastSection.style.display = "";
+      const pc = $("#pastCount");
+      if (pc) pc.textContent = past.length === 1 ? "1 wrapped" : `${past.length} wrapped`;
+      pastGrid.innerHTML = past.map((t, i) => tripCard(t, i, true)).join("");
+    } else {
+      pastSection.style.display = "none";
+      pastGrid.innerHTML = "";
+    }
+  }
 }
 
 // Pull-to-refresh on touch devices: drag down at the top of the board to reload.
@@ -744,8 +822,9 @@ async function createTrip() {
   const sortEl = $("#boardSort");
   if (sortEl) sortEl.addEventListener("change", (e) => { SORT = e.target.value; renderBoard(); });
 
-  // Pin/unpin from a card without following the card's link.
-  $("#grid").addEventListener("click", (e) => {
+  // Pin/unpin from a card without following the card's link. Bound to both the
+  // upcoming grid and the past-trips grid.
+  const onPinClick = (e) => {
     const pin = e.target.closest("[data-pin]");
     if (!pin) return;
     e.preventDefault();
@@ -753,7 +832,9 @@ async function createTrip() {
     togglePin(pin.dataset.pin);
     haptic();
     renderBoard();
-  });
+  };
+  $("#grid").addEventListener("click", onPinClick);
+  $("#pastGrid").addEventListener("click", onPinClick);
 
   initPullToRefresh();
   await loadTrips(true);

@@ -66,7 +66,30 @@
         </div></div>
       </div>
 
-      <div class="sec-row" id="sec-crew">
+      <!-- Post-trip notes: a shared recap the crew writes after the trip. Shown
+           for trips whose date has passed (or any trip that already has notes). -->
+      <div id="recapSection" style="display:none">
+        <div class="sec-row">
+          <span class="sec-row__label">Post-trip notes</span>
+          <span class="sec-row__rule"></span>
+          <span class="sec-row__count" id="recapBadge"></span>
+        </div>
+        <div class="panel">
+          <div class="panel__body">
+            <div id="recapView" class="trip-recap"></div>
+            <button class="btn small" id="recapEditBtn" type="button" style="margin-top:12px;display:none">✎ Add notes</button>
+            <div id="recapEditRow" style="display:none;margin-top:12px">
+              <textarea class="input" id="recapInput" rows="4" maxlength="4000" placeholder="How did it go? Highlights, what you'd do differently, moments to remember…"></textarea>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <button class="btn primary small" id="recapSave" type="button">Save notes</button>
+                <button class="btn small" id="recapCancel" type="button">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-row">
         <span class="sec-row__label">The crew</span>
         <span class="sec-row__rule"></span>
         <span class="sec-row__count" id="crewCount"></span>

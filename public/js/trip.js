@@ -284,6 +284,43 @@ function renderStopTemplates() {
   box.dataset.built = "1";
 }
 
+// Has the trip's date already passed? (no date / unparsable = not past)
+function isPastTrip() {
+  const d = TRIP && TRIP.date;
+  if (!d) return false;
+  const [y, m, dd] = String(d).split("-").map(Number);
+  if (!y || !m || !dd) return false;
+  return new Date(y, m - 1, dd) < new Date().setHours(0, 0, 0, 0);
+}
+
+// "Post-trip notes": a shared recap the crew adds once the trip wraps. The
+// section shows for past trips, or any trip that already has notes written.
+let RECAP_EDITING = false;
+function renderRecap() {
+  const sec = $("#recapSection");
+  if (!sec) return;
+  if (RECAP_EDITING) return; // don't blow away an open editor on the 5s poll
+  const recap = (TRIP.recap || "").trim();
+  if (!isPastTrip() && !recap) { sec.style.display = "none"; return; }
+  sec.style.display = "";
+  $("#recapBadge").textContent = recap ? "✓ written" : "";
+  const view = $("#recapView");
+  view.style.display = "";
+  if (recap) {
+    view.className = "trip-recap";
+    view.textContent = recap;
+  } else {
+    view.className = "trip-recap empty";
+    view.textContent = TRIP.canEditPlan
+      ? "Trip's wrapped — add some notes. Highlights, what you'd do differently, moments to remember."
+      : "No post-trip notes yet.";
+  }
+  $("#recapEditRow").style.display = "none";
+  const btn = $("#recapEditBtn");
+  btn.style.display = TRIP.canEditPlan ? "" : "none";
+  btn.textContent = recap ? "✎ Edit notes" : "✎ Add notes";
+}
+
 function renderMap() {
   const has = !!TRIP.mapUrl;
   $("#mapState").textContent = has ? "Map is set." : "No map yet.";
@@ -510,6 +547,7 @@ async function reload() {
   const onTrip = trip.isMember || trip.isCreator;
   $("#joinBanner").style.display = onTrip ? "none" : "block";
   renderHead();
+  renderRecap();
   renderCrew();
   renderFriendAdd();
   renderStops();
@@ -838,6 +876,28 @@ function initCollapsible() {
     }
   });
 
+  // Post-trip notes: open the editor (any member)
+  $("#recapEditBtn").addEventListener("click", () => {
+    RECAP_EDITING = true;
+    $("#recapInput").value = TRIP.recap || "";
+    $("#recapView").style.display = "none";
+    $("#recapEditBtn").style.display = "none";
+    $("#recapEditRow").style.display = "block";
+    $("#recapInput").focus();
+  });
+  $("#recapCancel").addEventListener("click", () => {
+    RECAP_EDITING = false;
+    renderRecap();
+  });
+  $("#recapSave").addEventListener("click", async () => {
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/recap", "PUT", { recap: $("#recapInput").value.trim() });
+      RECAP_EDITING = false;
+      await reload();
+      toast("Post-trip notes saved ✓");
+    } catch (e) { toast(e.message, true); }
+  });
+
   // Save the map (any member)
   $("#mapSave").addEventListener("click", async () => {
     try {
@@ -1056,6 +1116,7 @@ function initCollapsible() {
     if (t.includes("reordered")) return { icon: "🔀", cls: "a-edit" };
     if (t.includes("map")) return { icon: "🗺️", cls: "a-edit" };
     if (t.includes("theme") || t.includes("vibe")) return { icon: "🎨", cls: "a-edit" };
+    if (t.includes("notes")) return { icon: "📝", cls: "a-edit" };
     if (t.includes("suggest")) return { icon: "💡", cls: "a-idea" };
     if (t.includes("budget") || t.includes("cost")) return { icon: "💸", cls: "a-money" };
     if (t.includes("migrated")) return { icon: "🛠️", cls: "a-edit" };

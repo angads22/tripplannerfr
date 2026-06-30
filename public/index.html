@@ -80,6 +80,17 @@
         <p id="emptyMsg">Nothing's been shared with you yet.</p>
       </div>
 
+      <!-- Trips whose date has passed: a recap of what went down, with the
+           crew's post-trip notes. Hidden until there's at least one. -->
+      <div id="pastSection" style="display:none">
+        <div class="sec-row">
+          <span class="sec-row__label">Past trips</span>
+          <span class="sec-row__rule"></span>
+          <span class="sec-row__count" id="pastCount"></span>
+        </div>
+        <div id="pastGrid" class="trip-grid"></div>
+      </div>
+
       <div class="foot-note">
         Friends only. Everyone here signed in with the shared invite code, and only sees the trips they've been given access to.
       </div>
