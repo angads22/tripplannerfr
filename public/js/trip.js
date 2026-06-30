@@ -131,9 +131,25 @@ function renderHead() {
     <div class="hero__body" style="margin-top:12px">Started by ${esc(TRIP.creatorName || "someone")}.</div>`;
 }
 
+// RSVP label/badge text for a status.
+const RSVP_WORD = { yes: "in", maybe: "maybe", no: "out" };
+
 function renderCrew() {
   $("#crewCount").textContent = `${TRIP.memberCount} ${TRIP.memberCount === 1 ? "person" : "people"}`;
   const canRemove = TRIP.canRemoveMembers;
+  const rsvps = TRIP.rsvps || {};
+  const onTrip = TRIP.isMember || TRIP.isCreator;
+
+  // Tally line: how many are in / maybe / out, plus who hasn't replied.
+  let yes = 0, maybe = 0, no = 0;
+  (TRIP.members || []).forEach((m) => { const r = rsvps[m.id]; if (r === "yes") yes++; else if (r === "maybe") maybe++; else if (r === "no") no++; });
+  const pending = Math.max(0, TRIP.memberCount - yes - maybe - no);
+  $("#rsvpTally").innerHTML = TRIP.memberCount ? `
+      <span class="rsvp-tally__chip"><b>${yes}</b> in</span>
+      <span class="rsvp-tally__chip"><b>${maybe}</b> maybe</span>
+      <span class="rsvp-tally__chip"><b>${no}</b> out</span>
+      ${pending ? `<span class="rsvp-tally__chip"><b>${pending}</b> no reply</span>` : ""}` : "";
+
   $("#crewList").innerHTML = (TRIP.members || []).map((m) => {
     const removable = canRemove && m.id && m.id !== TRIP.creatorId;
     const isCreator = m.id && m.id === TRIP.creatorId;
@@ -150,11 +166,25 @@ function renderCrew() {
       else if (REL.incoming.has(m.id)) friendBtn = `<button class="mini-btn accent" data-acceptfriend="${esc(m.id)}">Accept friend</button>`;
       else friendBtn = `<button class="mini-btn" data-addfriend-req="${esc(m.id)}">+ Add friend</button>`;
     }
+    // RSVP: you get interactive in/maybe/out on your own row; everyone else
+    // shows a read-only badge of what they picked.
+    const r = rsvps[m.id] || "";
+    let rsvpUI = "";
+    if (isMe && onTrip) {
+      rsvpUI = `<div class="rsvp-btns">
+          <button class="rsvp-btn${r === "yes" ? " on-yes" : ""}" data-rsvp="yes" title="I'm in">IN</button>
+          <button class="rsvp-btn${r === "maybe" ? " on-maybe" : ""}" data-rsvp="maybe" title="Maybe">MAYBE</button>
+          <button class="rsvp-btn${r === "no" ? " on-no" : ""}" data-rsvp="no" title="I'm out">OUT</button>
+        </div>`;
+    } else if (r) {
+      rsvpUI = `<span class="rsvp-badge ${r}">${RSVP_WORD[r]}</span>`;
+    }
     return `
       <div class="crew-item">
         <span class="crew-item__face" style="${faceStyle}">${face}</span>
         <span class="crew-item__name">${esc(m.displayName)}</span>
         ${isCreator ? '<span class="crew-item__tag">host</span>' : ""}
+        ${rsvpUI}
         ${friendBtn}
         ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove from trip">✕</button>` : ""}
       </div>`;
@@ -261,6 +291,29 @@ function renderMap() {
   open.style.display = has ? "" : "none";
   if (has) open.href = TRIP.mapUrl;
   $("#mapEditRow").style.display = TRIP.canEditPlan ? "flex" : "none";
+}
+
+// Shared "what to bring" checklist with a progress bar. Anyone on the trip can
+// add, tick, or remove items.
+function renderPacking() {
+  const items = TRIP.packing || [];
+  const done = items.filter((p) => p.done).length;
+  $("#packCount").textContent = items.length ? `${done}/${items.length} packed` : "";
+  const prog = $("#packProgress");
+  if (items.length) {
+    prog.style.display = "";
+    $("#packBar").style.width = Math.round((done / items.length) * 100) + "%";
+  } else {
+    prog.style.display = "none";
+  }
+  const canEdit = TRIP.canEditPlan;
+  $("#packList").innerHTML = items.map((p) => `
+      <div class="crew-item${p.done ? " pack-done" : ""}" data-pack="${esc(p.id)}">
+        <button class="pack-check${p.done ? " on" : ""}" data-packtoggle="${esc(p.id)}" ${canEdit ? "" : "disabled"} title="${p.done ? "Packed" : "Mark packed"}" aria-label="Toggle packed">${p.done ? "✓" : ""}</button>
+        <span class="crew-item__name" style="flex:1">${esc(p.label)}</span>
+        ${canEdit ? `<button class="crew-item__x" data-packdel="${esc(p.id)}" title="Remove">✕</button>` : ""}
+      </div>`).join("") || '<p class="row__meta">Nothing on the packing list yet. Add what to bring below.</p>';
+  $("#packAddRow").style.display = canEdit ? "flex" : "none";
 }
 
 // --- Group chat -----------------------------------------------------------
@@ -460,6 +513,7 @@ async function reload() {
   renderCrew();
   renderFriendAdd();
   renderStops();
+  renderPacking();
   renderMap();
   renderBudget();
   renderProposals();
@@ -552,8 +606,24 @@ function initCollapsible() {
     }
   });
 
-  // Crew list: remove a member (creator only), or add/accept a friend.
+  // Crew list: set your own RSVP, remove a member, or add/accept a friend.
   $("#crewList").addEventListener("click", async (e) => {
+    // RSVP yourself in / maybe / out (only ever sets your own status).
+    const rsvpBtn = e.target.closest("[data-rsvp]");
+    if (rsvpBtn) {
+      haptic();
+      const want = rsvpBtn.dataset.rsvp;
+      // Tapping your current status again clears it back to "no reply".
+      const status = TRIP.myRsvp === want ? "" : want;
+      try {
+        const { trip } = await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/rsvp", "PUT", { status });
+        TRIP = trip;
+        LAST_TRIP_SIG = ""; // force the next poll/reload to redraw
+        renderCrew();
+        toast(status === "yes" ? "You're in 🙌" : status === "maybe" ? "Marked maybe" : status === "no" ? "Marked out" : "RSVP cleared");
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
     // Send a friend request to someone on the trip.
     const addFriend = e.target.closest("[data-addfriend-req]");
     if (addFriend) {
@@ -778,6 +848,49 @@ function initCollapsible() {
     } catch (e) {
       toast(e.message, true);
     }
+  });
+
+  // Packing: add an item (any member)
+  async function addPack() {
+    const label = $("#pk-label").value.trim();
+    if (!label) return;
+    $("#pk-label").value = "";
+    try {
+      await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/packing", "POST", { label });
+      await reload();
+    } catch (e) { toast(e.message, true); $("#pk-label").value = label; }
+  }
+  $("#pk-add").addEventListener("click", addPack);
+  $("#pk-label").addEventListener("keydown", (e) => { if (e.key === "Enter") addPack(); });
+
+  // Packing: tick an item off, or remove it (any member)
+  $("#packList").addEventListener("click", async (e) => {
+    const toggle = e.target.closest("[data-packtoggle]");
+    const del = e.target.closest("[data-packdel]");
+    if (toggle) {
+      haptic();
+      const item = (TRIP.packing || []).find((p) => p.id === toggle.dataset.packtoggle);
+      try {
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/packing/" + encodeURIComponent(toggle.dataset.packtoggle), "PUT", { done: item ? !item.done : true });
+        await reload();
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
+    if (del) {
+      try {
+        await api("/api/trips/" + encodeURIComponent(TRIP.id) + "/packing/" + encodeURIComponent(del.dataset.packdel), "DELETE");
+        await reload();
+      } catch (err) { toast(err.message, true); }
+    }
+  });
+
+  // Mobile section quick-nav: smooth-scroll to a section.
+  $("#secNav").addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-sec]");
+    if (!chip) return;
+    e.preventDefault();
+    const target = document.getElementById(chip.dataset.sec);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   // Budget: add a cost (any member)
