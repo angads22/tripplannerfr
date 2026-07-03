@@ -81,7 +81,12 @@ app.use(
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: { httpOnly: true, sameSite: "lax", maxAge: config.SESSION_MAX_AGE },
+    // secure: "auto" + trust proxy => the cookie is marked Secure when the
+    // request arrives over HTTPS (through the Cloudflare tunnel), but stays
+    // usable over plain HTTP on the LAN. httpOnly keeps it out of reach of JS;
+    // sameSite "lax" blocks cross-site POST/PUT/DELETE (CSRF) while allowing
+    // normal top-level navigation.
+    cookie: { httpOnly: true, sameSite: "lax", secure: "auto", maxAge: config.SESSION_MAX_AGE },
   })
 );
 
