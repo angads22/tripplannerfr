@@ -823,6 +823,21 @@ router.get("/:id/files", requireAuth, (req, res) => {
   }
 });
 
+// Allowed file extensions for the shared drive. Intentionally excludes
+// executable and web-renderable types (html, js, svg, php, etc.) that could
+// run code in the browser or on the server if served back — the serving route
+// also forces Content-Disposition on non-images as a second layer.
+const ALLOWED_FILE_EXTS = new Set([
+  ".jpg", ".jpeg", ".png", ".gif", ".webp",          // images
+  ".pdf", ".txt", ".csv",                             // documents
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", // Office
+  ".zip",                                             // archives
+  ".mp3", ".mp4", ".mov",                             // media
+]);
+
+// 20 MB decoded limit (~27 MB as base64).
+const MAX_FILE_B64_LEN = 27 * 1024 * 1024;
+
 // Upload a file to the trip's shared drive (any member).
 router.post("/:id/files", requireAuth, (req, res) => {
   const trip = db.findTripById(req.params.id);
@@ -833,7 +848,24 @@ router.post("/:id/files", requireAuth, (req, res) => {
   if (!filename || !data) {
     return res.status(400).json({ error: "Filename and file data required." });
   }
-  const safe = path.basename(String(filename));
+
+  // Sanitise the filename: strip any path components and verify it isn't empty.
+  const safe = path.basename(String(filename)).trim();
+  if (!safe || safe === "." || safe === "..") {
+    return res.status(400).json({ error: "Invalid filename." });
+  }
+
+  // Reject disallowed extensions before touching disk.
+  const ext = path.extname(safe).toLowerCase();
+  if (!ALLOWED_FILE_EXTS.has(ext)) {
+    return res.status(400).json({ error: `File type "${ext || "(none)"}" is not allowed. Supported: images, PDF, Office documents, plain text, CSV, ZIP, and common media files.` });
+  }
+
+  // Enforce the size limit on the base64 payload before decoding.
+  if (String(data).length > MAX_FILE_B64_LEN) {
+    return res.status(413).json({ error: "File is too large — 20 MB maximum." });
+  }
+
   const dir = getTripsFileDir(trip.id);
   try {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

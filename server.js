@@ -9,7 +9,7 @@ const FileStore = require("session-file-store")(session);
 const config = require("./lib/config");
 const db = require("./lib/db");
 const { seedIfEmpty, tidyExistingTrips, ensurePlannedContent } = require("./lib/seed");
-const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
+const { requirePage, requireAdmin, canView, isMember } = require("./lib/auth-middleware");
 const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
 const { securityHeaders } = require("./lib/security-headers");
 const { rateLimit } = require("./lib/rate-limit");
@@ -218,15 +218,34 @@ app.use(
   })
 );
 
-// Serve trip file uploads.
+// Serve trip file uploads. The shared drive is member-only (upload/list/delete
+// all require membership), so serving must be gated too — otherwise anyone who
+// guesses a trip id + filename could pull a private file without logging in.
+// Non-image files are forced to download (Content-Disposition: attachment) so
+// an uploaded HTML/SVG can't render and execute script in the app's origin.
+const INLINE_IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
 app.get("/trip-files/:tripId/:filename", (req, res) => {
-  const file = path.join(DATA_DIR, `trip-${req.params.tripId}`, "files", path.basename(req.params.filename));
-  if (!file.startsWith(path.join(DATA_DIR, `trip-${req.params.tripId}`, "files"))) {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).send("Please log in.");
+  }
+  const user = db.findUserById(req.session.userId);
+  const trip = db.findTripById(req.params.tripId);
+  if (!user || !trip || (!isMember(trip, user) && !user.isAdmin)) {
+    // Don't reveal whether the trip/file exists to non-members.
+    return res.status(404).send("Not found");
+  }
+  const basename = path.basename(req.params.filename);
+  const filesDir = path.join(DATA_DIR, `trip-${req.params.tripId}`, "files");
+  const file = path.join(filesDir, basename);
+  if (!file.startsWith(filesDir)) {
     return res.status(403).send("Forbidden");
   }
   if (!fs.existsSync(file)) {
     return res.status(404).send("Not found");
   }
+  const ext = path.extname(basename).toLowerCase();
+  const disposition = INLINE_IMAGE_EXTS.has(ext) ? "inline" : "attachment";
+  res.setHeader("Content-Disposition", `${disposition}; filename="${encodeURIComponent(basename)}"`);
   res.sendFile(file);
 });
 

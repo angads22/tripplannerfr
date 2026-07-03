@@ -2,7 +2,15 @@
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
-const nextUrl = params.get("next") || "/";
+// Only ever redirect to a same-origin path. `next` comes from the URL, so an
+// attacker could otherwise pass next=javascript:... (runs script in our origin
+// when assigned to location.href) or next=//evil.com / https://evil (open
+// redirect for phishing). Require a leading "/" that isn't "//" or "/\".
+function safeNext(v) {
+  if (typeof v !== "string" || v[0] !== "/" || v[1] === "/" || v[1] === "\\") return "/";
+  return v;
+}
+const nextUrl = safeNext(params.get("next"));
 
 let needsSetup = false;
 
