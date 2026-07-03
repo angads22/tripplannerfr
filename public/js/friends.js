@@ -15,6 +15,10 @@ function esc(s) {
 function initials(name) {
   return (name || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
+// Strip characters that could break out of an inline style attribute / url().
+function cssSafe(s) {
+  return String(s == null ? "" : s).replace(/["'()\\<>]/g, "");
+}
 const AV_COLORS = ["#E23B26", "#2D6CA2", "#3E8E5A", "#F4B528", "#1C1815", "#C8741C"];
 function avatarColor(seed) {
   let h = 0;
@@ -36,8 +40,8 @@ async function api(path, method, body) {
 
 function personRow(u, actions) {
   const faceStyle = u.avatarImage
-    ? `background:url('${u.avatarImage}') center/cover no-repeat`
-    : `background:${u.avatarColor || avatarColor(u.displayName)}`;
+    ? `background:url('${cssSafe(u.avatarImage)}') center/cover no-repeat`
+    : `background:${cssSafe(u.avatarColor) || avatarColor(u.displayName)}`;
   const face = u.avatarImage ? "" : (u.avatarEmoji || esc(initials(u.displayName)));
   return `
     <div class="crew-item">

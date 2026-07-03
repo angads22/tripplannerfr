@@ -29,6 +29,11 @@ function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// Strip characters that could break out of an inline style attribute / url().
+function cssSafe(s) {
+  return String(s == null ? "" : s).replace(/["'()\\<>]/g, "");
+}
+
 function initials(name) {
   return (name || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
@@ -143,9 +148,9 @@ function crewStack(members) {
   const faces = members.slice(0, 5).map((c) => {
     const name = (c && (c.displayName || c.name)) || c || "?";
     if (c && c.avatarImage) {
-      return `<span class="crew__face" style="background:url('${c.avatarImage}') center/cover no-repeat" title="${esc(name)}"></span>`;
+      return `<span class="crew__face" style="background:url('${cssSafe(c.avatarImage)}') center/cover no-repeat" title="${esc(name)}"></span>`;
     }
-    const color = (c && c.avatarColor) || avatarColor(name);
+    const color = cssSafe(c && c.avatarColor) || avatarColor(name);
     const face = (c && c.avatarEmoji) || esc(initials(name));
     return `<span class="crew__face" style="background:${color}" title="${esc(name)}">${face}</span>`;
   }).join("");
@@ -614,8 +619,8 @@ async function buildCrewPicker() {
   box.innerHTML = MY_FRIENDS.map((f) => {
     const sel = ctCrew.includes(f.id);
     const faceStyle = f.avatarImage
-      ? `background:url('${f.avatarImage}') center/cover no-repeat`
-      : `background:${f.avatarColor || avatarColor(f.displayName)}`;
+      ? `background:url('${cssSafe(f.avatarImage)}') center/cover no-repeat`
+      : `background:${cssSafe(f.avatarColor) || avatarColor(f.displayName)}`;
     const face = f.avatarImage ? "" : (f.avatarEmoji || esc(initials(f.displayName)));
     return `<button type="button" class="crew-pick__chip${sel ? " on" : ""}" data-crew="${esc(f.id)}">
       <span class="crew-pick__face" style="${faceStyle}">${face}</span>${esc(f.displayName)}</button>`;
