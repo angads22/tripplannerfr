@@ -36,6 +36,30 @@ const passwordChangeLimit = rateLimit({
   message: "Too many password-change attempts — wait 15 minutes and try again.",
 });
 
+// A data: URL that is genuinely an image and nothing more. Anchored at BOTH
+// ends: the prefix must be an allowed image type and the body must be pure
+// base64 (so no quotes/parentheses/markup can survive to break out of the
+// `style="background:url('...')"` the client renders it into).
+function isValidImageDataUrl(s) {
+  return /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(String(s || ""));
+}
+
+// Normalise a user-supplied avatar colour to a safe CSS colour, or "" if it
+// isn't one. Accepts #rgb/#rgba/#rrggbb/#rrggbbaa hex and a small set of CSS
+// colour keywords. Rejects everything else — this value goes straight into an
+// inline style attribute, so it can never contain quotes, parentheses, etc.
+const COLOR_KEYWORDS = new Set([
+  "red", "blue", "green", "purple", "orange", "pink", "teal", "gold",
+  "black", "white", "gray", "grey", "yellow", "brown", "navy", "coral",
+]);
+function cleanColor(v) {
+  const s = String(v == null ? "" : v).trim().toLowerCase();
+  if (!s) return "";
+  if (/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(s)) return s;
+  if (COLOR_KEYWORDS.has(s)) return s;
+  return "";
+}
+
 function publicUser(u) {
   if (!u) return null;
   return {
@@ -167,7 +191,16 @@ router.put("/me", requireSelf, passwordChangeLimit, ah(async (req, res) => {
     patch.displayName = d.slice(0, 60);
   }
   if (avatarEmoji != null) patch.avatarEmoji = String(avatarEmoji).trim().slice(0, 8);
-  if (avatarColor != null) patch.avatarColor = String(avatarColor).trim().slice(0, 16);
+  if (avatarColor != null) {
+    // avatarColor is rendered into inline `style="..."` attributes on the
+    // client, so it MUST be a well-formed CSS colour and nothing else — an
+    // unrestricted string here is a stored-XSS / attribute-injection vector.
+    const color = cleanColor(avatarColor);
+    if (avatarColor !== "" && color === "") {
+      return res.status(400).json({ error: "Pick a valid colour (e.g. #E23B26)." });
+    }
+    patch.avatarColor = color;
+  }
   if (req.body.bio != null) patch.bio = String(req.body.bio).trim().slice(0, 280);
 
   // Profile photo: a small client-resized image stored as a data URL (this app
@@ -177,10 +210,14 @@ router.put("/me", requireSelf, passwordChangeLimit, ah(async (req, res) => {
     const img = String(req.body.avatarImage).trim();
     if (img === "") {
       patch.avatarImage = "";
-    } else if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(img)) {
-      return res.status(400).json({ error: "That doesn't look like an image." });
     } else if (img.length > 800000) {
       return res.status(400).json({ error: "That image is too large — try a smaller one." });
+    } else if (!isValidImageDataUrl(img)) {
+      // The whole string is checked (prefix AND a strict base64 body), because
+      // this value is interpolated into `style="background:url('...')"` on the
+      // client — anything past the prefix that isn't base64 could break out of
+      // the attribute and inject markup (stored XSS).
+      return res.status(400).json({ error: "That doesn't look like an image." });
     } else {
       patch.avatarImage = img;
     }

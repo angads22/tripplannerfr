@@ -54,6 +54,12 @@ function toast(msg, isErr) {
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+// Strip characters that could break out of an inline style attribute or a
+// url(...) value. Defence-in-depth for avatar colours/images (the server also
+// validates these on save).
+function cssSafe(s) {
+  return String(s == null ? "" : s).replace(/["'()\\<>]/g, "");
+}
 function initials(name) {
   return (name || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
@@ -122,8 +128,8 @@ function renderCrew() {
     const isCreator = m.id && m.id === TRIP.creatorId;
     const isMe = ME && m.id === ME.id;
     const faceStyle = m.avatarImage
-      ? `background:url('${m.avatarImage}') center/cover no-repeat`
-      : `background:${m.avatarColor || avatarColor(m.displayName)}`;
+      ? `background:url('${cssSafe(m.avatarImage)}') center/cover no-repeat`
+      : `background:${cssSafe(m.avatarColor) || avatarColor(m.displayName)}`;
     const face = m.avatarImage ? "" : (m.avatarEmoji || esc(initials(m.displayName)));
     // Offer to add this person as a friend right from the crew list.
     let friendBtn = "";
@@ -161,8 +167,8 @@ async function renderFriendAdd() {
   box.style.display = "block";
   $("#friendChips").innerHTML = addable.map((f) => {
     const faceStyle = f.avatarImage
-      ? `background:url('${f.avatarImage}') center/cover no-repeat`
-      : `background:${f.avatarColor || avatarColor(f.displayName)}`;
+      ? `background:url('${cssSafe(f.avatarImage)}') center/cover no-repeat`
+      : `background:${cssSafe(f.avatarColor) || avatarColor(f.displayName)}`;
     const face = f.avatarImage ? "" : (f.avatarEmoji || esc(initials(f.displayName)));
     return `<button class="friend-chip" data-addfriend="${esc(f.id)}" title="Add ${esc(f.displayName)} to the trip">
       <span class="friend-chip__face" style="${faceStyle}">${face}</span>

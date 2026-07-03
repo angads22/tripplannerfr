@@ -9,7 +9,7 @@ const FileStore = require("session-file-store")(session);
 const config = require("./lib/config");
 const db = require("./lib/db");
 const { seedIfEmpty, tidyExistingTrips, ensurePlannedContent } = require("./lib/seed");
-const { requirePage, requireAdmin, canView } = require("./lib/auth-middleware");
+const { requirePage, requireAdmin, canView, isMember } = require("./lib/auth-middleware");
 const { DATA_DIR, PUBLIC_DIR, CONTENT_DIR } = require("./lib/paths");
 const { rateLimit } = require("./lib/rate-limit");
 
@@ -179,6 +179,18 @@ app.use(
 // embedded scripts would execute in the user's origin.
 const INLINE_IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
 app.get("/trip-files/:tripId/:filename", (req, res) => {
+  // The shared drive is member-only (upload/list/delete all require membership),
+  // so serving must be gated too — otherwise anyone who guesses a trip id +
+  // filename could pull a private file without logging in.
+  if (!req.session || !req.session.userId) {
+    return res.status(401).send("Please log in.");
+  }
+  const user = db.findUserById(req.session.userId);
+  const trip = db.findTripById(req.params.tripId);
+  if (!user || !trip || (!isMember(trip, user) && !user.isAdmin)) {
+    // Don't reveal whether the trip/file exists to non-members.
+    return res.status(404).send("Not found");
+  }
   const basename = path.basename(req.params.filename);
   const file = path.join(DATA_DIR, `trip-${req.params.tripId}`, "files", basename);
   if (!file.startsWith(path.join(DATA_DIR, `trip-${req.params.tripId}`, "files"))) {
