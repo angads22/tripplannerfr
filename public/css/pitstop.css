@@ -724,8 +724,17 @@ html { -webkit-text-size-adjust: 100%; }
 
   /* Icon-only buttons (remove/delete/close) are frequently tapped — give them
      a real touch target on mobile without changing the glyph size. */
-  .crew-item__x, .activity-item__x, .btn-close {
+  .activity-item__x, .btn-close {
     min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  /* .crew-item__x rows (e.g. stop actions) can pack up to four of these side
+     by side — a hard min-width pushes later buttons past the panel's edge,
+     where overflow:hidden clips them. Grow the tap target, not the layout
+     box: an absolutely-positioned pseudo-element doesn't affect flex sizing. */
+  .crew-item__x { position: relative; }
+  .crew-item__x::after {
+    content: ""; position: absolute; top: 50%; left: 50%;
+    width: 40px; height: 40px; transform: translate(-50%, -50%);
   }
   .msg__del { min-width: 28px; min-height: 28px; }
 
