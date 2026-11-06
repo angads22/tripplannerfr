@@ -130,7 +130,7 @@ function renderHead() {
       <div class="kicker">${esc(cd.label)}</div>
     </div>
     <div style="font-size:38px;line-height:1;margin-top:6px">${esc(TRIP.emoji || "🚗")}</div>
-    <div class="hero__title" style="font-size:clamp(34px,9vw,52px);margin:8px 0 6px">${esc(TRIP.title)}</div>
+    <h1 class="hero__title" style="font-size:clamp(34px,9vw,52px);margin:8px 0 6px">${esc(TRIP.title)}</h1>
     <div class="trip__date" style="color:var(--muted-dark)">${[fmtDate(TRIP.date), esc(TRIP.subtitle || "")].filter(Boolean).join(" · ").toUpperCase()}</div>
     ${tags ? `<div class="trip__tags" style="margin-top:12px">${tags}</div>` : ""}
     ${desc}
@@ -192,7 +192,7 @@ function renderCrew() {
         ${isCreator ? '<span class="crew-item__tag">host</span>' : ""}
         ${rsvpUI}
         ${friendBtn}
-        ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove from trip">✕</button>` : ""}
+        ${removable ? `<button class="crew-item__x" data-remove="${esc(m.id)}" title="Remove from trip" aria-label="Remove ${esc(m.displayName)} from the trip">✕</button>` : ""}
       </div>`;
   }).join("") || '<p class="row__meta">No one yet.</p>';
 
@@ -264,7 +264,7 @@ function renderStops() {
   $("#stopList").innerHTML = stops.map((s, i) => (s.id === EDIT_STOP ? stopEditRow(s) : `
       <div class="crew-item stop-row${s.done ? " stop-done" : ""}" data-stop="${esc(s.id)}" ${canEdit ? 'draggable="true"' : ""}>
         ${canEdit ? '<span class="grip" title="Drag to reorder" aria-hidden="true"></span>' : ""}
-        <input type="checkbox" class="stop-check" data-check="${esc(s.id)}" ${s.done ? "checked" : ""} ${canEdit ? "" : "disabled"} title="Check off" />
+        <input type="checkbox" class="stop-check" data-check="${esc(s.id)}" ${s.done ? "checked" : ""} ${canEdit ? "" : "disabled"} title="Check off" aria-label="Mark '${esc(s.title)}' as done" />
         <span class="crew-item__face" style="background:var(--accent);font-size:11px">${esc(s.time || "·")}</span>
         <div style="flex:1">
           <div class="crew-item__name stop-title">${esc(s.title)}</div>
@@ -272,10 +272,10 @@ function renderStops() {
           ${s.place ? `<a class="crew-item__tag" style="color:var(--accent)" href="${mapsSearch(s.place)}" target="_blank" rel="noopener">${esc(s.place)}</a>` : ""}
         </div>
         ${canEdit ? `
-          <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button>
-          <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="down" title="Move down" ${i === stops.length - 1 ? "disabled" : ""}>↓</button>
-          <button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit">✎</button>
-          <button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove">✕</button>` : ""}
+          <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="up" title="Move up" aria-label="Move '${esc(s.title)}' up" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="crew-item__x mv" data-move="${esc(s.id)}" data-dir="down" title="Move down" aria-label="Move '${esc(s.title)}' down" ${i === stops.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="crew-item__x" data-editstop="${esc(s.id)}" title="Edit" aria-label="Edit '${esc(s.title)}'">✎</button>
+          <button class="crew-item__x" data-delstop="${esc(s.id)}" title="Remove" aria-label="Remove '${esc(s.title)}'">✕</button>` : ""}
       </div>`)).join("") || '<p class="row__meta">No stops yet. Add the first one below.</p>';
   $("#addStopRow").style.display = canEdit ? "flex" : "none";
   const tw = $("#stopTemplatesWrap");
@@ -352,9 +352,9 @@ function renderPacking() {
   const canEdit = TRIP.canEditPlan;
   $("#packList").innerHTML = items.map((p) => `
       <div class="crew-item${p.done ? " pack-done" : ""}" data-pack="${esc(p.id)}">
-        <button class="pack-check${p.done ? " on" : ""}" data-packtoggle="${esc(p.id)}" ${canEdit ? "" : "disabled"} title="${p.done ? "Packed" : "Mark packed"}" aria-label="Toggle packed">${p.done ? "✓" : ""}</button>
+        <button class="pack-check${p.done ? " on" : ""}" data-packtoggle="${esc(p.id)}" ${canEdit ? "" : "disabled"} title="${p.done ? "Packed" : "Mark packed"}" aria-label="Mark '${esc(p.label)}' as ${p.done ? "not packed" : "packed"}">${p.done ? "✓" : ""}</button>
         <span class="crew-item__name" style="flex:1">${esc(p.label)}</span>
-        ${canEdit ? `<button class="crew-item__x" data-packdel="${esc(p.id)}" title="Remove">✕</button>` : ""}
+        ${canEdit ? `<button class="crew-item__x" data-packdel="${esc(p.id)}" title="Remove" aria-label="Remove '${esc(p.label)}' from packing list">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta">Nothing on the packing list yet. Add what to bring below.</p>';
   $("#packAddRow").style.display = canEdit ? "flex" : "none";
 }
@@ -380,7 +380,7 @@ async function loadChat() {
         const canDel = mine || TRIP.canManage;
         return `<div class="msg${mine ? " mine" : ""}">
           ${mine ? "" : `<span class="msg__who">${esc(m.userName)}</span>`}
-          <span class="msg__bubble">${esc(m.text)}${canDel ? `<button class="msg__del" data-delmsg="${esc(m.id)}" title="Delete">×</button>` : ""}</span>
+          <span class="msg__bubble">${esc(m.text)}${canDel ? `<button class="msg__del" data-delmsg="${esc(m.id)}" title="Delete" aria-label="Delete this message">×</button>` : ""}</span>
           <span class="msg__time">${esc(relTime(m.ts))}</span>
         </div>`;
       }).join("")
@@ -406,7 +406,7 @@ async function loadFiles() {
           <div class="crew-item__name"><a href="/trip-files/${TRIP.id}/${encodeURIComponent(f.name)}" target="_blank">${esc(f.name)}</a></div>
         </div>
         <div class="row__actions">
-          <button class="crew-item__x" data-delfile="${esc(f.name)}" title="Delete">×</button>
+          <button class="crew-item__x" data-delfile="${esc(f.name)}" title="Delete" aria-label="Delete '${esc(f.name)}'">×</button>
         </div>
       </div>`).join("")
     : '<p class="row__meta">No files shared yet.</p>';
@@ -477,7 +477,7 @@ function renderBudget() {
           <div class="crew-item__name">${esc(i.label)}<span class="budget-kind ${i.kind === "group" ? "group" : ""}">${i.kind === "group" ? "split" : "each"}</span></div>
           <div class="crew-item__tag">${fmt(i.amount)}${i.kind === "group" ? ` · ${fmt(share)}/person` : " per person"}</div>
         </div>
-        ${canEdit ? `<button class="crew-item__x" data-delbg="${esc(i.id)}" title="Remove">✕</button>` : ""}
+        ${canEdit ? `<button class="crew-item__x" data-delbg="${esc(i.id)}" title="Remove" aria-label="Remove cost '${esc(i.label)}'">✕</button>` : ""}
       </div>`;
   };
   const groupBlock = groupItems.length ? `
@@ -510,7 +510,7 @@ function renderProposals() {
           <div class="crew-item__name">${esc(p.text)}</div>
           <div class="crew-item__tag">${esc(p.userName)} · ${esc(relTime(p.ts))}</div>
         </div>
-        ${canResolve ? `<button class="btn small" data-done="${esc(p.id)}" title="Mark done">✓</button><button class="crew-item__x" data-dismiss="${esc(p.id)}" title="Dismiss">✕</button>` : ""}
+        ${canResolve ? `<button class="btn small" data-done="${esc(p.id)}" title="Mark done" aria-label="Mark suggestion done">✓</button><button class="crew-item__x" data-dismiss="${esc(p.id)}" title="Dismiss" aria-label="Dismiss suggestion">✕</button>` : ""}
       </div>`).join("") || '<p class="row__meta">No open suggestions.</p>';
   // anyone on the trip can suggest
   $("#propAddRow").style.display = TRIP.canAddMembers ? "flex" : "none";
@@ -1144,7 +1144,7 @@ function initCollapsible() {
           <div class="activity-item__text"><strong>${esc(a.userName)}</strong> ${esc(a.text)}</div>
           <div class="activity-item__time">${esc(relTime(a.ts))}</div>
         </div>
-        ${canDeleteActivity ? `<button class="activity-item__x" data-delactivity="${esc(a.id)}" title="Delete">✕</button>` : ""}
+        ${canDeleteActivity ? `<button class="activity-item__x" data-delactivity="${esc(a.id)}" title="Delete" aria-label="Delete activity entry">✕</button>` : ""}
       </div>`;
     }).join("") || '<p class="row__meta" style="padding:12px">Nothing yet — changes to the trip show up here.</p>';
   }

@@ -62,6 +62,8 @@ document.querySelectorAll(".pw-toggle").forEach((btn) => {
     const show = input.type === "password";
     input.type = show ? "text" : "password";
     btn.textContent = show ? "🙈" : "👁️";
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    btn.setAttribute("aria-pressed", show ? "true" : "false");
   });
 });
 

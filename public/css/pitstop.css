@@ -1,5 +1,5 @@
 /* Pitstop design system - warm road-trip aesthetic
-   Fonts: Anton (display), Archivo (UI), Space Mono (accent)
+   Fonts: Anton (display), Archivo (UI), Permanent Marker (accent)
    Accent: Highway Red #E23B26 */
 
 :root {
@@ -8,8 +8,8 @@
   --on-dark: #F4ECDD;
   --muted-dark: #B7A98F;
   --muted-dark-2: #CBBDA2;
-  --muted-light: #8C7E68;
-  --muted-light-2: #9A8868;
+  --muted-light: #6E624D;
+  --muted-light-2: #6F604A;
   --accent: #E23B26;
   --amber: #F4B528;
   --green: #2F8F5B;
@@ -142,7 +142,7 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
   font-size: 25px; transform: rotate(-4deg); flex: none;
 }
 .logo__name { font-family: "Anton", sans-serif; font-size: 23px; letter-spacing: .02em; line-height: 1; text-transform: uppercase; }
-.logo__tag { font-family: var(--font-mono); font-size: 12px; color: var(--muted-light-2); margin-top: 3px; }
+.logo__tag { font-family: var(--font-accent); font-size: 12px; color: var(--muted-light-2); margin-top: 3px; }
 
 /* Cards */
 .card-dark {
@@ -159,7 +159,7 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 }
 
 /* Type helpers */
-.kicker { font-family: var(--font-mono); font-size: 14px; color: var(--amber); }
+.kicker { font-family: var(--font-accent); font-size: 14px; color: var(--amber); }
 .display { font-family: "Anton", sans-serif; text-transform: uppercase; line-height: .95; }
 .flabel { font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-dark); }
 
@@ -179,7 +179,7 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
   background: rgba(244,236,221,.08); color: var(--on-dark);
 }
 .in-dark::placeholder { color: rgba(244,236,221,.4); }
-.in-dark:focus { border-color: rgba(244,236,221,.55); }
+.in-dark:focus { border-color: rgba(244,236,221,.55); box-shadow: 0 0 0 3px rgba(244,236,221,.28); }
 
 /* Buttons */
 .btn-accent {
@@ -230,13 +230,13 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 /* Budget section */
 .budget-summary { display: flex; flex-wrap: wrap; gap: 10px; }
 .budget-stat { flex: 1; min-width: 110px; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); border-radius: 14px; padding: 12px 14px; }
-.budget-stat__label { font-family: var(--font-mono); font-size: 11px; color: var(--muted-light); text-transform: uppercase; letter-spacing: .05em; }
+.budget-stat__label { font-family: var(--font-accent); font-size: 11px; color: var(--muted-light); text-transform: uppercase; letter-spacing: .05em; }
 .budget-stat__value { font-family: "Anton", sans-serif; font-size: 24px; line-height: 1.1; margin-top: 4px; }
 .budget-stat.accent { border-color: var(--accent); background: rgba(226,59,38,.08); }
 .budget-stat.accent .budget-stat__value { color: var(--accent); }
 .budget-stat { display: flex; flex-direction: column; }
-.budget-stat__sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted-light); margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
-.budget-kind { font-family: var(--font-mono); font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(28,23,18,.16); color: var(--muted-light); margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.budget-stat__sub { font-family: var(--font-accent); font-size: 10px; color: var(--muted-light); margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.budget-kind { font-family: var(--font-accent); font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(28,23,18,.16); color: var(--muted-light); margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .budget-kind.group { color: var(--accent); border-color: var(--accent); background: rgba(226,59,38,.08); }
 
 /* Category breakdown: a single proportional bar + a legend of per-category
@@ -251,11 +251,11 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 .budget-cat__dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .budget-cat__emoji { font-size: 14px; }
 .budget-cat__label { font-weight: 600; }
-.budget-cat__amt { font-family: var(--font-mono); font-size: 12px; color: var(--muted-light-2); }
+.budget-cat__amt { font-family: var(--font-accent); font-size: 12px; color: var(--muted-light-2); }
 .budget-cat__pct { color: var(--muted-light); margin-left: 5px; }
 
 /* Subheaders that split the itemized list into "shared" vs "per-person". */
-.budget-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 16px 2px 8px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-light); }
+.budget-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 16px 2px 8px; font-family: var(--font-accent); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-light); }
 .budget-group-head:first-child { margin-top: 6px; }
 .budget-group-sub { color: var(--accent); font-weight: 700; }
 
@@ -275,7 +275,7 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 .sec-row { display: flex; align-items: center; gap: 12px; margin: 26px 2px 14px; scroll-margin-top: 64px; }
 .sec-row__label { font-family: "Anton", sans-serif; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
 .sec-row__rule { flex: 1; height: 2px; background: rgba(28,23,18,.14); }
-.sec-row__count { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+.sec-row__count { font-family: var(--font-accent); font-size: 14px; color: var(--accent); }
 
 /* Trip grid + cards */
 .trip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 18px; }
@@ -315,7 +315,7 @@ body[data-vibe="night"] .btn-pill:hover { background: rgba(244,236,221,.18); }
 .add-card:hover { border-color: var(--ink); color: var(--ink); }
 .add-card__plus { width: 46px; height: 46px; border-radius: 50%; border: 2px dashed currentColor; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .add-card__title { font-family: "Anton", sans-serif; font-size: 17px; text-transform: uppercase; }
-.add-card__sub { font-family: var(--font-mono); font-size: 12px; }
+.add-card__sub { font-family: var(--font-accent); font-size: 12px; }
 
 /* Avatar stack */
 .crew { display: flex; align-items: center; gap: 8px; }
@@ -370,6 +370,14 @@ a { color: inherit; text-decoration: none; }
 .muted { color: var(--muted-light); }
 .reveal { opacity: 0; transform: translateY(10px); animation: rise .5s cubic-bezier(.2,.7,.3,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } .trip { transition: none; } }
+/* Every other rise/slide-in animation in the app (modals, chat bubbles, the
+   changelog drawer, the iOS install hint, and the ad hoc inline hero-card
+   animations) — same treatment as .reveal above. */
+@media (prefers-reduced-motion: reduce) {
+  .blob, .modal, .msg__bubble, .activity-sidebar, .ios-install-hint, .spin, [style*="animation:rise"] {
+    animation: none !important; opacity: 1; transform: none;
+  }
+}
 
 .wrap { width: 100%; max-width: 880px; margin: 0 auto; padding: 8px 18px 80px; position: relative; z-index: 1; }
 
@@ -386,7 +394,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 22px; transform: rotate(-4deg); flex: none;
 }
 .brand__name { font-family: "Anton", sans-serif; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; display: block; }
-.brand__sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted-light-2); margin-top: 3px; display: block; }
+.brand__sub { font-family: var(--font-accent); font-size: 11px; color: var(--muted-light-2); margin-top: 3px; display: block; }
 .header-spacer { flex: 1; }
 
 /* Generic buttons (admin reuses these class names) */
@@ -436,7 +444,7 @@ a { color: inherit; text-decoration: none; }
 .panel:hover { box-shadow: 0 26px 54px -30px rgba(40,28,16,.6); }
 .panel__head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid rgba(28,23,18,.1); flex-wrap: wrap; }
 .panel__head h2 { font-family: "Anton", sans-serif; font-size: 18px; font-weight: 400; text-transform: uppercase; letter-spacing: .02em; }
-.panel__head .muted { font-family: var(--font-mono); font-size: 12px; color: var(--muted-light-2); }
+.panel__head .muted { font-family: var(--font-accent); font-size: 12px; color: var(--muted-light-2); }
 .panel__body { padding: 6px 20px 16px; }
 
 /* Rows */
@@ -485,7 +493,7 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
   box-shadow: 0 40px 80px -30px rgba(0,0,0,.5); padding: 24px; animation: rise .35s both;
 }
 .modal__title { font-family: "Anton", sans-serif; font-size: 26px; text-transform: uppercase; line-height: 1; }
-.modal__kicker { font-family: var(--font-mono); font-size: 13px; color: var(--accent); margin-bottom: 4px; }
+.modal__kicker { font-family: var(--font-accent); font-size: 13px; color: var(--accent); margin-bottom: 4px; }
 .modal__row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .modal__foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
 
@@ -529,7 +537,7 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .crew-item:hover { background: rgba(255,255,255,.65); border-color: rgba(255,255,255,.8); }
 .crew-item__face { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; }
 .crew-item__name { font-weight: 700; font-size: 14px; flex: 1; }
-.crew-item__tag { font-family: var(--font-mono); font-size: 12px; color: var(--muted-light); line-height: 1.5; }
+.crew-item__tag { font-family: var(--font-accent); font-size: 12px; color: var(--muted-light); line-height: 1.5; }
 .crew-item__x { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted-light); padding: 4px 8px; border-radius: 8px; transition: all .15s; }
 .crew-item__x:hover { background: rgba(226,59,38,.15); color: var(--red); transform: scale(1.1); }
 .crew-item__x:disabled { opacity: .3; cursor: default; }
@@ -638,14 +646,14 @@ code { font-family: "Archivo", monospace; font-size: 12px; background: rgba(28,2
 .activity-item__body { flex: 1; min-width: 0; }
 .activity-item__text { word-break: break-word; color: var(--on-dark); }
 .activity-item__text strong { color: var(--amber); font-weight: 700; }
-.activity-item__time { margin-top: 4px; color: var(--muted-dark-2); font-size: 11px; font-family: var(--font-mono); letter-spacing: .02em; }
+.activity-item__time { margin-top: 4px; color: var(--muted-dark-2); font-size: 11px; font-family: var(--font-accent); letter-spacing: .02em; }
 .activity-item__x {
   flex: none; background: none; border: none; cursor: pointer; color: var(--muted-dark);
   font-size: 15px; padding: 2px 6px; border-radius: 8px; transition: background .15s, color .15s;
 }
 .activity-item__x:hover { background: rgba(226,59,38,.2); color: #ffb3a8; }
 .activity-count {
-  font-family: var(--font-mono); font-size: 12px; font-weight: 400;
+  font-family: var(--font-accent); font-size: 12px; font-weight: 400;
   color: var(--muted-dark); background: rgba(255,255,255,.12);
   padding: 1px 8px; border-radius: 999px; margin-left: 6px;
 }
@@ -714,6 +722,13 @@ html { -webkit-text-size-adjust: 100%; }
   .btn, .toggle { min-height: 44px; }
   .input { min-height: 44px; padding: 10px 12px; }
 
+  /* Icon-only buttons (remove/delete/close) are frequently tapped — give them
+     a real touch target on mobile without changing the glyph size. */
+  .crew-item__x, .activity-item__x, .btn-close {
+    min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .msg__del { min-width: 28px; min-height: 28px; }
+
   /* Better spacing for crew items on small screens */
   .crew-item { padding: 11px 0; gap: 10px; }
   .crew-item__face { width: 36px; height: 36px; font-size: 14px; }
@@ -769,7 +784,7 @@ html { -webkit-text-size-adjust: 100%; }
 .trip__pin {
   flex: none; display: inline-flex; align-items: center; gap: 4px;
   background: rgba(28,23,18,.06); border: 1px solid rgba(28,23,18,.12);
-  color: var(--muted-light); font-family: var(--font-mono); font-size: 11px;
+  color: var(--muted-light); font-family: var(--font-accent); font-size: 11px;
   padding: 4px 10px; border-radius: 999px; cursor: pointer;
   transition: transform .12s, background .15s, color .15s, border-color .15s;
 }
@@ -780,13 +795,13 @@ html { -webkit-text-size-adjust: 100%; }
 /* Past-trip card recap: a glance at the itinerary (times · places · notes)
    plus the crew's post-trip notes. Sits in the light card body. */
 .trip__recap { margin-top: 14px; border-top: 1px solid rgba(28,23,18,.1); padding-top: 12px; }
-.trip__recap-head { font-family: "Space Mono", monospace; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-light); margin-bottom: 9px; }
+.trip__recap-head { font-family: var(--font-accent); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-light); margin-bottom: 9px; }
 .trip__recap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .trip__recap-list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 9px; align-items: baseline; font-size: 13px; }
-.trip__recap-time { font-family: "Space Mono", monospace; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.trip__recap-time { font-family: var(--font-accent); font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
 .trip__recap-what { color: var(--ink); font-weight: 600; line-height: 1.35; }
 .trip__recap-note { grid-column: 2; color: var(--muted-light); font-size: 12px; font-weight: 400; line-height: 1.4; }
-.trip__recap-more { grid-column: 1 / -1; color: var(--muted-light); font-size: 11.5px; font-family: "Space Mono", monospace; }
+.trip__recap-more { grid-column: 1 / -1; color: var(--muted-light); font-size: 11.5px; font-family: var(--font-accent); }
 .trip__recap-summary { margin-top: 11px; background: rgba(244,181,40,.13); border: 1px solid rgba(244,181,40,.4); border-radius: 11px; padding: 9px 12px; font-size: 12.5px; line-height: 1.5; color: var(--ink); }
 .trip__recap-empty { font-size: 12.5px; color: var(--muted-light); }
 
@@ -809,7 +824,7 @@ html { -webkit-text-size-adjust: 100%; }
   position: fixed; top: 0; left: 50%; transform: translateX(-50%);
   margin-top: -40px; z-index: 1200;
   background: rgba(28,23,18,.92); color: var(--on-dark);
-  font-family: var(--font-mono); font-size: 12px;
+  font-family: var(--font-accent); font-size: 12px;
   padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16);
   opacity: 0; pointer-events: none; transition: opacity .15s;
 }
@@ -828,7 +843,7 @@ html { -webkit-text-size-adjust: 100%; }
 .site-foot a { color: var(--accent); text-decoration: none; }
 .site-foot a:hover { text-decoration: underline; }
 .site-foot__sep { opacity: .5; }
-.site-foot__ver { font-family: var(--font-mono); opacity: .7; }
+.site-foot__ver { font-family: var(--font-accent); opacity: .7; }
 .site-foot__link {
   background: none; border: none; padding: 0; cursor: pointer;
   color: var(--accent); font: inherit; text-decoration: underline;
@@ -916,7 +931,7 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
 .wrap-board .sec-row__label::before {
   counter-increment: pit-sec;
   content: counter(pit-sec, decimal-leading-zero);
-  font-family: var(--font-mono); font-weight: 700; font-size: 11px;
+  font-family: var(--font-accent); font-weight: 700; font-size: 11px;
   letter-spacing: .08em; color: var(--accent); flex: none;
 }
 
@@ -946,13 +961,13 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
 /* Crew RSVP — in / maybe / out controls, status badges, and a tally line. */
 .rsvp-tally { display: flex; gap: 7px; flex-wrap: wrap; margin: 2px 0 14px; }
 .rsvp-tally__chip {
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em;
+  font-family: var(--font-accent); font-size: 11px; letter-spacing: .03em;
   padding: 4px 11px; border-radius: 999px; border: 1px solid rgba(28,23,18,.14); color: var(--muted-light);
 }
 .rsvp-tally__chip b { color: var(--ink); }
 .rsvp-btns { display: flex; gap: 5px; flex: none; }
 .rsvp-btn {
-  font-family: var(--font-mono); font-weight: 700; font-size: 10.5px; letter-spacing: .04em;
+  font-family: var(--font-accent); font-weight: 700; font-size: 10.5px; letter-spacing: .04em;
   padding: 6px 9px; border-radius: 8px; cursor: pointer; border: 1px solid #D9CBB2;
   background: transparent; color: #6B5F52; transition: background .12s, border-color .12s, color .12s;
 }
@@ -961,7 +976,7 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
 .rsvp-btn.on-maybe { background: #F4B528; border-color: #F4B528; color: #1C1815; }
 .rsvp-btn.on-no { background: #E23B26; border-color: #E23B26; color: #fff; }
 .rsvp-badge {
-  font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  font-family: var(--font-accent); font-size: 10px; font-weight: 700; letter-spacing: .05em;
   padding: 3px 9px; border-radius: 999px; text-transform: uppercase; flex: none;
 }
 .rsvp-badge.yes { background: rgba(47,143,91,.16); color: #2F8F5B; }
@@ -983,7 +998,7 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
 /* Sticky section quick-nav (mobile only) — jump between the trip's sections. */
 .sec-nav { display: none; }
 .sec-nav__chip {
-  flex: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 700;
+  flex: none; font-family: var(--font-accent); font-size: 11.5px; font-weight: 700;
   white-space: nowrap; padding: 7px 13px; border-radius: 999px; cursor: pointer;
   border: 1px solid rgba(28,23,18,.16); background: rgba(255,255,255,.55); color: var(--ink); text-decoration: none;
 }
@@ -992,7 +1007,7 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
 /* "More options" disclosure inside the create-trip modal. */
 .more-options { margin-top: 16px; border-top: 1px solid rgba(28,23,18,.12); padding-top: 4px; }
 .more-options > summary {
-  cursor: pointer; list-style: none; padding: 11px 0; font-family: var(--font-mono);
+  cursor: pointer; list-style: none; padding: 11px 0; font-family: var(--font-accent);
   font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   color: var(--muted-light); display: flex; align-items: center; gap: 8px;
 }
@@ -1028,27 +1043,27 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
 
 /* ============================================================
    Boarding-pass redesign — "Pitstop App.dc.html"
-   Space Mono mono type, perforated ticket cards, numbered
+   Perforated ticket cards, numbered
    sections, dotted graph-paper wash. Layered as overrides so
    the existing markup and server-backed behaviour are untouched.
    ============================================================ */
-:root { --font-mono: "Space Mono", ui-monospace, "Cascadia Mono", monospace; }
+:root { --font-accent: "Permanent Marker", cursive; }
 
-/* Mono replaces the handwritten accent (was Permanent Marker) everywhere */
+/* Shared accent font via --font-accent */
 .kicker {
-  font-family: var(--font-mono); font-weight: 700; font-size: 10.5px;
+  font-family: var(--font-accent); font-weight: 700; font-size: 10.5px;
   letter-spacing: .16em; text-transform: uppercase; color: var(--amber);
 }
 .logo__tag {
-  font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em;
+  font-family: var(--font-accent); font-size: 9px; letter-spacing: .12em;
   text-transform: uppercase; color: var(--muted-light-2); margin-top: 4px;
 }
 .logo__tag::before { content: "// "; opacity: .8; }
 .sec-row__count {
-  font-family: var(--font-mono); font-weight: 700; font-size: 10px;
+  font-family: var(--font-accent); font-weight: 700; font-size: 10px;
   letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
 }
-.trip__pin { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.trip__pin { font-family: var(--font-accent); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 
 /* Board hero → solid ticket body (login card stays translucent glass) */
 .card-dark.hero { background: #191410; }
@@ -1059,13 +1074,13 @@ body[data-vibe="night"] .bg::after { opacity: .14; }
   content: ""; position: absolute; top: 0; left: 0; right: 0; height: 12px;
   background: repeating-conic-gradient(var(--on-dark) 0 25%, #191410 0 50%) 0 0 / 12px 12px;
 }
-.trip__count { font-family: var(--font-mono); font-weight: 700; font-size: 10px; letter-spacing: .06em; }
+.trip__count { font-family: var(--font-accent); font-weight: 700; font-size: 10px; letter-spacing: .06em; }
 .trip__count.soon { background: var(--amber); color: var(--ink); }
 .trip__count.today { background: var(--red); color: #fff; }
-.trip__date { font-family: var(--font-mono); font-weight: 400; letter-spacing: .08em; }
+.trip__date { font-family: var(--font-accent); font-weight: 400; letter-spacing: .08em; }
 
 /* Mono section-nav pills (mobile dock) for one consistent voice */
-.sec-nav a, .sec-nav button { font-family: var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.sec-nav a, .sec-nav button { font-family: var(--font-accent); letter-spacing: .06em; text-transform: uppercase; }
 
 /* Dotted graph-paper wash beneath the warm gradient — the design's board bg.
    Subtle (low alpha) so the blobs still read through it. */

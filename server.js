@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const session = require("express-session");
+const compression = require("compression");
 const FileStore = require("session-file-store")(session);
 
 const config = require("./lib/config");
@@ -37,6 +38,11 @@ app.disable("x-powered-by");
 // Behind the Cloudflare tunnel the app is proxied; trust it so sessions and
 // protocol detection work correctly.
 app.set("trust proxy", 1);
+
+// Gzip/brotli-capable responses for text assets (CSS/JS/JSON) — the tunnel
+// already compresses at Cloudflare's edge, but this also speeds up plain
+// localhost/LAN access, which don't get that for free.
+app.use(compression());
 
 // OWASP security headers on every response (CSP, anti-clickjacking, nosniff,
 // referrer policy, HSTS over HTTPS). See lib/security-headers.js.
@@ -249,10 +255,12 @@ app.get("/trip-files/:tripId/:filename", (req, res) => {
   res.sendFile(file);
 });
 
-// Fallback: send the board shell for any other non-API route.
+// Fallback: anything else is a genuinely unmatched route (the board itself is
+// already served by the static handler above at "/"). Answer with the real
+// 404 page/status rather than silently 200-ing with the board shell.
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found." });
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+  res.status(404).sendFile(path.join(PUBLIC_DIR, "404.html"));
 });
 
 // Error handler (must be last): turns any thrown/rejected route error into a

@@ -15,6 +15,10 @@ const router = express.Router();
 // Usernames stay simple & URL/display-safe; passwords are length-bounded only
 // (any characters allowed). Login intentionally does NOT enforce a min length
 // so it never leaks the password policy — wrong creds just return 401.
+// A precomputed bcrypt hash of a fixed dummy password, compared against when a
+// login's username doesn't exist — see the timing note on the /login route.
+const DUMMY_HASH = "$2a$10$CwTycUXWue0Thq9StjUM0uJ8Ovh1s5/K.7tS9rKgQmTB9J9YQZ8Uu";
+
 const USERNAME_RE = /^[a-zA-Z0-9_.-]+$/;
 const registerSchema = {
   username: { type: "string", required: true, min: 3, max: 32, pattern: USERNAME_RE, patternMessage: "Username can only use letters, numbers, and . _ -" },
@@ -109,6 +113,13 @@ router.post("/register", v.body(registerSchema), ah(async (req, res) => {
   }
 
   const hash = await bcrypt.hash(String(password), 10);
+  // Re-check right after the (async) hash — two requests for the same username
+  // could both pass the check above while either's hash was still computing.
+  // Nothing awaits between this check and db.addUser, so no request can
+  // interleave here and slip through.
+  if (db.findUserByUsername(username)) {
+    return res.status(409).json({ error: "That username is taken." });
+  }
   const user = {
     id: crypto.randomUUID(),
     username: String(username).trim(),
@@ -130,11 +141,12 @@ router.post("/register", v.body(registerSchema), ah(async (req, res) => {
 router.post("/login", v.body(loginSchema), ah(async (req, res) => {
   const { username, password } = req.valid;
   const user = db.findUserByUsername(username);
-  if (!user) {
-    return res.status(401).json({ error: "Wrong username or password." });
-  }
-  const ok = await bcrypt.compare(String(password || ""), user.passwordHash);
-  if (!ok) {
+  // Always run a bcrypt.compare, even for an unknown username — bcrypt.compare
+  // takes ~50-100ms while a short-circuit return is near-instant, so skipping
+  // it for "no such user" leaks which usernames exist via response timing.
+  // Comparing against DUMMY_HASH keeps the timing the same either way.
+  const ok = await bcrypt.compare(String(password || ""), user ? user.passwordHash : DUMMY_HASH);
+  if (!user || !ok) {
     return res.status(401).json({ error: "Wrong username or password." });
   }
   req.session.userId = user.id;
