@@ -112,11 +112,17 @@ router.post("/", v.body(createUserSchema), ah(async (req, res) => {
   if (db.findUserByUsername(username)) {
     return res.status(409).json({ error: "That username is taken." });
   }
+  const passwordHash = await bcrypt.hash(String(password), 10);
+  // Re-check right after the (async) hash so two concurrent creates for the
+  // same username can't both slip past the check above.
+  if (db.findUserByUsername(username)) {
+    return res.status(409).json({ error: "That username is taken." });
+  }
   const user = {
     id: crypto.randomUUID(),
     username: String(username).trim(),
     displayName: String(displayName || username).trim(),
-    passwordHash: await bcrypt.hash(String(password), 10),
+    passwordHash,
     isAdmin: !!isAdmin,
     createdAt: new Date().toISOString(),
   };

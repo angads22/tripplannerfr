@@ -727,13 +727,21 @@ async function createTrip() {
       vibe: ctVibe,
       tags: ctTags,
     });
-    // Seed the template's starter stops, if any.
+    // Seed the template's starter stops, if any. A failure here shouldn't stop
+    // trip creation, but the user should know if part of the setup didn't take.
+    let failedStops = 0, failedMembers = 0;
     for (const s of ctStops) {
-      await api("/api/trips/" + encodeURIComponent(trip.id) + "/stops", "POST", s).catch(() => {});
+      await api("/api/trips/" + encodeURIComponent(trip.id) + "/stops", "POST", s).catch(() => { failedStops++; });
     }
     // Invite the friends picked in "who's coming".
     for (const uid of ctCrew) {
-      await api("/api/trips/" + encodeURIComponent(trip.id) + "/members", "POST", { userId: uid }).catch(() => {});
+      await api("/api/trips/" + encodeURIComponent(trip.id) + "/members", "POST", { userId: uid }).catch(() => { failedMembers++; });
+    }
+    if (failedStops || failedMembers) {
+      const parts = [];
+      if (failedStops) parts.push(`${failedStops} starter stop${failedStops === 1 ? "" : "s"}`);
+      if (failedMembers) parts.push(`${failedMembers} invite${failedMembers === 1 ? "" : "s"}`);
+      toast(`Trip created, but ${parts.join(" and ")} didn't save — you can add ${parts.length > 1 ? "them" : "it"} from the trip page.`, true);
     }
     location.href = "/trip/" + encodeURIComponent(trip.slug || trip.id);
   } catch (e) {

@@ -6,7 +6,7 @@
   <title>Sign in · Pitstop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/pitstop.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -35,7 +35,7 @@
 
       <div class="card-dark" style="padding:28px 24px">
         <div class="kicker" id="kicker" style="margin-bottom:6px">welcome back, driver</div>
-        <div class="display" id="heading" style="font-size:38px">Keys, please.</div>
+        <h1 class="display" id="heading" style="font-size:38px">Keys, please.</h1>
 
         <div class="switch" style="margin-top:22px">
           <button id="tabLogin" class="active" type="button">Log in</button>
@@ -56,7 +56,7 @@
             <div class="flabel" style="margin-bottom:6px">Password</div>
             <div style="position:relative">
               <input class="in-dark" id="li-pass" type="password" autocomplete="current-password" placeholder="••••••••" style="padding-right:46px" />
-              <button type="button" class="pw-toggle" data-for="li-pass" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:8px">👁️</button>
+              <button type="button" class="pw-toggle" data-for="li-pass" aria-label="Show password" aria-pressed="false" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:8px">👁️</button>
             </div>
           </div>
           <button class="btn-accent" type="submit" id="loginSubmit" style="margin-top:4px" disabled>Hit the road →</button>
@@ -76,7 +76,7 @@
             <div class="flabel" style="margin-bottom:6px">Password</div>
             <div style="position:relative">
               <input class="in-dark" id="re-pass" type="password" autocomplete="new-password" placeholder="6+ characters" style="padding-right:46px" />
-              <button type="button" class="pw-toggle" data-for="re-pass" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:8px">👁️</button>
+              <button type="button" class="pw-toggle" data-for="re-pass" aria-label="Show password" aria-pressed="false" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:8px">👁️</button>
             </div>
           </div>
           <div id="inviteField">
